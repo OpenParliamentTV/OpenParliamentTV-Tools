@@ -305,6 +305,14 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
     tree = etree.parse(filename)
     root = tree.getroot()
 
+    # Try to get source URL information
+    source_urls = [ n.attrib.get('url')
+                    for n in root.xpath("preceding-sibling::node()")
+                    if getattr(n, 'target') == 'source' ]
+    # Source URL has been stored into the XML file
+    if source_urls:
+        sourceUri = source_urls[0]
+
     intro = root.find('vorspann')
     metadata = intro.find('kopfdaten')
 

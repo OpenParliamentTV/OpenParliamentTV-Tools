@@ -37,7 +37,6 @@ def download_plenary_protocols(destination_dir: str, fullscan: bool = False, per
         dest.mkdir(parents=True)
     http = urllib3.PoolManager()
     created_files = []
-    index_file = open(dest / "index.txt", 'wt+')
     offset = 0
     while True:
         logger.debug(f"Fetching RSS with offset {offset}")
@@ -52,21 +51,36 @@ def download_plenary_protocols(destination_dir: str, fullscan: bool = False, per
             if filename.exists():
                 # Existing file.
                 if not fullscan:
-                    logger.info("Found 1 cached file. Stopping.")
+                    logger.info(f"Found cached file {filename}. Stopping.")
                     return created_files
             else:
                 # Download file
                 file_url = f"{SERVER_ROOT}{link_href}"
                 logger.info(f"downloading URL {file_url}")
-                urllib.request.urlretrieve(file_url, filename)
+                with urllib.request.urlopen(file_url) as f:
+                    # Add source URL as a processing instruction, but
+                    # after the XML declaration. The cleanest way
+                    # would be to parse the whole XML and use some
+                    # API, but a simple text-based approach is more economical.
+                    pi = f"""<?source url="{file_url}"?>\n""".encode('utf-8')
+                    with open(filename, 'wb') as out:
+                        first_line = f.readline()
+                        # We make sure to preserve the XML declaration
+                        # at the start. If there is no XML
+                        # declaration, then we put the PI first.
+                        if first_line.startswith(b'<?xml'):
+                            out.write(first_line)
+                            out.write(pi)
+                        else:
+                            out.write(pi)
+                            out.write(first_line)
+                        # Write the rest of the file
+                        out.write(f.read())
                 created_files.append( (filename, file_url) )
-                # Add URL reference to index.txt
-                index_file.write(f"{basename} {file_url}\n")
         if link_count == 0:
             # Empty file, end of data
             break
         offset += link_count
-    index_file.close()
     return created_files
 
 if __name__ == "__main__":
