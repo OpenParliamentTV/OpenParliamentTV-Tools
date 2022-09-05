@@ -24,7 +24,7 @@ def update_and_merge(args):
                                   retry_count=args.retry_count)
 
     # Download new proceedings data
-    created_proceedings = download_plenary_protocols(args.proceedings_dir, False, args.from_period)
+    download_plenary_protocols(args.proceedings_dir, False, args.from_period)
 
     # Update all proceedings that need to be updated
     parse_proceedings_directory(args.proceedings_dir, args)
