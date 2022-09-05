@@ -21,6 +21,9 @@ let get_basedir = () => {
         return 'https://raw.githubusercontent.com/OpenParliamentTV/OpenParliamentTV-Data-DE/main/';
     } else {
         // Localhost server deployment. Parse generated directory listing
+
+        // We assume that the OpenParliamentTV-Tools and
+        // OpenParliamentTV-Data-DE clones are in the same directory
         return '../../../../../../../OpenParliamentTV-Data-DE/';
     }
 };
