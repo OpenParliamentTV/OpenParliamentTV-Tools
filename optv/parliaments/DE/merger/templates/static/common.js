@@ -1,7 +1,7 @@
 // Return list of available session data (as session numbers)
 let get_session_list = () => {
     let basedir = get_basedir();
-    if (basedir.includes('github.io')) {
+    if (basedir.includes('raw.githubusercontent')) {
         // gh-pages deployment. We use the Contents API to get the file listing.
         return fetch('https://api.github.com/repos/openparliamenttv/OpenParliamentTV-Data-DE/contents/processed')
               .then(resp => resp.json())
