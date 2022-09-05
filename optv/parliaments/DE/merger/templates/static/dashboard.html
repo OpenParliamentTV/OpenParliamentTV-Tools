@@ -52,9 +52,6 @@
     </div>
 
     <script>
-      // Determine basedir from location.
-      let BASEDIR = '../../../';
-
       // Code from https://observablehq.com/@tophtucker/chatterjee-correlation
       let chatterjee = (data, { x = (d) => d[0], y = (d) => d[1] } = {}) => {
           // 0. Extract values
@@ -146,10 +143,10 @@
           return box;
       }
 
-      function display_filename(filename, versions) {
+      function display_filename(filename, basedir, versions) {
           let session = filename.substr(0, 5);
           let fetches = versions
-              .map(ver => [ ver, `${BASEDIR}data/${ver}/${filename}`])
+              .map(ver => [ ver, `${basedir}${ver}/${filename}`])
               .map(([ver, url]) => fetch(url)
                    .then(resp => resp.json())
                    .then(data => data.map(item => {
@@ -163,13 +160,13 @@
           });
       }
 
-      function load_filelist(filelist, versions) {
+      function load_filelist(filelist, basedir, versions) {
           // Group by 3 letter prefix
           let prefixes = [ ... new Set(filelist.map(n => n.substr(0, 3))) ];
 
           let display_prefix = (prefix) => {
               filelist.filter(n => n.startsWith(prefix)).forEach(filename => {
-                  display_filename(filename, versions);
+                  display_filename(filename, basedir, versions);
               });
           };
           prefixes.forEach(prefix => {
@@ -185,7 +182,7 @@
           });
       }
 
-      let versions = [ 'merged' ];
+      let versions = [ 'processed' ];
       let params = new URLSearchParams(location.search);
       let version_param = params.get('versions');
       if (!!version_param) {
@@ -194,19 +191,21 @@
       if (location.host.includes('github.io')) {
           // gh-pages deployment. Use the Contents API to get the file listing.
           // Hardcoding the URL here.
-          fetch('https://api.github.com/repos/openparliamenttv/OpenParliamentTV-Data-DE/contents/processed')
+          let basedir = 'https://api.github.com/repos/openparliamenttv/OpenParliamentTV-Data-DE/contents/';
+          fetch(`${basedir}/processed`)
               .then(resp => resp.json())
               .then(dircontent => {
                   let filelist = dircontent.map(item => item.name);
-                  load_filelist(filelist, versions);
+                  load_filelist(filelist, basedir + '/', versions);
               });
       } else {
           // Localhost server deployment. Parse generated directory listing
-          fetch(`${BASEDIR}data/merged`)
+          let basedir = '../../../../../../../OpenParliamentTV-Data-DE/';
+          fetch(`${basedir}/processed`)
               .then(resp => resp.text())
               .then(dircontent => {
                   let filelist = [ ...new Set([ ...dircontent.matchAll(/(\d+-merged.json)/g) ].map(a => a[0])) ];
-                  load_filelist(filelist, versions);
+                  load_filelist(filelist, basedir, versions);
               });
       }
 
