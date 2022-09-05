@@ -50,6 +50,7 @@
     </template>
 
     <script type="module">
+      // }
       // Copied from dashboard.html. This would benefit a factoring.
       let new_viz = (session, data, spec) => {
           let viz = document.createElement('div');
@@ -175,6 +176,7 @@
       }
       let params = new URLSearchParams(location.search);
       let session = params.get('session');
+      let version = params.get('version') || 'processed';
       if (!session) {
           let template = document.getElementById('error-template').innerHTML;
           let rendered = Mustache.render(template, {
@@ -182,13 +184,7 @@
           });
           document.getElementById('content').innerHTML = rendered;
       } else {
-          let path = location.pathname.split('/');
-          // Assume the directory layout is
-          // /merger/templates/static/transcript.html
-
-          // Get ../../../..
-          let prefix = path.slice(0, path.length - 4).join('/');
-          let fname = `${prefix}/data/merged/${session}-merged.json`;
+          let fname = get_session_url(session, version);
           d3.json(fname).then(data => {
               // Convert to speeches structure
               let speeches = data.map(speech => {
@@ -225,7 +221,8 @@
               // Render template
               let template = document.getElementById('template').innerHTML;
               let rendered = Mustache.render(template, {
-                  "session": fname,
+                  "session": session,
+                  "filename": fname,
                   "speeches": speeches,
                   "speech_count": speeches.length,
                   "unmatched_count":  speeches.filter(s => ! s.speech_turns.length).length

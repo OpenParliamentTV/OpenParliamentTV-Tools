@@ -1,3 +1,21 @@
+let get_basedir = () => {
+    if (location.host.includes('github.io')) {
+        // gh-pages deployment. Use the Contents API to get the file listing.
+        // Hardcoding the URL here.
+        return 'https://api.github.com/repos/openparliamenttv/OpenParliamentTV-Data-DE/contents/';
+    } else {
+        // Localhost server deployment. Parse generated directory listing
+        return '../../../../../../../OpenParliamentTV-Data-DE/';
+    }
+};
+
+let get_session_url = (session, version) => {
+    let basedir = get_basedir();
+    if (!version)
+        version = 'processed';
+    return `${basedir}/${version}/${session}-merged.json`;
+}
+
 // js module with common functions
 let normalized_data = (data) => {
     return data.map(s => {

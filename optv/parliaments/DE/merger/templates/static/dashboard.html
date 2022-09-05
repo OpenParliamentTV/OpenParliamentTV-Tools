@@ -76,7 +76,7 @@
       let merged_viz = (session, data) => {
           let box = document.createElement('div');
           let norm_data = normalized_data(data);
-          let merged_data = norm_data.filter(i => i.version == 'merged');
+          let merged_data = norm_data.filter(i => i.version == 'processed');
           let chatter = chatterjee(merged_data, {
               x: (d) => d.proceeding,
               y: (d) => d.media,
@@ -86,7 +86,7 @@
           box.classList.add('box');
           box.dataset.session = session;
           box.style.order = session;
-          box.innerHTML = `<a data-session="${session}" data-ratio="${matching_ratio}" data-diff="${count_diff}" target="_blank" href="transcript.html?session=${session}" class="title">Session ${session}</a><br>Ratio ${matching_ratio.toFixed(3)}<br>Chatterjee: ${chatter.toFixed(3)}`;
+          box.innerHTML = `<a data-session="${session}" data-ratio="${matching_ratio}" data-diff="${count_diff}" target="_blank" href="transcript.html?session=${session}" class="title"><strong>Session ${session}</strong></a><br>Ratio ${matching_ratio.toFixed(3)}<br>Chatterjee: ${chatter.toFixed(3)}`;
           let viz = document.createElement('div');
           viz.classList.add('chart');
           box.appendChild(viz);
@@ -188,26 +188,18 @@
       if (!!version_param) {
           versions = version_param.split(',');
       }
-      if (location.host.includes('github.io')) {
-          // gh-pages deployment. Use the Contents API to get the file listing.
-          // Hardcoding the URL here.
-          let basedir = 'https://api.github.com/repos/openparliamenttv/OpenParliamentTV-Data-DE/contents/';
-          fetch(`${basedir}/processed`)
-              .then(resp => resp.json())
-              .then(dircontent => {
-                  let filelist = dircontent.map(item => item.name);
-                  load_filelist(filelist, basedir + '/', versions);
-              });
-      } else {
-          // Localhost server deployment. Parse generated directory listing
-          let basedir = '../../../../../../../OpenParliamentTV-Data-DE/';
-          fetch(`${basedir}/processed`)
-              .then(resp => resp.text())
-              .then(dircontent => {
-                  let filelist = [ ...new Set([ ...dircontent.matchAll(/(\d+-merged.json)/g) ].map(a => a[0])) ];
-                  load_filelist(filelist, basedir, versions);
-              });
-      }
+      let basedir = get_basedir();
+      fetch(`${basedir}/processed`)
+      .then(resp => {
+          if (basedir.includes('github.com')) {
+              // gh-pages deployment. We use the Contents API to get the file listing.
+              return resp.json().then(dircontent => dircontent.map(item => item.name));
+          } else {
+              return  resp.text()
+                  .then(dircontent => [ ...new Set([ ...dircontent.matchAll(/(\d+-merged.json)/g) ].map(a => a[0])) ]);
+          }
+      })
+      .then(filelist => load_filelist(filelist, basedir, versions));
 
     </script>
   </body>
