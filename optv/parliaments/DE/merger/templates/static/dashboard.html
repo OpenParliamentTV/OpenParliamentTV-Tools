@@ -194,7 +194,7 @@
       if (location.host.includes('github.io')) {
           // gh-pages deployment. Use the Contents API to get the file listing.
           // Hardcoding the URL here.
-          fetch('https://api.github.com/repos/openparliamenttv/OpenParliamentTV-Data-DE/processed')
+          fetch('https://api.github.com/repos/openparliamenttv/OpenParliamentTV-Data-DE/contents/processed')
               .then(resp => resp.json())
               .then(dircontent => {
                   let filelist = dircontent.map(item => item.name);
