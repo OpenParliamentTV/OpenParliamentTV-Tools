@@ -189,17 +189,7 @@
           versions = version_param.split(',');
       }
       let basedir = get_basedir();
-      fetch(`${basedir}/processed`)
-      .then(resp => {
-          if (basedir.includes('github.com')) {
-              // gh-pages deployment. We use the Contents API to get the file listing.
-              return resp.json().then(dircontent => dircontent.map(item => item.name));
-          } else {
-              return  resp.text()
-                  .then(dircontent => [ ...new Set([ ...dircontent.matchAll(/(\d+-merged.json)/g) ].map(a => a[0])) ]);
-          }
-      })
-      .then(filelist => load_filelist(filelist, basedir, versions));
+      get_session_list().then(filelist => load_filelist(filelist, basedir, versions));
 
     </script>
   </body>

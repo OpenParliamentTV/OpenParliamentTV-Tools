@@ -1,8 +1,24 @@
+// Return list of available session data (as session numbers)
+let get_session_list = () => {
+    let basedir = get_basedir();
+    if (basedir.includes('github.io')) {
+        // gh-pages deployment. We use the Contents API to get the file listing.
+        return fetch('https://api.github.com/repos/openparliamenttv/OpenParliamentTV-Data-DE/contents/processed')
+              .then(resp => resp.json())
+              .then(dircontent => dircontent.map(item => item.name));
+    } else {
+        return fetch(`${basedir}/processed`)
+            .then(resp => resp.text())
+            .then(dircontent => [ ...new Set([ ...dircontent.matchAll(/(\d+-merged.json)/g) ].map(a => a[0])) ]);
+    }
+};
+
+// Return the basedir for the content data
 let get_basedir = () => {
     if (location.host.includes('github.io')) {
         // gh-pages deployment. Use the Contents API to get the file listing.
         // Hardcoding the URL here.
-        return 'https://api.github.com/repos/openparliamenttv/OpenParliamentTV-Data-DE/contents/';
+        return 'https://raw.githubusercontent.com/OpenParliamentTV/OpenParliamentTV-Data-DE/main/';
     } else {
         // Localhost server deployment. Parse generated directory listing
         return '../../../../../../../OpenParliamentTV-Data-DE/';
