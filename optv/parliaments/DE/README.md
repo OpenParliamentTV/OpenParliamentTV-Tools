@@ -60,8 +60,11 @@ period number (`--from-period` option). It will download the
 corresponding media data, directly in unified json format.
 
 The Bundestag media server regularly has trouble downloading specified
-period/meeting data (it looks like some kind of timeout in building
-data). The `update_media` script will by default only try to download
-files that are not already existing in the output directory. It can
-thus be run multiple times, in order to go over the 503 errors from
-the webserver.
+period/meeting data (the server often returns a 503 code, like some
+kind of timeout in building data). Providing the `--retry-count`
+option with an number of maximum retries will make `update_media` try
+again a number of times in case of errors, with a random-length
+timeout (from 0 to 10s) between each try. Additionally, the
+`update_media` script will by default only try to download files that
+are not already existing in the output directory.  It can thus be run
+multiple times if necessary.
