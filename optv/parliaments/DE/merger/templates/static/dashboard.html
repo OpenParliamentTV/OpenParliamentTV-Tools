@@ -50,8 +50,12 @@
 
     <div class="dashboard">
     </div>
+    <div class="stats">
+    </div>
 
     <script>
+      let whole_data = [];
+
       // Code from https://observablehq.com/@tophtucker/chatterjee-correlation
       let chatterjee = (data, { x = (d) => d[0], y = (d) => d[1] } = {}) => {
           // 0. Extract values
@@ -76,6 +80,7 @@
       let merged_viz = (session, data) => {
           let box = document.createElement('div');
           let norm_data = normalized_data(data);
+          // Consider only main 'processed' version for stats
           let merged_data = norm_data.filter(i => i.version == 'processed');
           let chatter = chatterjee(merged_data, {
               x: (d) => d.proceeding,
@@ -143,6 +148,74 @@
           return box;
       }
 
+      function stats_viz() {
+          let box = document.createElement('div');
+
+          let stats = whole_data.map(data => {
+              let norm = normalized_data(data);
+              let session = `${data[0].electoralPeriod.number}${data[0].session.number.padStart(3, "0")}`;
+              let matching_count = norm.filter(i => i.matching == 'matching').length;
+              let mc = norm.filter(i => i.matching == 'media_only').length;
+              let pc = norm.filter(i => i.matching == 'proceeding_only').length;
+              return {
+                  media_count: mc + matching_count,
+                  proceedings_count: pc + matching_count,
+                  diff_count: mc - pc,
+                  url: `transcript.html?session=${session}`,
+                  session: session,
+                  matching_ratio: matching_count / norm.length,
+              }
+          });
+          console.log(stats);
+          box.classList.add('stat');
+          let viz = document.createElement('div');
+          viz.classList.add('chart');
+          box.appendChild(viz);
+          var yourVlSpec = {
+              $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+              width: "container",
+              height: "container",
+              title: `Stats for {whole_data.length} sessions`,
+              data: {
+                  values: stats,
+              },
+              mark: { type: 'point',
+                      shape: 'square',
+                      tooltip: true,
+                      filled: true },
+              encoding: {
+                  x: {
+                      field: 'diff_count',
+                      type: 'quantitative',
+                  },
+                  y: {
+                      field: 'matching_ratio',
+                      type: 'quantitative',
+                  },
+                  color: {
+                      field: "matching_ratio",
+                      type: "quantitative",
+                  },
+                  tooltip: [
+                      { field: 'diff_count' },
+                      { field: 'matching_ratio' },
+                      { field: 'session' },
+                      { field: 'media_count' },
+                      { field: 'proceedings_count' },
+                  ],
+                  href: {
+                      field: 'url'
+                  }
+              }
+          };
+          vegaEmbed(viz,
+                    yourVlSpec,
+                    {
+                        "actions": false
+                    });
+          return box;
+      }
+
       function display_filename(filename, basedir, versions) {
           let session = filename.substr(0, 5);
           let fetches = versions
@@ -156,6 +229,8 @@
           Promise.all(fetches).then(datas => {
               // Merge different data files, versioning info has been added
               let viz = merged_viz(session, datas.flat());
+              // Consider only 1st version for whole_data stats
+              whole_data.push(datas[0]);
               document.querySelector('.dashboard').appendChild(viz);
           });
       }
@@ -190,6 +265,12 @@
       }
       let basedir = get_basedir();
       get_session_list().then(filelist => load_filelist(filelist, basedir, versions));
+
+      // Global stats
+      document.querySelector('h1').addEventListener('click', e => {
+              // Refresh stats
+              document.querySelector('.stats').replaceChildren(stats_viz());
+          });
 
     </script>
   </body>
