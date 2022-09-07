@@ -48,6 +48,9 @@ def merge_item(proceeding, mediaitem):
 
 def speaker_cleanup(item):
     if item.get('people'):
+        # Warning: we use people[0] assuming it is the main
+        # speaker. It works because proceedings2json (now) explicitly
+        # sorts the people list
         speaker = remove_accents(item['people'][0]['label'].lower()).replace(' von der ', ' ').replace('altersprasident ', '')
     else:
         speaker = None

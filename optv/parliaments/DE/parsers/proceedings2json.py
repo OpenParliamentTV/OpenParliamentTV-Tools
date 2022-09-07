@@ -415,8 +415,10 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
                         "label": fix_fullname(fullname),
                         "context": status
                     }
-            speakers = [ speaker_item(fullname, status)
-                         for fullname, status in speakerstatus_dict.items() ]
+            # Sort speakers so that main speaker is always first
+            speakers = list(sorted(  ( speaker_item(fullname, status)
+                                       for fullname, status in speakerstatus_dict.items() ),
+                                     key=lambda si: 0 if si['context'] == 'main-speaker' else 1))
 
             speech_id = speech[0]['speech_id']
             last_redeid = speech_id
