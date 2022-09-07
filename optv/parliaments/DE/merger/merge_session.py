@@ -335,7 +335,7 @@ def merge_files_or_dirs(media: Path, proceedings: Path, args) -> list[Path]:
                 if (not output_file.exists()
                     or output_file.stat().st_mtime < m.stat().st_mtime
                     or ( p is not None and output_file.stat().st_mtime < p.stat().st_mtime)):
-                    logger.debug(f"Saving into {filename}")
+                    logger.info(f"Saving into {filename}")
                     with open(output_file, 'w') as f:
                         json.dump(data, f, indent=2, ensure_ascii=False)
                     output.append(output_file)
