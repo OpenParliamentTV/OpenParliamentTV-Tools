@@ -26,7 +26,7 @@
       <div class="transcript column left">
       {{#speeches}}
       <div class="speechHeading {{classes}}"  id="speech{{speechIndex}}">
-      <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span></a><em>{{message}}</em>{{#videoURI}}<a class="videolink" href="{{videoURI}}"> Play </a>{{/videoURI}}
+        <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ main_speaker }}</span> <em>{{message}}</em>{{#videoURI}}<a class="videolink" href="{{videoURI}}"> Play </a>{{/videoURI}}
       </div>
 
       {{#speech_turns}}
@@ -215,7 +215,8 @@
                       "speech_turns": speech_turns,
                       "classes": classes,
                       "message": message,
-                      "videoURI": (speech.media || {}).videoFileURI || ""
+                      "videoURI": (speech.media || {}).videoFileURI || "",
+                      "main_speaker": speech.people.length ? speech.people[0].label : ""
                   }
               });
               // Render template

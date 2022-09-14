@@ -60,6 +60,9 @@ body {
     font-size: 140%;
     cursor: pointer;
 }
+.mainSpeaker {
+    font-style: italic;
+}
 .status {
     cursor: pointer;
 }
