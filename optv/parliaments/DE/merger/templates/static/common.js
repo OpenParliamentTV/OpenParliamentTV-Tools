@@ -40,6 +40,8 @@ let normalized_data = (data) => {
     return data.map(s => {
         let pi = s.agendaItem.proceedingIndex || 1000;
         pi = pi - (pi >= 1000 ? 1000 : 0);
+        let sn = `${s.session.number}`.padStart(3, "0");
+        let session = `${s.electoralPeriod.number}${sn}`;
         return {
             "proceeding": pi,
             "media": (s.agendaItem.mediaIndex || 0),
@@ -50,7 +52,8 @@ let normalized_data = (data) => {
             "char_count": s.textContents ? d3.sum(s.textContents.map(tc => d3.sum(tc.textBody.map(tb => tb.text.length)))) : 0,
             "word_count": s.textContents ? d3.sum(s.textContents.map(tc => d3.sum(tc.textBody.map(tb => tb.text.split(' ').length)))) : 0,
             "duration": s.media ? s.media.duration : 0,
-            "version": s.version
+            "version": s.version,
+            "session": session
         }
     });
 };

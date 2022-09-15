@@ -39,6 +39,21 @@
         border: 1px solid #ccc;
         background-color: #eee;
     }
+    .content {
+        display: flex;
+        flex-direction: row;
+    }
+    .dashboard {
+        width: 80%;
+    }
+    .stat_container {
+        width: 18%;
+    }
+    #update_stats {
+        border: 1ps solid grey;
+        background-color: lightgrey;
+    }
+
   </style>
 
   <body>
@@ -48,13 +63,29 @@
       <div class="prefixes"></div>
     </p>
 
-    <div class="dashboard">
-    </div>
-    <div class="stats">
+    <div class="content">
+      <div class="dashboard">
+      </div>
+      <div class="stat_container">
+        <button id="update_stats">Update global stats</button>
+        <div class="stats">
+        </div>
+      </div>
     </div>
 
     <script>
       let whole_data = [];
+
+      let vl_viz = (spec) => {
+          let viz = document.createElement('div');
+          viz.classList.add('chart');
+          vegaEmbed(viz,
+                    spec,
+                    {
+                        "actions": false
+                    });
+          return viz;
+      };
 
       // Code from https://observablehq.com/@tophtucker/chatterjee-correlation
       let chatterjee = (data, { x = (d) => d[0], y = (d) => d[1] } = {}) => {
@@ -92,10 +123,7 @@
           box.dataset.session = session;
           box.style.order = session;
           box.innerHTML = `<a data-session="${session}" data-ratio="${matching_ratio}" data-diff="${count_diff}" target="_blank" href="transcript.html?session=${session}" class="title"><strong>Session ${session}</strong></a><br>Ratio ${matching_ratio.toFixed(3)}<br>Chatterjee: ${chatter.toFixed(3)}`;
-          let viz = document.createElement('div');
-          viz.classList.add('chart');
-          box.appendChild(viz);
-          var yourVlSpec = {
+          box.appendChild(vl_viz({
               $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
               width: "container",
               height: "container",
@@ -139,12 +167,7 @@
                       field: 'url'
                   }
               }
-          };
-          vegaEmbed(viz,
-                    yourVlSpec,
-                    {
-                        "actions": false
-                    });
+          }));
           return box;
       }
 
@@ -153,7 +176,7 @@
 
           let stats = whole_data.map(data => {
               let norm = normalized_data(data);
-              let session = `${data[0].electoralPeriod.number}${data[0].session.number.padStart(3, "0")}`;
+              let session = Number(norm[0].session);
               let matching_count = norm.filter(i => i.matching == 'matching').length;
               let mc = norm.filter(i => i.matching == 'media_only').length;
               let pc = norm.filter(i => i.matching == 'proceeding_only').length;
@@ -164,18 +187,17 @@
                   url: `transcript.html?session=${session}`,
                   session: session,
                   matching_ratio: matching_count / norm.length,
+                  row: Math.floor(session / 10),
+                  col: session % 10,
               }
           });
           console.log(stats);
           box.classList.add('stat');
-          let viz = document.createElement('div');
-          viz.classList.add('chart');
-          box.appendChild(viz);
-          var yourVlSpec = {
+          box.appendChild(vl_viz({
               $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
               width: "container",
               height: "container",
-              title: `Stats for {whole_data.length} sessions`,
+              title: `Stats for ${whole_data.length} sessions`,
               data: {
                   values: stats,
               },
@@ -207,12 +229,46 @@
                       field: 'url'
                   }
               }
-          };
-          vegaEmbed(viz,
-                    yourVlSpec,
-                    {
-                        "actions": false
-                    });
+          }));
+          // Table viz
+          box.appendChild(vl_viz({
+              $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+              width: "container",
+              height: "container",
+              title: `Table for ${whole_data.length} sessions`,
+              data: {
+                  values: stats,
+              },
+              mark: { type: 'rect',
+                      tooltip: true },
+              encoding: {
+                  x: {
+                      field: 'col',
+                      type: 'ordinal',
+                  },
+                  y: {
+                      field: 'row',
+                      type: 'ordinal',
+                  },
+                  color: {
+                      field: "matching_ratio",
+                      type: "quantitative",
+                  },
+                  tooltip: [
+                      { field: 'diff_count' },
+                      { field: 'matching_ratio' },
+                      { field: 'session' },
+                      { field: 'media_count' },
+                      { field: 'proceedings_count' },
+                  ],
+                  href: {
+                      field: 'url'
+                  }
+              },
+              "config": {
+                  "axis": {"grid": true, "tickBand": "extent"}
+              }
+          }));
           return box;
       }
 
@@ -267,10 +323,10 @@
       get_session_list().then(filelist => load_filelist(filelist, basedir, versions));
 
       // Global stats
-      document.querySelector('h1').addEventListener('click', e => {
+      document.querySelector('#update_stats').addEventListener('click', e => {
               // Refresh stats
-              document.querySelector('.stats').replaceChildren(stats_viz());
-          });
+          document.querySelector('.stats').replaceChildren(stats_viz());
+      });
 
     </script>
   </body>

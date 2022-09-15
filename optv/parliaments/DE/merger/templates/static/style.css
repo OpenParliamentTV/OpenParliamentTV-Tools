@@ -36,7 +36,6 @@ body {
 .column.right {
     display: flex;
     flex-direction: column;
-    justify-content: center;
     position: fixed;
     top: var(--header-height);
     bottom: 0;
@@ -44,9 +43,12 @@ body {
     right: 0;
 }
 .player {
-    width: 320px;
-    height: 200px;
-    margin: auto;
+    height: var(--header-height);
+    margin: 0 auto;
+}
+.charts {
+    height: calc(100vh - 2 * var(--header-height));
+    overflow: auto;
 }
 .menu {
     position: fixed;
