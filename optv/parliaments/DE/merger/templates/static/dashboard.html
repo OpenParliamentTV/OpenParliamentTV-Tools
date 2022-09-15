@@ -78,7 +78,6 @@
       <div class="dashboard">
       </div>
       <div class="stat_container">
-        <button id="update_stats">Update global stats</button>
         <div class="stats">
         </div>
       </div>
@@ -380,12 +379,6 @@
       }
       let basedir = get_basedir();
       get_session_list().then(filelist => load_filelist(filelist, basedir, versions));
-
-      // Global stats
-      document.querySelector('#update_stats').addEventListener('click', e => {
-          stats_refresh();
-      });
-
     </script>
   </body>
 </html>
