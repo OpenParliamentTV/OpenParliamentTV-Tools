@@ -84,8 +84,18 @@
     </div>
 
     <script>
+      let load_notes = () => {
+          return JSON.parse(localStorage['dashboardNotes'] || '{}');
+      }
+      let save_notes = () => {
+          // Save current notes into localStorage. Preserve old notes (that may not be displayed)
+          let new_notes = Object.fromEntries([ ...document.querySelectorAll(".notes")]
+                                             .filter(t => t.value.length > 0)
+                                             .map(t => [ t.dataset.session, t.value ]));
+          localStorage['dashboardNotes'] = JSON.stringify({ ...load_notes(), ...new_notes});
+      };
       let whole_data = [];
-
+      let sessionNotes = load_notes();
       let vl_viz = (spec) => {
           let viz = document.createElement('div');
           viz.classList.add('chart');
@@ -132,7 +142,7 @@
           box.classList.add('box');
           box.dataset.session = session;
           box.style.order = session;
-          box.innerHTML = `<a data-session="${session}" data-ratio="${matching_ratio}" data-diff="${count_diff}" target="_blank" href="transcript.html?session=${session}" class="title"><strong>Session ${session}</strong></a><br>Ratio ${matching_ratio.toFixed(3)}<br>Chatterjee: ${chatter.toFixed(3)}`;
+          box.innerHTML = `<a data-session="${session}" data-ratio="${matching_ratio}" data-diff="${count_diff}" target="_blank" href="transcript.html?session=${session}" class="title"><strong>Session ${session}</strong></a><span><span title="Matching ratio">${matching_ratio.toFixed(3)}</span> - <span title="Chatterjee">${chatter.toFixed(3)}</span></span><textarea data-session="${session}" class="notes">${sessionNotes[session] || ""}</textarea>`;
           box.appendChild(vl_viz({
               $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
               width: "container",
@@ -178,6 +188,7 @@
                   }
               }
           }));
+          box.querySelector(".notes").addEventListener("change", debounce(save_notes, 1000));
           return box;
       }
 
@@ -219,7 +230,7 @@
                       "bin": true,
                       "field": "matching_ratio"
                   },
-                  "y": {"aggregate": "count"}
+                  "y": {"aggregate": "count"},
               }
           });
           box.appendChild(hist);
