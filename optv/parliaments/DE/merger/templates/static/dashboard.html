@@ -187,7 +187,7 @@
                   url: `transcript.html?session=${session}`,
                   session: session,
                   matching_ratio: matching_count / norm.length,
-                  row: Math.floor(session / 10),
+                  row: session - session % 10,
                   col: session % 10,
               }
           });
@@ -272,6 +272,10 @@
           return box;
       }
 
+      function stats_refresh() {
+          document.querySelector('.stats').replaceChildren(stats_viz());
+      }
+
       function display_filename(filename, basedir, versions) {
           let session = filename.substr(0, 5);
           let fetches = versions
@@ -282,7 +286,7 @@
                        item.version = ver;
                        return item;
                    })));
-          Promise.all(fetches).then(datas => {
+          return Promise.all(fetches).then(datas => {
               // Merge different data files, versioning info has been added
               let viz = merged_viz(session, datas.flat());
               // Consider only 1st version for whole_data stats
@@ -296,9 +300,7 @@
           let prefixes = [ ... new Set(filelist.map(n => n.substr(0, 3))) ];
 
           let display_prefix = (prefix) => {
-              filelist.filter(n => n.startsWith(prefix)).forEach(filename => {
-                  display_filename(filename, basedir, versions);
-              });
+              return Promise.all(filelist.filter(n => n.startsWith(prefix)).map(filename => display_filename(filename, basedir, versions)));
           };
           prefixes.forEach(prefix => {
               let button = document.createElement('div');
@@ -306,7 +308,7 @@
               button.dataset.prefix = prefix;
               button.append(`Display sessions starting with ${prefix}`);
               button.addEventListener('click', b => {
-                  display_prefix(prefix);
+                  display_prefix(prefix).then(datas => stats_refresh());
                   b.target.remove();
               });
               document.querySelector('.prefixes').appendChild(button);
@@ -324,8 +326,7 @@
 
       // Global stats
       document.querySelector('#update_stats').addEventListener('click', e => {
-              // Refresh stats
-          document.querySelector('.stats').replaceChildren(stats_viz());
+          stats_refresh();
       });
 
     </script>
