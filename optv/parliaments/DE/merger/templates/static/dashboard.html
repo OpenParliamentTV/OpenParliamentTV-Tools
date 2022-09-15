@@ -39,6 +39,12 @@
         border: 1px solid #ccc;
         background-color: #eee;
     }
+    .filtered {
+        display: none;
+    }
+    .header{
+        height: var(--header-height);
+    }
     .content {
         display: flex;
         flex-direction: row;
@@ -47,7 +53,12 @@
         width: 80%;
     }
     .stat_container {
+        position: fixed;
+        top: var(--header-height);
+        right: 0;
         width: 18%;
+        height: calc(100vh - var(--header-height));
+        overflow: auto;
     }
     #update_stats {
         border: 1ps solid grey;
@@ -57,11 +68,11 @@
   </style>
 
   <body>
-    <p class="menu"><a href="/">Home</a></p>
-    <p class="metadata">
-      <h1>Dashboard</h1>
+    <div class="header">
+      <p class="menu"><a href="/">Home</a></p>
+      <h1>Dashboard <span class="metadata"></span></h1>
       <div class="prefixes"></div>
-    </p>
+    </div>
 
     <div class="content">
       <div class="dashboard">
@@ -79,11 +90,11 @@
       let vl_viz = (spec) => {
           let viz = document.createElement('div');
           viz.classList.add('chart');
-          vegaEmbed(viz,
-                    spec,
-                    {
-                        "actions": false
-                    });
+          viz.embed = vegaEmbed(viz,
+                               spec,
+                               {
+                                   "actions": false
+                               });
           return viz;
       };
 
@@ -193,10 +204,41 @@
           });
           console.log(stats);
           box.classList.add('stat');
+
+          // Histogram viz
+          let hist = vl_viz({
+              "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+              data: { values: stats },
+              title: "Histogram of matching_ratio",
+              "mark": "bar",
+               "params": [{
+                   "name": "ratio",
+                   "select": {"type": "interval", "encodings": ["x"]}
+               }],
+              "encoding": {
+                  "x": {
+                      "bin": true,
+                      "field": "matching_ratio"
+                  },
+                  "y": {"aggregate": "count"}
+              }
+          });
+          box.appendChild(hist);
+          let debounce_filter = debounce(limit_ratio, 500);
+          hist.embed.then( ({spec, view}) => {
+              view.addSignalListener('ratio', (name, value) => {
+                  console.log("Brush signal", name, value);
+                  if (value.matching_ratio !== undefined) {
+                      debounce_filter(value.matching_ratio[0],
+                                      value.matching_ratio[1]);
+                  } else {
+                      debounce_filter(0, 1);
+                  }
+              });
+          });
+
           box.appendChild(vl_viz({
               $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-              width: "container",
-              height: "container",
               title: `Stats for ${whole_data.length} sessions`,
               data: {
                   values: stats,
@@ -233,8 +275,6 @@
           // Table viz
           box.appendChild(vl_viz({
               $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-              width: "container",
-              height: "container",
               title: `Table for ${whole_data.length} sessions`,
               data: {
                   values: stats,
@@ -272,6 +312,23 @@
           return box;
       }
 
+      function limit_ratio(from, to) {
+          if (from === undefined) from = 0;
+          if (to === undefined) to = 1;
+          let count = 0;
+          let visible = 0;
+          document.querySelectorAll('.box').forEach(box => {
+              count +=1;
+              const ratio = Number(box.children[0].dataset.ratio);
+              if (ratio < from || ratio > to) {
+                  box.classList.add('filtered');
+              } else {
+                  box.classList.remove('filtered');
+                  visible +=1;
+              }
+          });
+          document.querySelector(".metadata").textContent = `[ ${visible} / ${count} matching ${from.toFixed(2)} < ratio < ${to.toFixed(2)} ]`;
+      }
       function stats_refresh() {
           document.querySelector('.stats').replaceChildren(stats_viz());
       }
