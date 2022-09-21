@@ -1,3 +1,13 @@
+const debounce = (callback, wait) => {
+  let timeoutId = null;
+  return (...args) => {
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => {
+      callback.apply(null, args);
+    }, wait);
+  };
+};
+
 // Return list of available session data (as session numbers)
 let get_session_list = () => {
     let basedir = get_basedir();
