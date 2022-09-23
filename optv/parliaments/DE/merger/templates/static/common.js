@@ -1,3 +1,7 @@
+// js module with common functions
+// for dashboard and transcript
+
+// Debounce function
 const debounce = (callback, wait) => {
   let timeoutId = null;
   return (...args) => {
@@ -26,18 +30,17 @@ let get_session_list = () => {
 // Return the basedir for the content data
 let get_basedir = () => {
     if (location.host.includes('github.io')) {
-        // gh-pages deployment. Use the Contents API to get the file listing.
         // Hardcoding the URL here.
         return 'https://raw.githubusercontent.com/OpenParliamentTV/OpenParliamentTV-Data-DE/main/';
     } else {
-        // Localhost server deployment. Parse generated directory listing
-
+        // Localhost server deployment.
         // We assume that the OpenParliamentTV-Tools and
         // OpenParliamentTV-Data-DE clones are in the same directory
         return '../../../../../../../OpenParliamentTV-Data-DE/';
     }
 };
 
+// Get the session data URL
 let get_session_url = (session, version) => {
     let basedir = get_basedir();
     if (!version)
@@ -45,7 +48,6 @@ let get_session_url = (session, version) => {
     return `${basedir}/${version}/${session}-merged.json`;
 }
 
-// js module with common functions
 let normalized_data = (data) => {
     return data.map(s => {
         let pi = s.agendaItem.proceedingIndex || 1000;

@@ -231,6 +231,7 @@
                   "unmatched_count":  speeches.filter(s => ! s.speech_turns.length).length
               });
               document.getElementById('content').innerHTML = rendered;
+              document.title = `Transcript for ${session}`;
 
               document.querySelector('.charts').appendChild(alignment_viz(data));
               document.querySelector('.charts').appendChild(datalength_viz(data));
