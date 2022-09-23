@@ -273,8 +273,8 @@ def merge_files(proceedings_file, media_file, options):
     # Order media, according to dateStart
     return merge_data(proceedings, media, options)
 
-def merge_files_or_dirs(media: Path, proceedings: Path, args) -> list[Path]:
-    """Merge files or files from directory
+def merge_files_or_dirs(media: Path, proceedings: Path, merged_dir: Path, args) -> list[Path]:
+    """Merge files or files from directory into merged_dir
 
     Returns a list of produced merged files.
     """
@@ -324,24 +324,24 @@ def merge_files_or_dirs(media: Path, proceedings: Path, args) -> list[Path]:
                 logger.debug(f"Merging {p.name} and {m.name}")
                 data = merge_files(p, m, args)
 
-            if args.output:
-                output_dir = Path(args.output)
-                if not output_dir.is_dir():
-                    output_dir.mkdir(parents=True)
+            if merged_dir:
+                merged_dir = Path(merged_dir)
+                if not merged_dir.is_dir():
+                    merged_dir.mkdir(parents=True)
                 period = data[0]['electoralPeriod']['number']
                 meeting = data[0]['session']['number']
                 filename = f"{period}{str(meeting).rjust(3, '0')}-merged.json"
-                output_file = output_dir / filename
+                merged_file = merged_dir / filename
 
                 # Check dates
                 # Only save if media or proceedings is newer than merged
-                if (not output_file.exists()
-                    or output_file.stat().st_mtime < m.stat().st_mtime
-                    or ( p is not None and output_file.stat().st_mtime < p.stat().st_mtime)):
+                if (not merged_file.exists()
+                    or merged_file.stat().st_mtime < m.stat().st_mtime
+                    or ( p is not None and merged_file.stat().st_mtime < p.stat().st_mtime)):
                     logger.info(f"Saving into {filename}")
-                    with open(output_file, 'w') as f:
+                    with open(merged_file, 'w') as f:
                         json.dump(data, f, indent=2, ensure_ascii=False)
-                    output.append(output_file)
+                    output.append(merged_file)
                 else:
                     logger.debug(f"{filename} seems up-to-date")
             else:
@@ -384,4 +384,4 @@ if __name__ == "__main__":
         loglevel=logging.DEBUG
     logging.basicConfig(level=loglevel)
 
-    merge_files_or_dirs(Path(args.media_file), Path(args.proceedings_file), args)
+    merge_files_or_dirs(Path(args.media_file), Path(args.proceedings_file), args.output, args)

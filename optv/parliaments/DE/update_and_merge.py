@@ -32,8 +32,8 @@ def update_and_merge(args):
     # Produce merged data - output dir is defined in args.output
     logger.info(f"Merging data from {args.media_dir} and {args.proceedings_dir}")
 
-    # Produce merged data - output dir is defined in args.output
-    merged_files = merge_files_or_dirs(args.media_dir, args.proceedings_dir, args)
+    # Produce merged data into args.output
+    merged_files = merge_files_or_dirs(args.media_dir, args.proceedings_dir, args.output, args)
 
     # Time-align produced files
     if args.align_sentences:
