@@ -42,9 +42,10 @@ def cachedfile(speech: dict, extension: str, cachedir) -> Path:
     meeting = speech['session']['number']
     speechIndex = speech['agendaItem']['speechIndex']
     filename = f"{period}{str(meeting).rjust(3, '0')}{speechIndex}.{extension}"
-    if not cachedir.is_dir():
-        cachedir.mkdir()
-    return cachedir / filename
+    audiodir = cachedir / "audio"
+    if not audiodir.is_dir():
+        audiodir.mkdir(parent=True)
+    return audiodir / filename
 
 def audiofile(speech: dict, cachedir: Path) -> Optional[Path]:
     """Get an audiofile for the given dict.
@@ -163,4 +164,4 @@ if __name__ == '__main__':
         source = json.load(f)
     output = align_audio(source, args.lang, args.cache_dir)
     with (open(args.destination, 'w') if args.destination else sys.stdout) as f:
-        json.dump(output, f)
+        json.dump(output, f, indent=2)
