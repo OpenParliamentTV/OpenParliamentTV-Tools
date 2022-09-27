@@ -243,14 +243,15 @@
                       document.querySelector(".player").src = url;
                   })
               });
-              let toggleHidden = function (selector, classname='hidden') {
+              let toggleHidden = function (selector, target, classname='hidden') {
                   document.querySelectorAll(selector).forEach(el => el.classList.toggle(classname));
+                  window.setTimeout(() => target.scrollIntoView(), 100);
               }
               document.querySelectorAll(".speechTitle").forEach(speechTitle => {
-                  speechTitle.addEventListener("click", e => toggleHidden('.speech'))
+                  speechTitle.addEventListener("click", e => toggleHidden('.speech', e.currentTarget))
               });
               document.querySelectorAll(".status").forEach(status => {
-                  status.addEventListener("click", e => toggleHidden('.text'))
+                  status.addEventListener("click", e => toggleHidden('.text', e.currentTarget))
               });
           });
       }
