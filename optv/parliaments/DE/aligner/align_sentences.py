@@ -144,6 +144,17 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
 
     return source
 
+def align_audiofile(sourcefile: Path,
+                    destinationfile: Path,
+                    language: str,
+                    cachedir: Path = None) -> Path:
+    with open(sourcefile) as f:
+        source = json.load(f)
+    output = align_audio(source, language, cachedir)
+    with open(destinationfile, 'w') as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+    return destinationfile
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Time-align speech sentences.")
     parser.add_argument("source", metavar="source", type=str, nargs='?',
@@ -160,8 +171,4 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit(1)
 
-    with open(args.source) as f:
-        source = json.load(f)
-    output = align_audio(source, args.lang, args.cache_dir)
-    with (open(args.destination, 'w') if args.destination else sys.stdout) as f:
-        json.dump(output, f, indent=2)
+    align_audiofile(args.source, args.destinationfile. args.lang, args.cache_dir)
