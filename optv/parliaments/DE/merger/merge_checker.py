@@ -69,7 +69,7 @@ class SessionServer(SimpleHTTPRequestHandler):
             fd.write(chevron.render(template, {
                 "session": fname,
                 "speeches": speeches,
-                "speeches_json": json.dumps(data),
+                "speeches_json": json.dumps(data, ensure_ascii=False),
                 "speech_count": len(speeches),
                 "unmatched_count": len([s for s in speeches if not s['speech_turns']])
             }))
@@ -96,9 +96,9 @@ class SessionServer(SimpleHTTPRequestHandler):
                 "filenames": fnames,
                 "count": len(fnames),
                 "rows": rows,
-                "rows_json": json.dumps(rows),
+                "rows_json": json.dumps(rows, ensure_ascii=False),
                 "headings": headings,
-                "headings_json": json.dumps(headings)
+                "headings_json": json.dumps(headings, ensure_ascii=False)
             }))
 
     def do_GET(self):

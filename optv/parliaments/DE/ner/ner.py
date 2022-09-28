@@ -57,7 +57,7 @@ def extract_entities_from_file(source_file, output_file, args):
     output = extract_entities(source, args)
 
     with open(output_file, 'w') as f:
-        json.dump(output, f)
+        json.dump(output, f, indent=2, ensure_ascii=False)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Extract entities from proceedings text in OPTV json.")

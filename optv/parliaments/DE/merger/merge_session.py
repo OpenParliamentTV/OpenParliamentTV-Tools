@@ -299,7 +299,7 @@ def merge_files_or_dirs(media: Path, proceedings: Path, merged_dir: Path, args) 
                 continue
             if not is_first:
                 print(",")
-            print(json.dumps(unmatched_count(p, m, args), indent=2))
+            print(json.dumps(unmatched_count(p, m, args), indent=2, ensure_ascii=False))
             is_first = False
         print(']')
         sys.exit(0)
