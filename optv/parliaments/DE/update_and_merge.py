@@ -101,12 +101,18 @@ if __name__ == "__main__":
         sys.exit(1)
     loglevel = logging.INFO
     if args.debug:
-        loglevel=logging.DEBUG
+        loglevel = logging.DEBUG
     logging.basicConfig(level=loglevel)
+
     if args.complete:
-        # Force options
+        # Force all options
         args.save_raw_data = True
         args.include_all_proceedings = True
+        args.second_stage_matching = True
+        args.advanced_rematch = True
+        args.align_sentences = True
+        args.extract_entities = True
+
     args.data_dir = Path(args.data_dir)
 
     if args.cache_dir is None:
