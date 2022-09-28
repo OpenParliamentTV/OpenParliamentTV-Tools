@@ -276,7 +276,7 @@ def merge_files(proceedings_file, media_file, options):
 def merge_files_or_dirs(media: Path, proceedings: Path, merged_dir: Path, args) -> list[Path]:
     """Merge files or files from directory into merged_dir
 
-    Returns a list of produced merged files.
+    Returns a list of tuples (session:str, filename) for produced merged files.
     """
     pairs = [ (proceedings, media) ]
     if media.is_dir() and proceedings.is_dir():
@@ -330,7 +330,8 @@ def merge_files_or_dirs(media: Path, proceedings: Path, merged_dir: Path, args) 
                     merged_dir.mkdir(parents=True)
                 period = data[0]['electoralPeriod']['number']
                 meeting = data[0]['session']['number']
-                filename = f"{period}{str(meeting).rjust(3, '0')}-merged.json"
+                session = f"{period}{str(meeting).rjust(3, '0')}"
+                filename = f"{session}-merged.json"
                 merged_file = merged_dir / filename
 
                 # Check dates
@@ -341,7 +342,7 @@ def merge_files_or_dirs(media: Path, proceedings: Path, merged_dir: Path, args) 
                     logger.info(f"Saving into {filename}")
                     with open(merged_file, 'w') as f:
                         json.dump(data, f, indent=2, ensure_ascii=False)
-                    output.append(merged_file)
+                    output.append( (session, merged_file) )
                 else:
                     logger.debug(f"{filename} seems up-to-date")
             else:
