@@ -26,7 +26,7 @@
       <div class="transcript column left">
       {{#speeches}}
       <div class="speechHeading {{classes}}"  id="speech{{speechIndex}}">
-        <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ main_speaker }}</span> <em>{{message}}</em>{{#videoURI}}<a class="videolink" href="{{videoURI}}"> Play </a>{{/videoURI}}
+        <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ main_speaker }}</span> <em>{{message}}</em>{{#videoURI}}<a class="videolink" data-title="{{title}}" href="{{videoURI}}"> Play </a>{{/videoURI}}
       </div>
 
       {{#speech_turns}}
@@ -39,6 +39,7 @@
 
       <div class="column right">
         <div class="player">
+          <div class="player-title">No video loaded</div>
           <video controls autoplay class="videoplayer"></video>
         </div>
         <div class="charts"></div>
@@ -240,7 +241,9 @@
                       e.preventDefault();
                       console.log(e.target);
                       let url = e.target.href;
-                      document.querySelector(".player").src = url;
+                      let title = e.target.dataset.title;
+                      document.querySelector(".player-title").innerHTML = `Loaded <a href="${url}">${title}</a>`;
+                      document.querySelector(".videoplayer").src = url;
                   })
               });
               let toggleHidden = function (selector, target, classname='hidden') {

@@ -43,8 +43,10 @@ body {
     right: 0;
 }
 .player {
-    height: var(--header-height);
     margin: 0 auto;
+}
+.videoplayer {
+    height: var(--header-height);
 }
 .charts {
     height: calc(100vh - 2 * var(--header-height));
