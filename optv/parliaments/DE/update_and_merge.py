@@ -5,11 +5,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 import argparse
-import json
 from pathlib import Path
+import shutil
 import sys
 
-from aligner.align_sentences import align_audio
+from aligner.align_sentences import align_audiofile
+from ner.ner import extract_entities_from_file
 from scraper.update_media import update_media_directory_period
 from scraper.fetch_proceedings import download_plenary_protocols
 from merger.merge_session import merge_files_or_dirs
@@ -29,26 +30,43 @@ def update_and_merge(args):
     # Update all proceedings that need to be updated
     parse_proceedings_directory(args.proceedings_dir, args)
 
-    # Produce merged data - output dir is defined in args.output
-    logger.info(f"Merging data from {args.media_dir} and {args.proceedings_dir}")
+    # Produce merged data
+    logger.info(f"Merging data from {args.media_dir} and {args.proceedings_dir} into {args.merged_dir}")
 
-    # Produce merged data into args.output
-    merged_files = merge_files_or_dirs(args.media_dir, args.proceedings_dir, args.output, args)
+    # Produce merged data into args.merged_dir
+    merged_files = merge_files_or_dirs(args.media_dir, args.proceedings_dir, args.merged_dir, args)
+
+    # We keep track of the last produced file for each concerned
+    # session. The keys can be updated in case of alignment/extraction.
+    # It is used in the final step of copying final data into processed
+    produced_files = dict(merged_files)
 
     # Time-align produced files
     if args.align_sentences:
-        for source in merged_files:
-            out = align_audio(source, args.lang, args.cache_dir)
-            # Save into final file.
-            output_dir = Path(args.output)
-            if not output_dir.is_dir():
-                output_dir.mkdir(parents=True)
-            period = out[0]['electoralPeriod']['number']
-            meeting = out[0]['session']['number']
-            filename = f"{period}{str(meeting).rjust(3, '0')}-aligned.json"
-            output_file = output_dir / filename
-            with open(output_file, 'w') as f:
-                json.dump(out, f)
+        if not args.aligned_dir.is_dir():
+            args.aligned_dir.mkdir(parents=True)
+        for session, sourcefile in merged_files:
+            filename = f"{session}-aligned.json"
+            aligned_file = args.aligned_dir / filename
+            # Since we use the output of merge_files_or_dirs we know
+            # that merged_files will be newer anyway, even if a
+            # previous alignmed file existed, so do not bother
+            # checking for timestamps
+            align_audiofile(sourcefile, aligned_file, args.lang, args.cache_dir)
+            produced_files[session] = aligned_file
+
+            if args.extract_entities:
+                ner_file = args.ner_dir / f"{session}-ner.json"
+                try:
+                    extract_entities_from_file(aligned_file, ner_file, args)
+                    produced_files[session] = ner_file
+                except FileNotFoundError:
+                    logger.error("Cannot extract entities from {ner_file} - File Not Found")
+
+    # Finalizing step. Copy all produced_files into processed
+    for session in sorted(produced_files.keys()):
+        processed_file = args.processed_dir / f"{session}-session.json"
+        shutil.copyfile(produced_files[session], processed_file)
 
 if __name__ == "__main__":
 
@@ -88,10 +106,13 @@ if __name__ == "__main__":
                         default=False,
                         help="Add all necessary options for a full update (save raw data, include all proceedings)")
     parser.add_argument("--cache-dir", type=str, default=None,
-                        help="Cache directory (for alignment)")
+                        help="Cache directory")
     parser.add_argument("--align-sentences", action="store_true",
                         default=False,
                         help="Do the sentence alignment for downloaded sentences")
+    parser.add_argument("--extract-entities", action="store_true",
+                        default=False,
+                        help="Do Entity extraction on aligned sessions (requires --align-sentences)")
     parser.add_argument("--lang", type=str, default="deu",
                         help="Language")
 
