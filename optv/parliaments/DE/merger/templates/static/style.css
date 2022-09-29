@@ -33,12 +33,19 @@ body {
     grid-row: left;
     grid-column: left;
 }
-.column.right {
+.column {
     display: flex;
     flex-direction: column;
     position: fixed;
     top: var(--header-height);
     bottom: 0;
+    overflow: auto;
+}
+.column.left {
+    left: 0;
+    right: 50%;
+}
+.column.right {
     left: 50%;
     right: 0;
 }
