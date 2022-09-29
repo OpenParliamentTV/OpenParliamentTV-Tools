@@ -217,27 +217,126 @@
           console.log(stats);
           box.classList.add('stat');
 
-          // Histogram viz
-          let hist = vl_viz({
-              "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-              data: { values: stats },
-              title: "Histogram of matching_ratio",
-              "mark": "bar",
-               "params": [{
-                   "name": "ratio",
-                   "select": {"type": "interval", "encodings": ["x"]}
-               }],
-              "encoding": {
-                  "x": {
-                      "bin": true,
-                      "field": "matching_ratio"
+          let viz = vl_viz({
+              $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+              data: {
+                  values: stats,
+              },
+              vconcat: [
+                  {
+                      title: "Histogram of matching_ratio",
+                      "mark": "bar",
+                      "params": [{
+                          "name": "ratio",
+                          "select": {"type": "interval", "encodings": ["x"]}
+                      }],
+                      "encoding": {
+                          "x": {
+                              "bin": true,
+                              "field": "matching_ratio"
                   },
-                  "y": {"aggregate": "count"},
-              }
+                          "y": {"aggregate": "count"},
+                      }
+                  }, {
+                      // Diff_count vs matching_ratio scatterplot
+                      title: `Stats for ${whole_data.length} sessions`,
+                      mark: { type: 'point',
+                              shape: 'square',
+                              tooltip: true,
+                              filled: true },
+                      encoding: {
+                          x: {
+                              field: 'diff_count',
+                              type: 'quantitative',
+                          },
+                          y: {
+                              field: 'matching_ratio',
+                              type: 'quantitative',
+                          },
+                          color: {
+                              field: "matching_ratio",
+                              type: "quantitative",
+                          },
+                          tooltip: [
+                              { field: 'diff_count' },
+                              { field: 'matching_ratio' },
+                              { field: 'session' },
+                              { field: 'media_count' },
+                              { field: 'proceedings_count' },
+                          ],
+                          href: {
+                              field: 'url'
+                          }
+                      }
+                  }, {
+                      title: `Table for ${whole_data.length} sessions`,
+                      mark: { type: 'rect',
+                              tooltip: true },
+                      encoding: {
+                          x: {
+                              field: 'col',
+                              type: 'ordinal',
+                          },
+                          y: {
+                              field: 'row',
+                              type: 'ordinal',
+                          },
+                          color: {
+                              field: "matching_ratio",
+                              type: "quantitative",
+                          },
+                          tooltip: [
+                              { field: 'diff_count' },
+                              { field: 'matching_ratio' },
+                              { field: 'session' },
+                              { field: 'media_count' },
+                              { field: 'proceedings_count' },
+                          ],
+                          href: {
+                              field: 'url'
+                          }
+                      },
+                      "config": {
+                          "axis": {"grid": true, "tickBand": "extent"}
+                      }
+                  }, {
+                      // Duration/word_count ratio Histogram viz
+                      title: `Stats for ${whole_data.length} sessions`,
+                      mark: { type: 'point',
+                              shape: 'square',
+                              tooltip: true,
+                              filled: true },
+                      encoding: {
+                          x: {
+                              field: 'max_text_to_duration_ratio',
+                              type: 'quantitative',
+                          },
+                          y: {
+                              field: 'matching_ratio',
+                              type: 'quantitative',
+                          },
+                          color: {
+                              field: "matching_ratio",
+                              type: "quantitative",
+                          },
+                          tooltip: [
+                              { field: 'max_text_to_duration_ratio' },
+                              { field: 'diff_count' },
+                              { field: 'matching_ratio' },
+                              { field: 'session' },
+                              { field: 'media_count' },
+                              { field: 'proceedings_count' },
+                          ],
+                          href: {
+                              field: 'url'
+                          }
+                      }
+                  }
+              ]
           });
-          box.appendChild(hist);
+          box.appendChild(viz);
           let debounce_filter = debounce(limit_ratio, 500);
-          hist.embed.then( ({spec, view}) => {
+          viz.embed.then( ({spec, view}) => {
               view.addSignalListener('ratio', (name, value) => {
                   console.log("Brush signal", name, value);
                   if (value.matching_ratio !== undefined) {
@@ -248,118 +347,6 @@
                   }
               });
           });
-
-          box.appendChild(vl_viz({
-              $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-              title: `Stats for ${whole_data.length} sessions`,
-              data: {
-                  values: stats,
-              },
-              mark: { type: 'point',
-                      shape: 'square',
-                      tooltip: true,
-                      filled: true },
-              encoding: {
-                  x: {
-                      field: 'diff_count',
-                      type: 'quantitative',
-                  },
-                  y: {
-                      field: 'matching_ratio',
-                      type: 'quantitative',
-                  },
-                  color: {
-                      field: "matching_ratio",
-                      type: "quantitative",
-                  },
-                  tooltip: [
-                      { field: 'diff_count' },
-                      { field: 'matching_ratio' },
-                      { field: 'session' },
-                      { field: 'media_count' },
-                      { field: 'proceedings_count' },
-                  ],
-                  href: {
-                      field: 'url'
-                  }
-              }
-          }));
-          // Table viz
-          box.appendChild(vl_viz({
-              $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-              title: `Table for ${whole_data.length} sessions`,
-              data: {
-                  values: stats,
-              },
-              mark: { type: 'rect',
-                      tooltip: true },
-              encoding: {
-                  x: {
-                      field: 'col',
-                      type: 'ordinal',
-                  },
-                  y: {
-                      field: 'row',
-                      type: 'ordinal',
-                  },
-                  color: {
-                      field: "matching_ratio",
-                      type: "quantitative",
-                  },
-                  tooltip: [
-                      { field: 'diff_count' },
-                      { field: 'matching_ratio' },
-                      { field: 'session' },
-                      { field: 'media_count' },
-                      { field: 'proceedings_count' },
-                  ],
-                  href: {
-                      field: 'url'
-                  }
-              },
-              "config": {
-                  "axis": {"grid": true, "tickBand": "extent"}
-              }
-          }));
-
-          // Duration/word_count ratio Histogram viz
-          box.appendChild(vl_viz({
-              $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-              title: `Stats for ${whole_data.length} sessions`,
-              data: {
-                  values: stats,
-              },
-              mark: { type: 'point',
-                      shape: 'square',
-                      tooltip: true,
-                      filled: true },
-              encoding: {
-                  x: {
-                      field: 'max_text_to_duration_ratio',
-                      type: 'quantitative',
-                  },
-                  y: {
-                      field: 'matching_ratio',
-                      type: 'quantitative',
-                  },
-                  color: {
-                      field: "matching_ratio",
-                      type: "quantitative",
-                  },
-                  tooltip: [
-                      { field: 'max_text_to_duration_ratio' },
-                      { field: 'diff_count' },
-                      { field: 'matching_ratio' },
-                      { field: 'session' },
-                      { field: 'media_count' },
-                      { field: 'proceedings_count' },
-                  ],
-                  href: {
-                      field: 'url'
-                  }
-              }
-          }));
-
           return box;
       }
 
