@@ -23,6 +23,9 @@
         grid-row: right;
         grid-column: right;
     }
+    .reduced .item {
+        height: 2px;
+    }
     .proceedingitem,
     .mediaitem {
         border: 1px solid grey;
@@ -49,7 +52,7 @@
       <a href="dashboard.html">Dashboard</a>
       </p>
       <h1>Data for {{ session }}</h1>
-      <p>{{ media_count }} media items / {{ proceedings_count }} proceedings items</p>
+      <p>{{ media_count }} media items / {{ proceedings_count }} proceedings items - <a class="toggle-reduced" href="#">Toggle reduced</a></p>
       </div>
 
       <div class="sidebyside column left">
@@ -145,6 +148,10 @@
                   });
                   document.getElementById('content').innerHTML = rendered;
                   document.title = `Transcript for ${session}`;
+
+                  document.querySelector(".toggle-reduced").addEventListener("click", e => {
+                      document.querySelector("#content").classList.toggle("reduced");
+                  });
 
                   [ ...document.querySelectorAll(".item")].forEach(el => el.addEventListener('mouseover', e => {
                       let ref = e.currentTarget;
