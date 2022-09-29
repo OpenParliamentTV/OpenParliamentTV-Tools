@@ -201,6 +201,7 @@
               let matching_count = norm.filter(i => i.matching == 'matching').length;
               let mc = norm.filter(i => i.matching == 'media_only').length;
               let pc = norm.filter(i => i.matching == 'proceeding_only').length;
+              let text_to_duration_list = norm.filter(i => i.duration > 0).map(i => i.word_count / i.duration);
               return {
                   media_count: mc + matching_count,
                   proceedings_count: pc + matching_count,
@@ -208,6 +209,7 @@
                   url: `transcript.html?session=${session}`,
                   session: session,
                   matching_ratio: matching_count / norm.length,
+                  max_text_to_duration_ratio: d3.max(text_to_duration_list),
                   row: session - session % 10,
                   col: session % 10,
               }
@@ -319,6 +321,45 @@
                   "axis": {"grid": true, "tickBand": "extent"}
               }
           }));
+
+          // Duration/word_count ratio Histogram viz
+          box.appendChild(vl_viz({
+              $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+              title: `Stats for ${whole_data.length} sessions`,
+              data: {
+                  values: stats,
+              },
+              mark: { type: 'point',
+                      shape: 'square',
+                      tooltip: true,
+                      filled: true },
+              encoding: {
+                  x: {
+                      field: 'max_text_to_duration_ratio',
+                      type: 'quantitative',
+                  },
+                  y: {
+                      field: 'matching_ratio',
+                      type: 'quantitative',
+                  },
+                  color: {
+                      field: "matching_ratio",
+                      type: "quantitative",
+                  },
+                  tooltip: [
+                      { field: 'max_text_to_duration_ratio' },
+                      { field: 'diff_count' },
+                      { field: 'matching_ratio' },
+                      { field: 'session' },
+                      { field: 'media_count' },
+                      { field: 'proceedings_count' },
+                  ],
+                  href: {
+                      field: 'url'
+                  }
+              }
+          }));
+
           return box;
       }
 
