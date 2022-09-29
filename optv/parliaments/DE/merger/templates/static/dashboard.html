@@ -142,7 +142,7 @@
           box.classList.add('box');
           box.dataset.session = session;
           box.style.order = session;
-          box.innerHTML = `<a data-session="${session}" data-ratio="${matching_ratio}" data-diff="${count_diff}" target="_blank" href="transcript.html?session=${session}" class="title"><strong>Session ${session}</strong></a><span><span title="Matching ratio">${matching_ratio.toFixed(3)}</span> - <span title="Chatterjee">${chatter.toFixed(3)}</span></span><textarea data-session="${session}" class="notes">${sessionNotes[session] || ""}</textarea>`;
+          box.innerHTML = `<strong data-session="${session}" data-ratio="${matching_ratio}" data-diff="${count_diff}"><a target="_blank" href="block.html?session=${session}" class="title">Session </a> <a class="title" target="_blank" href="transcript.html?session=${session}">${session}</a></strong><span><span title="Matching ratio">${matching_ratio.toFixed(3)}</span> - <span title="Chatterjee">${chatter.toFixed(3)}</span></span><textarea data-session="${session}" class="notes">${sessionNotes[session] || ""}</textarea>`;
           box.appendChild(vl_viz({
               $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
               width: "container",
