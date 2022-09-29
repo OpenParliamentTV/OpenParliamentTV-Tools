@@ -30,7 +30,7 @@
     .mediaitem {
         border: 1px solid grey;
     }
-    .closed {
+    .closed .speech {
         display: none;
     }
     .speakermatch {
@@ -66,10 +66,10 @@
 
       <div class="sidebyside column right">
         {{#proceedings}}
-        <div class="proceedingitem item"  id="proceedings{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
+        <div class="proceedingitem item closed"  id="proceedings{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
           <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ speaker }}</span>
           {{#textContents}}
-          <div class="speechturns closed">
+          <div class="speechturns">
             {{#textBody}}
             <div class="speech"><span class="speaker">{{speaker}}</span></div>
             {{/textBody}}
@@ -153,13 +153,18 @@
                       document.querySelector("#content").classList.toggle("reduced");
                   });
 
-                  [ ...document.querySelectorAll(".item")].forEach(el => el.addEventListener('mouseover', e => {
-                      let ref = e.currentTarget;
-                      [ ...document.querySelectorAll(".item") ].forEach(item => {
-                          item.classList.toggle("speakermatch", item.dataset.speaker == ref.dataset.speaker);
-                          item.classList.toggle("titlematch", item.dataset.title == ref.dataset.title);
+                  [ ...document.querySelectorAll(".item")].forEach(el => {
+                      el.addEventListener('mouseover', e => {
+                          let ref = e.currentTarget;
+                          [ ...document.querySelectorAll(".item") ].forEach(item => {
+                              item.classList.toggle("speakermatch", item.dataset.speaker == ref.dataset.speaker);
+                              item.classList.toggle("titlematch", item.dataset.title == ref.dataset.title);
+                          });
                       });
-                  }));
+                      el.addEventListener('click', e => {
+                          el.classList.toggle('closed');
+                      });
+                  });
           });
       }
     </script>
