@@ -254,8 +254,12 @@
                               type: 'quantitative',
                           },
                           color: {
-                              field: "matching_ratio",
-                              type: "quantitative",
+                              condition: {
+                                  param: "ratio",
+                                  field: "matching_ratio",
+                                  type: "quantitative"
+                              },
+                              value: "grey",
                           },
                           tooltip: [
                               { field: 'diff_count' },
@@ -282,8 +286,12 @@
                               type: 'ordinal',
                           },
                           color: {
-                              field: "matching_ratio",
-                              type: "quantitative",
+                              condition: {
+                                  param: "ratio",
+                                  field: "matching_ratio",
+                                  type: "quantitative"
+                              },
+                              value: "grey",
                           },
                           tooltip: [
                               { field: 'diff_count' },
@@ -316,8 +324,12 @@
                               type: 'quantitative',
                           },
                           color: {
-                              field: "matching_ratio",
-                              type: "quantitative",
+                              condition: {
+                                  param: "ratio",
+                                  field: "matching_ratio",
+                                  type: "quantitative"
+                              },
+                              value: "grey",
                           },
                           tooltip: [
                               { field: 'max_text_to_duration_ratio' },
