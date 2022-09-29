@@ -1,0 +1,160 @@
+<html>
+  <head>
+    <title>
+      Block view
+    </title>
+  </head>
+  <script src="https://unpkg.com/mustache@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.6.1/dist/d3.min.js"></script>
+  <script src="common.js"></script>
+  <link rel="stylesheet" href="style.css" type="text/css" />
+  <style>
+    .sidebyside {
+    overflow: auto;
+    }
+    .sidebyside.left {
+        grid-row: left;
+        grid-column: left;
+    }
+    .sidebyside.right {
+        grid-row: right;
+        grid-column: right;
+    }
+    .proceedingitem,
+    .mediaitem {
+        border: 1px solid grey;
+    }
+    .closed {
+        display: none;
+    }
+    .speakermatch {
+        background-color: #9fe;
+    }
+    .titlematch {
+        background-color: #f9f;
+    }
+    .speakermatch.titlematch {
+        background-color: #9f9;
+    }
+  </style>
+  <body>
+    <div id="content"></div>
+    <template id="template" type="x-tmpl-mustache">
+      <div class="header">
+      <p class="menu">
+      <a href="/">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      </p>
+      <h1>Data for {{ session }}</h1>
+      <p>{{ media_count }} media items / {{ proceedings_count }} proceedings items</p>
+      </div>
+
+      <div class="sidebyside column left">
+      {{#media}}
+      <div class="mediaitem item"  id="media{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
+        <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{speaker}}</span>
+      </div>
+
+      {{/media}}
+      </div>
+
+      <div class="sidebyside column right">
+        {{#proceedings}}
+        <div class="proceedingitem item"  id="proceedings{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
+          <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ speaker }}</span>
+          {{#textContents}}
+          <div class="speechturns closed">
+            {{#textBody}}
+            <div class="speech"><span class="speaker">{{speaker}}</span></div>
+            {{/textBody}}
+          </div>
+          {{/textContents}}
+        </div>
+
+        {{/proceedings}}
+
+      </div>
+
+    </template>
+    <template id="error-template" type="x-tmpl-mustache">
+      <h1>Not found</h1>
+      <p>Data file for session {{ session }} not found.</p>
+    </template>
+
+    <script type="module">
+      // }
+      // Copied from dashboard.html. This would benefit a factoring.
+      let new_viz = (session, data, spec) => {
+          let viz = document.createElement('div');
+          viz.classList.add('chart');
+          viz.dataset.session = session;
+          viz.style.order = session;
+          vegaEmbed(viz,
+                    spec,
+                    {
+                        "actions": false
+                    }).then((result) => {
+                        // Generic click on whole viz. If a mark is clicked, then item will have a valid datum field.
+                        /*
+                          // No need for this ATM, the default fragment behaviour is enough
+                        result.view.addEventListener('click', function (event, item) {
+                            if (item.datum) {
+                                let element = document.querySelector(item.datum.url);
+                                if (!! element) {
+                                     element.scrollIntoView();
+                                }
+                            }
+                        });
+                        */
+                        console.log({ "vegaEmbed result": result,
+                                      "view:": result.view });
+                    });
+          return viz;
+      }
+      let params = new URLSearchParams(location.search);
+      let session = params.get('session');
+
+      if (!session) {
+          let template = document.getElementById('error-template').innerHTML;
+          let rendered = Mustache.render(template, {
+              "session": session
+          });
+          document.getElementById('content').innerHTML = rendered;
+      } else {
+          Promise.all( [ d3.json(get_media_url(session)),
+                         d3.json(get_proceedings_url(session)) ] )
+              .then( ([media, proceedings]) => {
+                  // Render template
+                  let fixup = l => l.map(item => ({ ...item,
+                                                   index: item.agendaItem.speechIndex,
+                                                   speaker: item.people[0].label,
+                                                   title: item.agendaItem.officialTitle,
+                                                  }));
+                  media = fixup(media);
+                  proceedings = fixup(proceedings);
+                  let template = document.getElementById('template').innerHTML;
+                  let rendered = Mustache.render(template, {
+                      "session": session,
+                      "media": media,
+                      "proceedings": proceedings,
+                      "media_count": media.length,
+                      "proceedings_count": proceedings.length
+                  });
+                  document.getElementById('content').innerHTML = rendered;
+                  document.title = `Transcript for ${session}`;
+
+                  [ ...document.querySelectorAll(".item")].forEach(el => el.addEventListener('mouseover', e => {
+                      let ref = e.currentTarget;
+                      [ ...document.querySelectorAll(".item") ].forEach(item => {
+                          item.classList.toggle("speakermatch", item.dataset.speaker == ref.dataset.speaker);
+                          item.classList.toggle("titlematch", item.dataset.title == ref.dataset.title);
+                      });
+                  }));
+          });
+      }
+    </script>
+  </body>
+</html>

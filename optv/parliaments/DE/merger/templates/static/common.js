@@ -47,6 +47,16 @@ let get_session_url = (session, version) => {
         version = 'processed';
     return `${basedir}/${version}/${session}-merged.json`;
 }
+// Get the media data URL
+let get_media_url = (session) => {
+    let basedir = get_basedir();
+    return `${basedir}/original/media/${session}-media.json`;
+}
+// Get the proceedings data URL
+let get_proceedings_url = (session) => {
+    let basedir = get_basedir();
+    return `${basedir}/original/proceedings/${session}-data.json`;
+}
 
 let normalized_data = (data) => {
     return data.map(s => {
