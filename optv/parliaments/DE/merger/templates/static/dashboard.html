@@ -225,17 +225,18 @@
               vconcat: [
                   {
                       title: "Histogram of matching_ratio",
-                      "mark": "bar",
-                      "params": [{
-                          "name": "ratio",
-                          "select": {"type": "interval", "encodings": ["x"]}
+                      mark: "bar",
+                      params: [{
+                          name: "ratio",
+                          select: { type: "interval",
+                                    encodings: ["x"]}
                       }],
-                      "encoding": {
-                          "x": {
-                              "bin": true,
-                              "field": "matching_ratio"
+                      encoding: {
+                          x: {
+                              bin: true,
+                              field: "matching_ratio"
                   },
-                          "y": {"aggregate": "count"},
+                          "y": { aggregate: "count" },
                       }
                   }, {
                       // Diff_count vs matching_ratio scatterplot
@@ -244,13 +245,18 @@
                               shape: 'square',
                               tooltip: true,
                               filled: true },
+                      params: [{
+                          name: "ratio",
+                          select: { type: "interval",
+                                    encodings: ["x"] }
+                      }],
                       encoding: {
                           x: {
-                              field: 'diff_count',
+                              field: 'matching_ratio',
                               type: 'quantitative',
                           },
                           y: {
-                              field: 'matching_ratio',
+                              field: 'diff_count',
                               type: 'quantitative',
                           },
                           color: {
@@ -259,7 +265,7 @@
                                   field: "matching_ratio",
                                   type: "quantitative"
                               },
-                              value: "grey",
+                              value: "lightgrey",
                           },
                           tooltip: [
                               { field: 'diff_count' },
@@ -291,7 +297,7 @@
                                   field: "matching_ratio",
                                   type: "quantitative"
                               },
-                              value: "grey",
+                              value: "lightgrey",
                           },
                           tooltip: [
                               { field: 'diff_count' },
@@ -304,8 +310,9 @@
                               field: 'url'
                           }
                       },
-                      "config": {
-                          "axis": {"grid": true, "tickBand": "extent"}
+                      config: {
+                          axis: { grid: true,
+                                  tickBand: "extent" }
                       }
                   }, {
                       // Duration/word_count ratio Histogram viz
@@ -316,11 +323,11 @@
                               filled: true },
                       encoding: {
                           x: {
-                              field: 'max_text_to_duration_ratio',
+                              field: 'matching_ratio',
                               type: 'quantitative',
                           },
                           y: {
-                              field: 'matching_ratio',
+                              field: 'max_text_to_duration_ratio',
                               type: 'quantitative',
                           },
                           color: {
@@ -329,7 +336,7 @@
                                   field: "matching_ratio",
                                   type: "quantitative"
                               },
-                              value: "grey",
+                              value: "lightgrey",
                           },
                           tooltip: [
                               { field: 'max_text_to_duration_ratio' },
