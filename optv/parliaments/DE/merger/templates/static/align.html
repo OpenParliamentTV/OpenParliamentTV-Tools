@@ -1,0 +1,184 @@
+<html>
+  <head>
+    <title>
+      Alignment view
+    </title>
+  </head>
+  <script src="https://unpkg.com/mustache@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.6.1/dist/d3.min.js"></script>
+  <script src="common.js"></script>
+  <link rel="stylesheet" href="style.css" type="text/css" />
+  <style>
+    .chart {
+    width: calc(100vw - 60px);
+    height: calc(100vh - 60px);
+    }
+  </style>
+  <body>
+    <div id="content"></div>
+    <template id="template" type="x-tmpl-mustache">
+      <div class="header">
+      <p class="menu">
+      <a href="/">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      </p>
+      <h1>Data for {{ session }}</h1>
+      <p>{{ media_count }} media items / {{ proceedings_count }} proceedings items - <a class="toggle-reduced" href="#">Toggle reduced</a></p>
+      </div>
+
+      <div class="sidebyside column left">
+      {{#media}}
+      <div class="mediaitem item" id="media{{index}}" title="{{index}} [{{speaker}}] {{title}}" data-speaker="{{speaker }}" data-title="{{title}}">
+        <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{speaker}}</span>
+      </div>
+
+      {{/media}}
+      </div>
+
+      <div class="sidebyside column right">
+        {{#proceedings}}
+        <div class="proceedingitem item closed" title="{{index}} [{{speaker}}] {{title}}" id="proceedings{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
+          <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ speaker }}</span>
+          {{#textContents}}
+          <div class="speechturns">
+            {{#textBody}}
+            <div class="speech"><span class="speaker">{{speaker}}</span></div>
+            {{/textBody}}
+          </div>
+          {{/textContents}}
+        </div>
+
+        {{/proceedings}}
+
+      </div>
+
+    </template>
+    <template id="error-template" type="x-tmpl-mustache">
+      <h1>Not found</h1>
+      <p>Data file for session {{ session }} not found.</p>
+    </template>
+
+    <script type="module">
+      // }
+      // Copied from dashboard.html. This would benefit a factoring.
+      let new_viz = (spec) => {
+          let viz = document.createElement('div');
+          viz.classList.add('chart');
+          vegaEmbed(viz,
+                    spec,
+                    {
+                        "actions": false
+                    }).then((result) => {
+                        // Generic click on whole viz. If a mark is clicked, then item will have a valid datum field.
+                        /*
+                          // No need for this ATM, the default fragment behaviour is enough
+                        result.view.addEventListener('click', function (event, item) {
+                            if (item.datum) {
+                                let element = document.querySelector(item.datum.url);
+                                if (!! element) {
+                                     element.scrollIntoView();
+                                }
+                            }
+                        });
+                        */
+                        console.log({ "vegaEmbed result": result,
+                                      "view:": result.view });
+                    });
+          return viz;
+      }
+      let params = new URLSearchParams(location.search);
+      let session = params.get('session');
+
+      if (!session) {
+          let template = document.getElementById('error-template').innerHTML;
+          let rendered = Mustache.render(template, {
+              "session": session
+          });
+          document.getElementById('content').innerHTML = rendered;
+      } else {
+          Promise.all( [ d3.json(get_media_url(session)),
+                         d3.json(get_proceedings_url(session)) ] )
+              .then( ([media, proceedings]) => {
+                  // Render template
+                  let fixup = l => l.map(item => ({ ...item,
+                                                   index: item.agendaItem.speechIndex,
+                                                   speaker: item.people[0].label,
+                                                   title: item.agendaItem.officialTitle,
+                                                  }));
+                  media = fixup(media);
+                  proceedings = fixup(proceedings);
+
+                  const hole_penalty = 1;
+                  let similarity = (m, p) => {
+                      // FIXME: add a "sequence_length" attribute for sequences with common title?
+                      return 8 * Number(m.speaker == p.speaker) + 4 * Number(m.title == p.title);
+                  }
+                  // Build the [m, p] matrix with scores using the Needleman-Wunsch algorithm
+                  // https://fr.wikipedia.org/wiki/Algorithme_de_Needleman-Wunsch
+
+                  // Initialize a mp matrix with 0 scores
+                  // (0-initialization is required only for row 0 and column 0)
+                  let scores = media.map(m => proceedings.map(p => similarity(m, p)));
+                  // let scores = media.map(m => proceedings.map(p => 0));
+
+                  // Build the score matrix
+                  for (let i = 1; i < media.length; i++) {
+                      for (let j = 1; j < proceedings.length; j++) {
+                          scores[i][j] = Math.max( scores[i-1][j-1] + similarity(media[i], proceedings[j]),
+                                                   scores[i-1][j] + hole_penalty,
+                                                   scores[i][j-1] + hole_penalty );
+                      }
+                  }
+
+                  console.log("Scores", scores);
+                  // Transform for viz
+                  let items = scores.map( (line, m) =>
+                      line.map( (value, p) => ({ media: m,
+                                                 proceeding: p,
+                                                 score: value }))).flat();
+                  let viz = new_viz({
+                      $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+                      data: {
+                          values: items,
+                      },
+                      width: "container",
+                      height: "container",
+                      layer: [
+                          {
+                              title: `Scores`,
+                              mark: { type: 'rect',
+                                      tooltip: true },
+                              encoding: {
+                                  x: {
+                                      field: 'proceeding',
+                                      type: 'ordinal',
+                                  },
+                                  y: {
+                                      field: 'media',
+                                      type: 'ordinal',
+                                  },
+                                  color: {
+                                      field: "score",
+                                      type: "quantitative"
+                                  },
+                                  tooltip: [
+                                      { field: 'score' },
+                                  ]
+                              },
+                              config: {
+                                  axis: { grid: true,
+                                          tickBand: "extent" }
+                              }
+                          }
+                      ]
+                  });
+                  document.querySelector("#content").appendChild(viz);
+
+          });
+      }
+    </script>
+  </body>
+</html>
