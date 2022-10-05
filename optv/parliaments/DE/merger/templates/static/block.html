@@ -50,6 +50,8 @@
       <p class="menu">
       <a href="/">Home</a>
       <a href="dashboard.html">Dashboard</a>
+      <a href="transcript.html?session={{session}}">Transcript view</a>
+      <a href="align.html?session={{session}}">Alignment</a>
       </p>
       <h1>Data for {{ session }}</h1>
       <p>{{ media_count }} media items / {{ proceedings_count }} proceedings items - <a class="toggle-reduced" href="#">Toggle reduced</a></p>
@@ -57,7 +59,7 @@
 
       <div class="sidebyside column left">
       {{#media}}
-      <div class="mediaitem item"  id="media{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
+      <div class="mediaitem item" id="media{{index}}" title="{{index}} [{{speaker}}] {{title}}" data-speaker="{{speaker }}" data-title="{{title}}">
         <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{speaker}}</span>
       </div>
 
@@ -66,7 +68,7 @@
 
       <div class="sidebyside column right">
         {{#proceedings}}
-        <div class="proceedingitem item closed"  id="proceedings{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
+        <div class="proceedingitem item closed" title="{{index}} [{{speaker}}] {{title}}" id="proceedings{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
           <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ speaker }}</span>
           {{#textContents}}
           <div class="speechturns">
