@@ -35,6 +35,15 @@
         text-decoration: none;
         color: #222;
     }
+    .control {
+        cursor: pointer;
+    }
+    .control:hover {
+        text-decoration: underline;
+    }
+    .hidden {
+        display: none;
+    }
     .box:hover {
         border: 1px solid #ccc;
         background-color: #eee;
@@ -78,6 +87,7 @@
       <div class="dashboard">
       </div>
       <div class="stat_container">
+        <div id="toggle_notes" class="control">Hide/Show empty notes</div>
         <div class="stats">
         </div>
       </div>
@@ -428,6 +438,12 @@
               document.querySelector('.prefixes').appendChild(button);
           });
       }
+
+      document.querySelector("#toggle_notes").addEventListener("click", e => {
+          [ ...document.querySelectorAll(".box")]
+              .filter(b => b.querySelector('.notes').value.trim() == '')
+              .forEach(el => el.classList.toggle('hidden'))
+      });
 
       let versions = [ 'processed' ];
       let params = new URLSearchParams(location.search);
