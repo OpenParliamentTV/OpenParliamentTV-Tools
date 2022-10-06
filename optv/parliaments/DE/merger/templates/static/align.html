@@ -111,9 +111,10 @@
                   media = fixup(media);
                   proceedings = fixup(proceedings);
 
-                  const split_penalty = 1;
-                  const merge_penalty = 1;
+                  const split_penalty = -1;
+                  const merge_penalty = -1;
 
+                  // Similarity score between 2 items
                   let similarity = (m, p) => {
                       // FIXME: add a "sequence_length" attribute for sequences with common title?
                       return 4 * Number(m.speaker == p.speaker) + 2 * Number(m.title == p.title);
@@ -127,7 +128,7 @@
                   // let scores = media.map(m => proceedings.map(p => 0));
 
                   // Build the score matrix
-                  for (let i = 1; i < media.length; i++) {
+                  for (let i = 1; i < media.length; i++) { // i == row
                       for (let j = 1; j < proceedings.length; j++) {
                           scores[i][j] = Math.max( scores[i-1][j-1] + similarity(media[i], proceedings[j]),
                                                    scores[i-1][j] + split_penalty,
@@ -135,12 +136,34 @@
                       }
                   }
 
+                  // Now that the matrix is built, compute a path with a maximal score
+                  let path = [];
+                  let i = media.length - 1;
+                  let j = proceedings.length - 1;
+                  let max_score = scores[i][j];
+                  while (i > 0 && j > 0) {
+                      path.push({ media: i, proceeding: j, score: max_score });
+                      let diagonal = scores[i - 1][j - 1];
+                      let up = scores[i][j - 1];
+                      let left = scores[i - 1][j];
+                      if (diagonal >= up && diagonal >= left) {
+                          i = i - 1;
+                          j = j - 1;
+                      } else if (up >= left) {
+                          j = j - 1;
+                      } else {
+                          i = i - 1;
+                      }
+                  }
                   console.log("Scores", scores);
                   // Transform for viz
                   let items = scores.map( (line, m) =>
                       line.map( (value, p) => ({ media: m,
                                                  proceeding: p,
                                                  score: value }))).flat();
+
+                  // Append path
+                  items.push(...path);
                   let viz = new_viz({
                       $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
                       data: {
@@ -167,6 +190,8 @@
                                       type: "quantitative"
                                   },
                                   tooltip: [
+                                      { field: 'media' },
+                                      { field: 'proceeding' },
                                       { field: 'score' },
                                   ]
                               },
