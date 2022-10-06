@@ -155,7 +155,14 @@
                   }
               }
               console.log("Scores", scores);
-              // Transform for viz
+              return {
+                  scores,
+                  alignment: path
+              }
+          };
+
+          let display_alignment = (media, proceedings, scores, alignment) => {
+              // Transform matrix into list for viz
               let items = scores.map( (line, m) =>
                   line.map( (value, p) => ({ media: m,
                                              proceeding: p,
@@ -165,8 +172,9 @@
                                              proceeding_speaker: proceedings[p].speaker,
                                              score: value }))).flat();
 
-              // Append path
-              items.push(...path);
+              // Append alignment path (with max score for identification)
+              items.push(...alignment);
+
               let viz = new_viz({
                   $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
                   data: {
@@ -222,7 +230,8 @@
               Promise.all( [ d3.json(get_media_url(session)),
                              d3.json(get_proceedings_url(session)) ] )
                   .then( ([media, proceedings]) => {
-                      find_alignment(media, proceedings);
+                      let { scores, alignment } = find_alignment(media, proceedings);
+                      display_alignment(media, proceedings, scores, alignment);
                   });
           }
     </script>
