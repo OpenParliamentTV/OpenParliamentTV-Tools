@@ -65,6 +65,10 @@
     .highlighted {
         font-weight: bold;
     }
+    .selected {
+        font-weight: bold;
+        border: 2px solid black;
+    }
   </style>
   <body>
     <div id="content"></div>
@@ -228,6 +232,14 @@
               document.getElementById(`media${mid}`).classList.add('highlighted');
               document.getElementById(`proceedings${1000 + pid}`).classList.add('highlighted');
           };
+          let select_proceeding_media = (pid, mid) => {
+              let m = document.getElementById(`media${mid}`);
+              m.classList.toggle('selected');
+              m.scrollIntoView();
+              let p = document.getElementById(`proceedings${1000 + pid}`);
+              p.classList.toggle('selected');
+              p.scrollIntoView();
+          };
 
           let display_alignment = (media, proceedings, scores, alignment) => {
               // Transform matrix into list for viz
@@ -258,6 +270,10 @@
                           selection: {
                               hovering: { type: "single",
                                           on: "mouseover",
+                                          fields: [ "proceeding", "media" ]
+                                        },
+                              select: { type: "single",
+                                          on: "click",
                                           fields: [ "proceeding", "media" ]
                                         }
                           },
@@ -296,6 +312,9 @@
                   view.addSignalListener('hovering', (name, value) => {
                       // console.log("hover signal", name, value);
                       highlight_proceeding_media(value.proceeding[0], value.media[0]);
+                  });
+                  view.addSignalListener('select', (name, value) => {
+                      select_proceeding_media(value.proceeding[0], value.media[0]);
                   });
               });
               document.querySelector(".charts").appendChild(viz);
