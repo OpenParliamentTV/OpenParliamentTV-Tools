@@ -73,8 +73,10 @@
     .highlighted {
         font-weight: bold;
     }
+    .aligned {
+        border: 3px solid #1d3286;
+    }
     .selected {
-        font-weight: bold;
         border: 2px solid black;
     }
     .text {
@@ -354,6 +356,27 @@
               document.querySelector(".viz_area").replaceChildren(viz);
           };
 
+              let update_transcript_from_alignment = (alignment) => {
+                  // Clear previous alignment classes
+                  [ ...document.querySelectorAll(".item") ].forEach(el => {
+                      el.classList.forEach(cl => {
+                          if (cl.startsWith('alignment'))
+                              el.classList.remove(cl);
+                      });
+                  });
+                  for (let i = 0 ; i < alignment.length ; i++) {
+                      let al = alignment[i];
+                      if (al.media > 0) {
+                          let m = document.getElementById(`media${al.media}`);
+                          m.classList.add(`alignment${i}`);
+                      }
+                      if (al.proceeding > 0) {
+                          let m = document.getElementById(`proceedings${1000 + al.proceeding}`);
+                          m.classList.add(`alignment${i}`);
+                      }
+                  };
+              };
+
               let params = new URLSearchParams(location.search);
               let session = params.get('session');
               let config = {
@@ -408,6 +431,7 @@
                           // Display_alignment requires that the template is rendered
                           let { scores, alignment, fixed_media, fixed_proceedings } = find_alignment(media, proceedings, config);
                           display_alignment(fixed_media, fixed_proceedings, scores, alignment);
+                          update_transcript_from_alignment(alignment);
                       }
 
                       function update_config_from_form () {
@@ -435,6 +459,13 @@
                               [ ...document.querySelectorAll(".item") ].forEach(item => {
                                   item.classList.toggle("speakermatch", item.dataset.speaker == ref.dataset.speaker);
                                   item.classList.toggle("titlematch", item.dataset.title == ref.dataset.title);
+                              });
+                              // Highlight alignments
+                              [...document.querySelectorAll(".aligned")].forEach(el => el.classList.remove('aligned'));
+                              ref.classList.forEach(cl => {
+                                  if (cl.startsWith('alignment')) {
+                                      [...document.querySelectorAll(`.${cl}`)].forEach(el => el.classList.add('aligned'));
+                                  }
                               });
                           });
                           el.querySelector(".speechTitle").addEventListener('click', e => {
