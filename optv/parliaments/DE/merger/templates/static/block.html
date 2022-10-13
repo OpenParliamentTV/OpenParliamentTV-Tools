@@ -241,7 +241,7 @@
               let max_score = scores[i][j];
               while (i > 0 && j > 0) {
                   path.push({ media: i,
-                              proceeding: j,
+                              proceeding: j - 1,
                               score: max_score,
                               media_title: media[i].title,
                               media_speaker: media[i].speaker,
