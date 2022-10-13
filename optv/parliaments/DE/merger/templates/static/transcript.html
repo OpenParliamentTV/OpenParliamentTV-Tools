@@ -25,7 +25,7 @@
       <p>{{ unmatched_count }} media segments without matching proceeding out of {{ speech_count }} total media segments.</p>
       </div>
 
-      <div class="transcript column left">
+      <div class="transcript column2 left">
       {{#speeches}}
       <div class="speechHeading {{classes}}"  id="speech{{speechIndex}}">
         <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ main_speaker }}</span> <em>{{message}}</em>{{#videoURI}}<a class="videolink" data-title="{{title}}" href="{{videoURI}}"> Play </a>{{/videoURI}}
@@ -39,7 +39,7 @@
 
       </div>
 
-      <div class="column right">
+      <div class="column2 right">
         <div class="player">
           <div class="player-title">No video loaded</div>
           <video controls autoplay class="videoplayer"></video>

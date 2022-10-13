@@ -29,11 +29,11 @@ body {
     grid-row: header;
     grid-column: header;
 }
-.column .left {
+.column2 .left {
     grid-row: left;
     grid-column: left;
 }
-.column {
+.column2 {
     display: flex;
     flex-direction: column;
     position: fixed;
@@ -41,11 +41,11 @@ body {
     bottom: 0;
     overflow: auto;
 }
-.column.left {
+.column2.left {
     left: 0;
     right: 50%;
 }
-.column.right {
+.column2.right {
     left: 50%;
     right: 0;
 }

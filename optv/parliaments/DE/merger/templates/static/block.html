@@ -52,13 +52,13 @@
         display: none;
     }
     .speakermatch {
-        background-color: #9fe;
+        background-color: #a6cee3;
     }
     .titlematch {
-        background-color: #f9f;
+        background-color: #cab2d6;
     }
     .speakermatch.titlematch {
-        background-color: #9f9;
+        background-color: #b2df8a;
     }
   </style>
   <body>
@@ -75,7 +75,7 @@
       <p>{{ media_count }} media items / {{ proceedings_count }} proceedings items - <a class="toggle-reduced" href="#">Toggle reduced</a></p>
       </div>
 
-      <div class="sidebyside column left">
+      <div class="sidebyside column3 left">
       {{#media}}
       <div class="mediaitem item" id="media{{index}}" title="{{index}} [{{speaker}}] {{title}}" data-speaker="{{speaker }}" data-title="{{title}}">
         <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{speaker}}</span>
@@ -84,7 +84,7 @@
       {{/media}}
       </div>
 
-      <div class="sidebyside column middle">
+      <div class="sidebyside column3 middle">
         {{#proceedings}}
         <div class="proceedingitem item closed" title="{{index}} [{{speaker}}] {{title}}" id="proceedings{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
           <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ speaker }}</span>
@@ -101,7 +101,7 @@
 
       </div>
 
-      <div class="sidebyside column right">
+      <div class="sidebyside column3 right">
         <div class="charts">
         </div>
       </div>
