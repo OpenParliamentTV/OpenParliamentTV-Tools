@@ -12,19 +12,37 @@
   <script src="common.js"></script>
   <link rel="stylesheet" href="style.css" type="text/css" />
   <style>
+    #content {
+    display: grid;
+    grid-template-rows: var(--header-height) auto;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas: "header header header"
+                         "left middle right";
+    }
     .sidebyside {
     overflow: auto;
     }
     .sidebyside.left {
         grid-row: left;
         grid-column: left;
+        height: calc(100vh - var(--header-height));
+        overflow: auto;
+    }
+    .sidebyside.middle {
+        grid-row: middle;
+        grid-column: middle;
+        height: calc(100vh - var(--header-height));
+        overflow: auto;
     }
     .sidebyside.right {
         grid-row: right;
         grid-column: right;
+        height: calc(100vh - var(--header-height));
+        overflow: auto;
     }
     .reduced .item {
         height: 2px;
+        font-size: 2px;
     }
     .proceedingitem,
     .mediaitem {
@@ -66,7 +84,7 @@
       {{/media}}
       </div>
 
-      <div class="sidebyside column right">
+      <div class="sidebyside column middle">
         {{#proceedings}}
         <div class="proceedingitem item closed" title="{{index}} [{{speaker}}] {{title}}" id="proceedings{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
           <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ speaker }}</span>
@@ -83,6 +101,11 @@
 
       </div>
 
+      <div class="sidebyside column right">
+        <div class="charts">
+        </div>
+      </div>
+
     </template>
     <template id="error-template" type="x-tmpl-mustache">
       <h1>Not found</h1>
@@ -92,83 +115,220 @@
     <script type="module">
       // }
       // Copied from dashboard.html. This would benefit a factoring.
-      let new_viz = (session, data, spec) => {
-          let viz = document.createElement('div');
-          viz.classList.add('chart');
-          viz.dataset.session = session;
-          viz.style.order = session;
-          vegaEmbed(viz,
-                    spec,
-                    {
-                        "actions": false
-                    }).then((result) => {
-                        // Generic click on whole viz. If a mark is clicked, then item will have a valid datum field.
-                        /*
-                          // No need for this ATM, the default fragment behaviour is enough
-                        result.view.addEventListener('click', function (event, item) {
+          let new_viz = (spec) => {
+              let viz = document.createElement('div');
+              viz.classList.add('chart');
+              vegaEmbed(viz,
+                        spec,
+                        {
+                            "actions": false
+                        }).then((result) => {
+                            // Generic click on whole viz. If a mark is clicked, then item will have a valid datum field.
+                            /*
+                            // No need for this ATM, the default fragment behaviour is enough
+                            result.view.addEventListener('click', function (event, item) {
                             if (item.datum) {
-                                let element = document.querySelector(item.datum.url);
-                                if (!! element) {
-                                     element.scrollIntoView();
-                                }
+                            let element = document.querySelector(item.datum.url);
+                            if (!! element) {
+                            element.scrollIntoView();
                             }
+                            }
+                            });
+                            */
+                            console.log({ "vegaEmbed result": result,
+                                          "view:": result.view });
                         });
-                        */
-                        console.log({ "vegaEmbed result": result,
-                                      "view:": result.view });
-                    });
-          return viz;
-      }
-      let params = new URLSearchParams(location.search);
-      let session = params.get('session');
+              return viz;
+          }
 
-      if (!session) {
-          let template = document.getElementById('error-template').innerHTML;
-          let rendered = Mustache.render(template, {
-              "session": session
-          });
-          document.getElementById('content').innerHTML = rendered;
-      } else {
-          Promise.all( [ d3.json(get_media_url(session)),
-                         d3.json(get_proceedings_url(session)) ] )
-              .then( ([media, proceedings]) => {
-                  // Render template
-                  let fixup = l => l.map(item => ({ ...item,
-                                                   index: item.agendaItem.speechIndex,
-                                                   speaker: item.people[0].label,
-                                                   title: item.agendaItem.officialTitle,
-                                                  }));
-                  media = fixup(media);
-                  proceedings = fixup(proceedings);
-                  let template = document.getElementById('template').innerHTML;
-                  let rendered = Mustache.render(template, {
-                      "session": session,
-                      "media": media,
-                      "proceedings": proceedings,
-                      "media_count": media.length,
-                      "proceedings_count": proceedings.length
-                  });
-                  document.getElementById('content').innerHTML = rendered;
-                  document.title = `Transcript for ${session}`;
+          let find_alignment = (media, proceedings, param = {}) => {
+              let config = {
+                  speaker_weight: 4,
+                  title_weight: 2,
+                  merge_penalty: -1,
+                  split_penalty: -1,
+                  ...param
+              };
+              let fixup = l => l.map(item => ({ ...item,
+                                                index: item.agendaItem.speechIndex,
+                                                speaker: item.people[0].label,
+                                                title: item.agendaItem.officialTitle,
+                                              }));
+              media = fixup(media);
+              proceedings = fixup(proceedings);
 
-                  document.querySelector(".toggle-reduced").addEventListener("click", e => {
-                      document.querySelector("#content").classList.toggle("reduced");
-                  });
+              // Similarity score between 2 items
+              let similarity = (m, p) => {
+                  // FIXME: add a "sequence_length" attribute for sequences with common title??
+                  return config.speaker_weight * Number(m.speaker == p.speaker) + config.title_weight * Number(m.title == p.title);
+              }
+              // Build the [m, p] matrix with scores using the Needleman-Wunsch algorithm
+              // https://fr.wikipedia.org/wiki/Algorithme_de_Needleman-Wunsch
 
-                  [ ...document.querySelectorAll(".item")].forEach(el => {
-                      el.addEventListener('mouseover', e => {
-                          let ref = e.currentTarget;
-                          [ ...document.querySelectorAll(".item") ].forEach(item => {
-                              item.classList.toggle("speakermatch", item.dataset.speaker == ref.dataset.speaker);
-                              item.classList.toggle("titlematch", item.dataset.title == ref.dataset.title);
+              // Initialize a m x p matrix with 0 scores
+              // (0-initialization is required only for row 0 and column 0)
+              let scores = media.map(m => proceedings.map(p => similarity(m, p)));
+              // let scores = media.map(m => proceedings.map(p => 0));
+
+              // Build the score matrix
+              for (let i = 1; i < media.length; i++) { // i == row
+                  for (let j = 1; j < proceedings.length; j++) {
+                      scores[i][j] = Math.max( scores[i-1][j-1] + similarity(media[i], proceedings[j]),
+                                               scores[i-1][j] + config.split_penalty,
+                                               scores[i][j-1] + config.merge_penalty );
+                  }
+              }
+
+              // Now that the matrix is built, compute a path with a maximal score
+              let path = [];
+              let i = media.length - 1;
+              let j = proceedings.length - 1;
+              let max_score = scores[i][j];
+              while (i > 0 && j > 0) {
+                  path.push({ media: i,
+                              proceeding: j,
+                              score: max_score,
+                              media_title: media[i].title,
+                              media_speaker: media[i].speaker,
+                              proceeding_title: proceedings[j].title,
+                              proceeding_speaker: proceedings[j].speaker
+                            });
+                  let diagonal = scores[i - 1][j - 1];
+                  let up = scores[i][j - 1];
+                  let left = scores[i - 1][j];
+                  if (diagonal >= up && diagonal >= left) {
+                      i = i - 1;
+                      j = j - 1;
+                  } else if (left >= up) {
+                      i = i - 1;
+                  } else {
+                      j = j - 1;
+                  }
+              }
+              console.log("Scores", scores);
+              return {
+                  scores,
+                  alignment: path,
+                  // Return the fixed-up versions of media/proceedings
+                  fixed_media: media,
+                  fixed_proceedings: proceedings
+              }
+          };
+
+          let display_alignment = (media, proceedings, scores, alignment) => {
+              // Transform matrix into list for viz
+              let items = scores.map( (line, m) =>
+                  line.map( (value, p) => ({ media: m,
+                                             proceeding: p,
+                                             media_title: media[m].title,
+                                             media_speaker: media[m].speaker,
+                                             proceeding_title: proceedings[p].title,
+                                             proceeding_speaker: proceedings[p].speaker,
+                                             score: value }))).flat();
+
+              // Append alignment path (with max score for identification)
+              items.push(...alignment);
+
+              let viz = new_viz({
+                  $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+                  data: {
+                      values: items,
+                  },
+                  width: "container",
+                  height: "container",
+                  layer: [
+                      {
+                          title: `Scores`,
+                          mark: { type: 'rect',
+                                  tooltip: true },
+                          encoding: {
+                              x: {
+                                  field: 'proceeding',
+                                  type: 'ordinal',
+                              },
+                              y: {
+                                  field: 'media',
+                                  type: 'ordinal',
+                                  scale: { reverse: true },
+                              },
+                              color: {
+                                  field: "score",
+                                  type: "quantitative"
+                              },
+                              tooltip: [
+                                  { field: 'score' },
+                                  { field: 'media' },
+                                  { field: 'proceeding' },
+                                  { field: 'media_title' },
+                                  { field: 'proceeding_title' },
+                                  { field: 'media_speaker' },
+                                  { field: 'proceeding_speaker' },
+                              ]
+                          },
+                          config: {
+                              axis: { grid: true,
+                                      tickBand: "extent" }
+                          }
+                      }
+                  ]
+              });
+              document.querySelector(".charts").appendChild(viz);
+          };
+
+          let params = new URLSearchParams(location.search);
+          let session = params.get('session');
+
+          if (!session) {
+              let template = document.getElementById('error-template').innerHTML;
+              let rendered = Mustache.render(template, {
+                  "session": session
+              });
+              document.getElementById('content').innerHTML = rendered;
+          } else {
+              Promise.all( [ d3.json(get_media_url(session)),
+                             d3.json(get_proceedings_url(session)) ] )
+                  .then( ([media, proceedings]) => {
+                      // Render template
+                      let fixup = l => l.map(item => ({ ...item,
+                                                        index: item.agendaItem.speechIndex,
+                                                        speaker: item.people[0].label,
+                                                        title: item.agendaItem.officialTitle,
+                                                      }));
+                      media = fixup(media);
+                      proceedings = fixup(proceedings);
+                      let template = document.getElementById('template').innerHTML;
+                      let rendered = Mustache.render(template, {
+                          "session": session,
+                          "media": media,
+                          "proceedings": proceedings,
+                          "media_count": media.length,
+                          "proceedings_count": proceedings.length
+                      });
+                      document.getElementById('content').innerHTML = rendered;
+                      document.title = `Transcript for ${session}`;
+
+                      // Display_alignment requires that the template is rendered
+                      let { scores, alignment, fixed_media, fixed_proceedings } = find_alignment(media, proceedings);
+                      display_alignment(fixed_media, fixed_proceedings, scores, alignment);
+
+                      document.querySelector(".toggle-reduced").addEventListener("click", e => {
+                          document.querySelector("#content").classList.toggle("reduced");
+                      });
+
+                      [ ...document.querySelectorAll(".item")].forEach(el => {
+                          el.addEventListener('mouseover', e => {
+                              let ref = e.currentTarget;
+                              [ ...document.querySelectorAll(".item") ].forEach(item => {
+                                  item.classList.toggle("speakermatch", item.dataset.speaker == ref.dataset.speaker);
+                                  item.classList.toggle("titlematch", item.dataset.title == ref.dataset.title);
+                              });
+                          });
+                          el.addEventListener('click', e => {
+                              el.classList.toggle('closed');
                           });
                       });
-                      el.addEventListener('click', e => {
-                          el.classList.toggle('closed');
-                      });
                   });
-          });
-      }
+          }
     </script>
   </body>
 </html>
