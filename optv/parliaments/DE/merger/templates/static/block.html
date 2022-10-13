@@ -42,7 +42,9 @@
     }
     .reduced .item {
         height: 2px;
-        font-size: 2px;
+        font-size: 1px;
+        margin: 0;
+        padding: 0;
     }
     .proceedingitem,
     .mediaitem {
@@ -59,6 +61,9 @@
     }
     .speakermatch.titlematch {
         background-color: #b2df8a;
+    }
+    .highlighted {
+        font-weight: bold;
     }
   </style>
   <body>
@@ -115,7 +120,7 @@
     <script type="module">
       // }
       // Copied from dashboard.html. This would benefit a factoring.
-          let new_viz = (spec) => {
+          let new_viz = (spec, signal_handler) => {
               let viz = document.createElement('div');
               viz.classList.add('chart');
               vegaEmbed(viz,
@@ -135,6 +140,9 @@
                             }
                             });
                             */
+                            if (signal_handler !== undefined) {
+                                signal_handler(result.view);
+                            };
                             console.log({ "vegaEmbed result": result,
                                           "view:": result.view });
                         });
@@ -205,7 +213,7 @@
                       j = j - 1;
                   }
               }
-              console.log("Scores", scores);
+              // console.log("Scores", scores);
               return {
                   scores,
                   alignment: path,
@@ -213,6 +221,12 @@
                   fixed_media: media,
                   fixed_proceedings: proceedings
               }
+          };
+
+          let highlight_proceeding_media = (pid, mid) => {
+              [ ...document.querySelectorAll(".highlighted") ].forEach(el => el.classList.remove('highlighted'));
+              document.getElementById(`media${mid}`).classList.add('highlighted');
+              document.getElementById(`proceedings${1000 + pid}`).classList.add('highlighted');
           };
 
           let display_alignment = (media, proceedings, scores, alignment) => {
@@ -238,9 +252,15 @@
                   height: "container",
                   layer: [
                       {
-                          title: `Scores`,
+                          title: "Scores",
                           mark: { type: 'rect',
                                   tooltip: true },
+                          selection: {
+                              hovering: { type: "single",
+                                          on: "mouseover",
+                                          fields: [ "proceeding", "media" ]
+                                        }
+                          },
                           encoding: {
                               x: {
                                   field: 'proceeding',
@@ -271,6 +291,12 @@
                           }
                       }
                   ]
+              }, (view) => {
+                  console.log(view);
+                  view.addSignalListener('hovering', (name, value) => {
+                      // console.log("hover signal", name, value);
+                      highlight_proceeding_media(value.proceeding[0], value.media[0]);
+                  });
               });
               document.querySelector(".charts").appendChild(viz);
           };
