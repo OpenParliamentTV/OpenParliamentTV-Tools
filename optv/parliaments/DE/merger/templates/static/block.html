@@ -61,6 +61,9 @@
     .closed .speech {
         display: none;
     }
+    .hiddentranscript .text {
+        display: none;
+    }
     .speakermatch {
         background-color: #a6cee3;
     }
@@ -68,7 +71,7 @@
         background-color: #cab2d6;
     }
     .speakermatch.titlematch {
-        background-color: #b2df8a;
+        background-color: #fb9a99;
     }
     .highlighted {
         font-weight: bold;
@@ -76,6 +79,9 @@
     .selected {
         font-weight: bold;
         border: 2px solid black;
+    }
+    .text {
+        color: black;
     }
   </style>
   <body>
@@ -103,12 +109,15 @@
 
       <div class="sidebyside column3 middle">
         {{#proceedings}}
-        <div class="proceedingitem item closed" title="{{index}} [{{speaker}}] {{title}}" id="proceedings{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
+        <div class="proceedingitem item closed hiddentranscript" title="{{index}} [{{speaker}}] {{title}}" id="proceedings{{index}}" data-speaker="{{speaker }}" data-title="{{title}}">
           <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ speaker }}</span>
           {{#textContents}}
           <div class="speechturns">
             {{#textBody}}
-            <div class="speech"><span class="speaker">{{speaker}}</span></div>
+            <div class="speech">
+              <span class="speaker">{{speaker}}</span>
+              <span class="text">{{ text }}</span>
+            </div>
             {{/textBody}}
           </div>
           {{/textContents}}
@@ -393,7 +402,11 @@
                                   item.classList.toggle("titlematch", item.dataset.title == ref.dataset.title);
                               });
                           });
-                          el.addEventListener('click', e => {
+                          el.querySelector(".speechTitle").addEventListener('click', e => {
+                              el.classList.toggle('closed');
+                              el.classList.toggle('hiddentranscript');
+                          });
+                          el.querySelector(".mainSpeaker").addEventListener('click', e => {
                               el.classList.toggle('closed');
                           });
                       });
