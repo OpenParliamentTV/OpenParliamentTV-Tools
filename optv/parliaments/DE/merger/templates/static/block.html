@@ -46,6 +46,14 @@
         margin: 0;
         padding: 0;
     }
+    .videolink {
+        cursor: pointer;
+        text-decoration: none;
+        color: black;
+    }
+    .videolink:hover {
+        color: grey;
+    }
     .proceedingitem,
     .mediaitem {
         border: 1px solid grey;
@@ -87,7 +95,7 @@
       <div class="sidebyside column3 left">
       {{#media}}
       <div class="mediaitem item" id="media{{index}}" title="{{index}} [{{speaker}}] {{title}}" data-speaker="{{speaker }}" data-title="{{title}}">
-        <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{speaker}}</span>
+        <strong class="speechIndex">{{index}}</strong> {{#media.videoFileURI}}<a class="videolink" data-id="{{index}}" data-title="{{title}}" href="{{media.videoFileURI}}"> ⏯ </a>{{/media.videoFileURI}} <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{speaker}}</span>
       </div>
 
       {{/media}}
@@ -112,6 +120,12 @@
 
       <div class="sidebyside column3 right">
         <div class="charts">
+        </div>
+        <div class="player">
+          <div class="player-title">No video loaded</div>
+          <video controls autoplay class="videoplayer"></video>
+        </div>
+        <div class="transcript">
         </div>
       </div>
 
@@ -351,6 +365,17 @@
                       });
                       document.getElementById('content').innerHTML = rendered;
                       document.title = `Transcript for ${session}`;
+
+                      document.querySelectorAll(".videolink").forEach(link => {
+                          link.addEventListener("click", e => {
+                              e.preventDefault();
+                              console.log(e.target);
+                              let url = e.target.href;
+                              let _id = e.target.dataset.id;
+                              document.querySelector(".player-title").innerHTML = `Loaded <a class="videolink" href="${url}">${_id}</a>`;
+                              document.querySelector(".videoplayer").src = url;
+                          })
+                      });
 
                       // Display_alignment requires that the template is rendered
                       let { scores, alignment, fixed_media, fixed_proceedings } = find_alignment(media, proceedings);
