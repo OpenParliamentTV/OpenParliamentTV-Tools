@@ -23,19 +23,16 @@
     overflow: auto;
     }
     .sidebyside.left {
-        grid-row: left;
         grid-column: left;
         height: calc(100vh - var(--header-height));
         overflow: auto;
     }
     .sidebyside.middle {
-        grid-row: middle;
         grid-column: middle;
         height: calc(100vh - var(--header-height));
         overflow: auto;
     }
     .sidebyside.right {
-        grid-row: right;
         grid-column: right;
         height: calc(100vh - var(--header-height));
         overflow: auto;
@@ -128,7 +125,21 @@
       </div>
 
       <div class="sidebyside column3 right">
-        <div class="charts">
+        <div class="viz_area">
+        </div>
+        <div class="controls">
+          <form>
+            Parameters
+            {{#parameters}}
+            <input type="number"
+                   class="parameter"
+                   title="{{name}}"
+                   id="{{name}}"
+                   min="-10"
+                   max="10"
+                   value="{{value}}" />
+            {{/parameters}}
+          </form>
         </div>
         <div class="player">
           <div class="player-title">No video loaded</div>
@@ -340,16 +351,22 @@
                       select_proceeding_media(value.proceeding[0], value.media[0]);
                   });
               });
-              document.querySelector(".charts").appendChild(viz);
+              document.querySelector(".viz_area").replaceChildren(viz);
           };
 
-          let params = new URLSearchParams(location.search);
-          let session = params.get('session');
+              let params = new URLSearchParams(location.search);
+              let session = params.get('session');
+              let config = {
+                  speaker_weight: 4,
+                  title_weight: 2,
+                  merge_penalty: -1,
+                  split_penalty: -1,
+              };
 
           if (!session) {
               let template = document.getElementById('error-template').innerHTML;
               let rendered = Mustache.render(template, {
-                  "session": session
+                  "session": session,
               });
               document.getElementById('content').innerHTML = rendered;
           } else {
@@ -370,7 +387,8 @@
                           "media": media,
                           "proceedings": proceedings,
                           "media_count": media.length,
-                          "proceedings_count": proceedings.length
+                          "proceedings_count": proceedings.length,
+                          "parameters": Object.entries(config).map( ([n, v]) => ({ name: n, value: v })),
                       });
                       document.getElementById('content').innerHTML = rendered;
                       document.title = `Transcript for ${session}`;
@@ -386,12 +404,29 @@
                           })
                       });
 
-                      // Display_alignment requires that the template is rendered
-                      let { scores, alignment, fixed_media, fixed_proceedings } = find_alignment(media, proceedings);
-                      display_alignment(fixed_media, fixed_proceedings, scores, alignment);
+                      function update_alignment () {
+                          // Display_alignment requires that the template is rendered
+                          let { scores, alignment, fixed_media, fixed_proceedings } = find_alignment(media, proceedings, config);
+                          display_alignment(fixed_media, fixed_proceedings, scores, alignment);
+                      }
+
+                      function update_config_from_form () {
+                          Object.keys(config).forEach(k => {
+                              config[k] = Number(document.getElementById(k).value);
+                          });
+                      };
+
+                      update_alignment();
 
                       document.querySelector(".toggle-reduced").addEventListener("click", e => {
                           document.querySelector("#content").classList.toggle("reduced");
+                      });
+
+                      [ ...document.querySelectorAll(".parameter")].forEach(el => {
+                          el.addEventListener("change", e => {
+                              update_config_from_form();
+                              update_alignment();
+                          });
                       });
 
                       [ ...document.querySelectorAll(".item")].forEach(el => {
