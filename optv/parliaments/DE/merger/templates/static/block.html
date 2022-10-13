@@ -218,19 +218,26 @@
               let scores = media.map(m => proceedings.map(p => similarity(m, p)));
               // let scores = media.map(m => proceedings.map(p => 0));
 
+              let max_item = { value: 0, i: 0, j: 0 };
               // Build the score matrix
               for (let i = 1; i < media.length; i++) { // i == row
                   for (let j = 1; j < proceedings.length; j++) {
-                      scores[i][j] = Math.max( scores[i-1][j-1] + similarity(media[i], proceedings[j]),
-                                               scores[i-1][j] + config.split_penalty,
-                                               scores[i][j-1] + config.merge_penalty );
+                      let score = Math.max( scores[i-1][j-1] + similarity(media[i], proceedings[j]),
+                                            scores[i-1][j] + config.split_penalty,
+                                            scores[i][j-1] + config.merge_penalty );
+                      scores[i][j] = score;
+                      if (score > max_item.value) {
+                          max_item.value = score;
+                          max_item.i = i;
+                          max_item.j = j;
+                      }
                   }
               }
 
               // Now that the matrix is built, compute a path with a maximal score
               let path = [];
-              let i = media.length - 1;
-              let j = proceedings.length - 1;
+              let i = max_item.i;
+              let j = max_item.j;
               let max_score = scores[i][j];
               while (i > 0 && j > 0) {
                   path.push({ media: i,
