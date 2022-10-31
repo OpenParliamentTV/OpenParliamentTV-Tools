@@ -59,24 +59,31 @@ let get_proceedings_url = (session) => {
 }
 
 let normalized_data = (data) => {
-    return data.map(s => {
-        let pi = s.agendaItem.proceedingIndex || 1000;
-        pi = pi - (pi >= 1000 ? 1000 : 0);
-        let sn = `${s.session.number}`.padStart(3, "0");
-        let session = `${s.electoralPeriod.number}${sn}`;
-        return {
+    return data.map(item => {
+        let pis = item.agendaItem.proceedingIndexes;
+        if (pis === undefined) {
+            pis = [ item.agendaItem.proceedingIndex || 0 ];
+        };
+        // Normalize proceedingIndex (starting at 0 rather than 1000)
+        pis = pis.map(pi => pi - (pi >= 1000 ? 1000 : 0));
+
+        let sn = `${item.session.number}`.padStart(3, "0");
+        let session = `${item.electoralPeriod.number}${sn}`;
+
+        return pis.map(pi => ({
             "proceeding": pi,
-            "media": (s.agendaItem.mediaIndex || 0),
-            "title": s.agendaItem.officialTitle,
-            "speaker": s.people[0].label,
-            "url": `#speech${s.agendaItem.speechIndex}`,
-            "matching": (pi == 0 ? 'media_only' : ((s.agendaItem.mediaIndex || 0) == 0 ? 'proceeding_only' : 'matching')),
-            "char_count": s.textContents ? d3.sum(s.textContents.map(tc => d3.sum(tc.textBody.map(tb => tb.text.length)))) : 0,
-            "word_count": s.textContents ? d3.sum(s.textContents.map(tc => d3.sum(tc.textBody.map(tb => tb.text.split(' ').length)))) : 0,
-            "duration": s.media ? s.media.duration : 0,
-            "version": s.version,
-            "session": session
-        }
-    });
+            "media": (item.agendaItem.mediaIndex || 0),
+            "title": item.agendaItem.officialTitle,
+            "speaker": item.people[0].label || "",
+            "url": `#speech${item.agendaItem.speechIndex}`,
+            "matching": (pi == 0 ? 'media_only' : ((item.agendaItem.mediaIndex || 0) == 0 ? 'proceeding_only' : 'matching')),
+            "char_count": item.textContents ? d3.sum(item.textContents.map(tc => d3.sum(tc.textBody.map(tb => tb.text.length)))) : 0,
+            "word_count": item.textContents ? d3.sum(item.textContents.map(tc => d3.sum(tc.textBody.map(tb => tb.text.split(' ').length)))) : 0,
+            "duration": item.media ? item.media.duration : 0,
+            "version": item.version,
+            "session": session,
+            "data": item
+        }));
+    }).flat();
 };
 
