@@ -30,8 +30,8 @@ else:
 def extract_entities(source: list, args) -> list:
     """Extract entities from source file
     """
-    start_time = time.time()
     for item in source:
+        start_time = time.time()
         for content in item.get('textContents', []):
             for speech in content.get('textBody', []):
                 for sentence in speech.get('sentences', []):
@@ -43,10 +43,9 @@ def extract_entities(source: list, args) -> list:
                                       score=span._.score)
                                  for span in doc.ents ]
                     sentence['entities'] = entities
-    end_time  = time.time()
-
-    debug = speech.setdefault('debug', {})
-    debug['ner-duration'] = end_time - start_time
+        end_time  = time.time()
+        debug = item.setdefault('debug', {})
+        debug['ner-duration'] = end_time - start_time
 
     return source
 
