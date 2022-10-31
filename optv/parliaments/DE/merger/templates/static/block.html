@@ -141,6 +141,14 @@
                    max="10"
                    value="{{value}}" />
             {{/parameters}}
+            <select class="parameter"
+                   title="similarity"
+                   id="similarity">
+              <option value="strict">Strict matching</option>
+              <option value="levenshtein">Levenshtein</option>
+              <option value="square">Levenshtein squared</option>
+              <option value="root">Levenshtein root</option>
+            </select>
           </form>
         </div>
         <div class="player">
@@ -195,6 +203,7 @@
                   title_weight: 2,
                   merge_penalty: -1,
                   split_penalty: -1,
+                  similarity: 'strict', // Or 'levenshtein' / 'square' / 'root'
                   ...param
               };
               let fixup = l => l.map(item => ({ ...item,
@@ -205,11 +214,23 @@
               media = fixup(media);
               proceedings = fixup(proceedings);
 
+              let similarity_functions = {
+                  strict: (s1, s2) => Number(s1.trim() == s2.trim()),
+                  levenshtein: (s1, s2) => levenshtein(s1.trim(), s2.trim()),
+                  square: (s1, s2) => levenshtein(s1.trim(), s2.trim()) ** 2,
+                  root: (s1, s2) => Math.sqrt(levenshtein(s1.trim(), s2.trim())),
+              };
+
+              let string_similarity = (s1, s2) => {
+                  return similarity_functions[config.similarity](s1, s2);
+              }
               // Similarity score between 2 items
               let similarity = (m, p) => {
                   // FIXME: add a "sequence_length" attribute for sequences with common title??
-                  return config.speaker_weight * Number(m.speaker == p.speaker) + config.title_weight * Number(m.title == p.title);
+                  return (config.speaker_weight * string_similarity(m.speaker, p.speaker)
+                          + config.title_weight * string_similarity(m.title, p.title));
               }
+
               // Build the [m, p] matrix with scores using the Needleman-Wunsch algorithm
               // https://fr.wikipedia.org/wiki/Algorithme_de_Needleman-Wunsch
 
@@ -434,6 +455,7 @@
                   title_weight: 2,
                   merge_penalty: -1,
                   split_penalty: -1,
+                  similarity: 'strict',
               };
 
           if (!session) {
@@ -461,7 +483,10 @@
                           "proceedings": proceedings,
                           "media_count": media.length,
                           "proceedings_count": proceedings.length,
-                          "parameters": Object.entries(config).map( ([n, v]) => ({ name: n, value: v })),
+                          "parameters": Object.entries(config)
+                              // Only generate automatically for number values
+                              .filter(([n, v]) => typeof(v) == 'number')
+                              .map( ([n, v]) => ({ name: n, value: v })),
                       });
                       document.getElementById('content').innerHTML = rendered;
                       document.title = `Transcript for ${session}`;
@@ -486,8 +511,13 @@
 
                       function update_config_from_form () {
                           Object.keys(config).forEach(k => {
-                              config[k] = Number(document.getElementById(k).value);
+                              let el = document.getElementById(k);
+                              config[k] = el.value;
+                              if (el.type == 'number') {
+                                  config[k] = el.valueAsNumber;
+                              }
                           });
+                          console.log("New config", config);
                       };
 
                       update_alignment();
