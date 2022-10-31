@@ -83,7 +83,7 @@ class SessionServer(SimpleHTTPRequestHandler):
             # Find session id
             session = str(merged.name)[:5]
             # Consider a standard directory layout
-            proceeding = merged.parent.parent / 'proceedings' / f'{session}-data.json'
+            proceeding = merged.parent.parent / 'proceedings' / f'{session}-proceedings.json'
             media = merged.parent.parent / 'media' / f'{session}-media.json'
             counts = unmatched_count(proceeding, media, dict())
             counts.update(session=session)

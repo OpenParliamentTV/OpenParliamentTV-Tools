@@ -23,7 +23,7 @@ let get_session_list = () => {
     } else {
         return fetch(`${basedir}/processed`)
             .then(resp => resp.text())
-            .then(dircontent => [ ...new Set([ ...dircontent.matchAll(/(\d+-merged.json)/g) ].map(a => a[0])) ]);
+            .then(dircontent => [ ...new Set([ ...dircontent.matchAll(/(\d+-session.json)/g) ].map(a => a[0])) ]);
     }
 };
 
@@ -45,7 +45,7 @@ let get_session_url = (session, version) => {
     let basedir = get_basedir();
     if (!version)
         version = 'processed';
-    return `${basedir}/${version}/${session}-merged.json`;
+    return `${basedir}/${version}/${session}-session.json`;
 }
 // Get the media data URL
 let get_media_url = (session) => {
@@ -55,7 +55,7 @@ let get_media_url = (session) => {
 // Get the proceedings data URL
 let get_proceedings_url = (session) => {
     let basedir = get_basedir();
-    return `${basedir}/original/proceedings/${session}-data.json`;
+    return `${basedir}/original/proceedings/${session}-proceedings.json`;
 }
 
 let normalized_data = (data) => {

@@ -47,6 +47,8 @@ def download_plenary_protocols(destination_dir: str, fullscan: bool = False, per
             link_href = link.attrib["href"]
             link_count += 1
             basename = os.path.basename(link_href)
+            # Rename NNNN-data.xml to NNNN-proceedings.xml to be more clear
+            basename = basename.replace('-data.xml', '-proceedings.xml')
             filename = dest / basename
             if filename.exists():
                 # Existing file.

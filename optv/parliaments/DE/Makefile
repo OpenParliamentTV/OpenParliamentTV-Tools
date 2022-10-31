@@ -4,7 +4,7 @@ BASEDIR := $(dir $(MAKEFILE_PATH))
 DATADIR := $(BASEDIR)../../../../OpenParliamentTV-Data-DE
 MEDIADIR := $(DATADIR)/original/media
 PROCEEDINGSDIR := $(DATADIR)/original/proceedings
-MERGEDDIR := $(DATADIR)/processed
+MERGEDDIR := $(DATADIR)/cache/merged
 
 TRANSCRIPT_SOURCE := $(wildcard $(PROCEEDINGSDIR)/*.xml)
 # MEDIA_SOURCE filelist will be updated by download
@@ -15,10 +15,10 @@ TRANSCRIPT_DEST := $(patsubst %.xml,%.json,$(TRANSCRIPT_SOURCE))
 MEDIA_DEST := $(subst raw-,,$(MEDIA_SOURCE))
 
 # The following line requires that each media file has a corresponding proceedings file
-#MERGE_DEST := $(subst /media/,/merged/,$(patsubst %-data.json,%-merged.json,$(MEDIA_DEST)))
+#MERGE_DEST := $(subst /media/,/merged/,$(patsubst %-proceedings.json,%-merged.json,$(MEDIA_DEST)))
 
 # The following line uses proceedings as reference
-MERGE_DEST := $(subst /original/proceedings/,/processed/,$(patsubst %-data.json,%-merged.json,$(TRANSCRIPT_DEST)))
+MERGE_DEST := $(subst /original/proceedings/,/cache/merged/,$(patsubst %-proceedings.json,%-merged.json,$(TRANSCRIPT_DEST)))
 
 all: $(MEDIA_DEST) $(TRANSCRIPT_DEST) $(MERGE_DEST)
 
@@ -40,7 +40,7 @@ debug:
 	-echo "MERGE DEST"
 	-echo $(MERGE_DEST)
 
-%-merged.json: ../proceedings/%-data.json ../media/%-media.json
+%-merged.json: ../original/proceedings/%-proceedings.json ../original/media/%-media.json
 	$(BASEDIR)/merger/merge_session.py --output=$(DATADIR)/merged $^
 
 %-media.json: %-media.xml
@@ -49,7 +49,7 @@ debug:
 %-media.json: raw-%-media.json
 	$(BASEDIR)/parsers/media2json.py $< > $@
 
-%-data.json: %-data.xml
+%-proceedings.json: %-proceedings.xml
 	$(BASEDIR)/parsers/proceedings2json.py --include-nas $< > $@
 
 clean:

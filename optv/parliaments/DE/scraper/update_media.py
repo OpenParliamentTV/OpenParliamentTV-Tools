@@ -25,7 +25,7 @@ from .fetch_media import download_meeting_data, download_data, get_filename
 RETRY_MAX_WAIT_TIME = 10
 
 def update_media_directory(proc_dir, media_dir, force=False, save_raw_data=False):
-    for proc in sorted(proc_dir.glob('*-data.xml')):
+    for proc in sorted(proc_dir.glob('*-proceedings.xml')):
         basename = proc.name
         period = basename[:2]
         meeting = basename[2:5]
@@ -72,7 +72,7 @@ def update_media_directory_period(period, media_dir, force=False, save_raw_data=
                 else:
                     should_retry -= 1
                     timeout = random() * RETRY_MAX_WAIT_TIME
-                    logger.warning(f"Loading error - retrying in {timeout} seconds")
+                    logger.warning(f"Loading error - retrying in {timeout:.2f} seconds")
                     time.sleep(timeout)
 
 if __name__ == "__main__":

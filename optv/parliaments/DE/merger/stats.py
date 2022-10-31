@@ -37,7 +37,7 @@ if __name__ == '__main__':
         # Find basename
         session = str(media.name)[:5]
         # Consider a standard directory layout
-        proceeding = media.parent.parent / 'proceedings' / f'{session}-data.json'
+        proceeding = media.parent.parent / 'proceedings' / f'{session}-proceedings.json'
         if proceeding.exists():
             count = unmatched_count(proceeding, media, args)
             data.append(count)
