@@ -141,7 +141,7 @@ def parse_speech(elements: list, last_speaker: dict, speech_id: str):
                 }
             # FIXME: all other <p> klasses are ignored for now
 
-def parse_ordnungpunkt(op, last_speaker: dict, last_redeid: str):
+def parse_ordnungpunkt(op, last_speaker: dict, last_redeid: str, session_id: str):
     """Parse an <tagesordnungspunkt> to output a sequence of tagged speech items.
 
     It is a generator that generates 1 array of speech items by rede.
@@ -186,7 +186,7 @@ def parse_ordnungpunkt(op, last_speaker: dict, last_redeid: str):
     # Produce a virtual introduction
     introduction = list(takewhile(lambda n: n.tag in ('p', 'name'), elements))
     if introduction:
-        turns = list(parse_speech(introduction, last_speaker, f"{rede_id}{LEADING_SPEECH}"))
+        turns = list(parse_speech(introduction, last_speaker, f"{session_id}-{rede_id}{LEADING_SPEECH}"))
         if turns:
             last_speaker = last_speaker_info(turns)
             yield turns
@@ -197,8 +197,8 @@ def parse_ordnungpunkt(op, last_speaker: dict, last_redeid: str):
             # trailing <p>, which we ignore for now
             continue
         # Get the rede id from original proceedings
-        rede_id = el.attrib.get('id', '')
-        turns = list(parse_speech(el, last_speaker, rede_id))
+        rede_id = el.attrib.get('id', 'unknown_redeid')
+        turns = list(parse_speech(el, last_speaker, f"{session_id}-{rede_id}"))
         if turns:
             last_speaker = last_speaker_info(turns)
             yield turns
@@ -209,7 +209,7 @@ def parse_ordnungpunkt(op, last_speaker: dict, last_redeid: str):
         # Trailing <p> elements after last <rede>
         closing = list(reversed(list(takewhile(lambda n: n.tag in ('p', 'name'), reversed(elements)))))
         if closing:
-            turns = list(parse_speech(closing, last_speaker, f"{rede_id}{TRAILING_SPEECH}"))
+            turns = list(parse_speech(closing, last_speaker, f"{session_id}-{rede_id}{TRAILING_SPEECH}"))
             if turns:
                 last_speaker = last_speaker_info(turns)
                 yield turns
@@ -289,7 +289,7 @@ def fix_last_speech(speeches):
         logger.debug("Splitting president speech from last TOP speech")
         speeches = speeches[:-1]
         speeches.append(last_speech[:-(trailing_count+1)])
-        # We generate a pseudo-speech id, so we also have to generate a pseudo-speech-id
+        # We generate a pseudo-speech, so we also have to generate a pseudo-speech-id
         for i in trailing_president_items:
             i['speech_id'] = f"{i['speech_id']}{CLOSING_SPEECH}"
         speeches.append(trailing_president_items)
@@ -369,7 +369,7 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
     for op in [ *root.findall('.//sitzungsbeginn'),
                 *root.findall('.//tagesordnungspunkt'),
                 *root.findall('.//sitzungsende') ]:
-        speeches = list(parse_ordnungpunkt(op, last_speaker, last_redeid))
+        speeches = list(parse_ordnungpunkt(op, last_speaker, last_redeid, session_id))
         if op.tag == 'sitzungsbeginn':
             title = 'Sitzungseröffnung'
         elif op.tag == 'sitzungsende':
@@ -430,7 +430,7 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
                     # The human-readable title is not present in proceedings, it will be in media
                     # "title": title,
                     "speechIndex": speechIndex,
-                    "speech_id": f"{session_id}-{speech_id}"
+                    "speech_id": speech_id
                 },
                 'people': speakers,
                 'textContents': [
