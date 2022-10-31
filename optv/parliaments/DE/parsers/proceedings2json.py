@@ -362,8 +362,9 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
         'speakerstatus': "Unknown"
     }
 
-    # Start index at 1000 so that we can distinguish btw media and proceedings indexes
-    speechIndex = 1000
+    # Start index at 1001 so that we can distinguish btw media and proceedings indexes
+    # (starting at 1001 and not 1000 because media starts at 1)
+    speechIndex = 1001
     last_redeid = 'sessionstart'
     # Pass last speaker info from one speech to the next one
     for op in [ *root.findall('.//sitzungsbeginn'),
