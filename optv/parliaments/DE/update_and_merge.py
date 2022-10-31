@@ -78,6 +78,8 @@ if __name__ == "__main__":
                         help="Display debug messages")
     parser.add_argument("--from-period", type=int,
                         help="Period to fetch (mandatory)")
+    parser.add_argument("--include-nas", action="store_true",
+                        help="Include T_NaS and T_fett classes as speech information for proceedings")
     parser.add_argument("--retry-count", type=int,
                         dest="retry_count", default=0,
                         help="Max number of times to retry a media download")
@@ -133,6 +135,7 @@ if __name__ == "__main__":
         args.advanced_rematch = True
         args.align_sentences = True
         args.extract_entities = True
+        args.include_nas = True
 
     args.data_dir = Path(args.data_dir)
 
