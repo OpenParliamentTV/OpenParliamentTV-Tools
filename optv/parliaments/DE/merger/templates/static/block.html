@@ -348,6 +348,49 @@
                               axis: { grid: true,
                                       tickBand: "extent" }
                           }
+                      },
+
+                      // Proceeding bar layer
+                      {
+                          "params": [
+                              {
+                                  "name": "hover_proceeding",
+                                  "select": {"type": "point", "on": "mouseover", "clear": "mouseout"}
+                              }
+                          ],
+                          "mark": {"type": "bar", "color": "#eee", "tooltip": false},
+                          "encoding": {
+                              "x": {"field": "proceeding", type: "ordinal"},
+                              "opacity": {
+                                  "condition": {"test": {"param": "hover_proceeding", "empty": false}, "value": 0.5},
+                                  "value": 0
+                              },
+                          }
+                      },
+                      {
+                          "params": [
+                              {
+                                  "name": "hover_media",
+                                  "select": {"type": "point", "on": "mouseover", "clear": "mouseout"}
+                              }
+                          ],
+                          "mark": {"type": "bar", "color": "#eee", "tooltip": true},
+                          "encoding": {
+                              "y": {"field": "media", type: "ordinal"},
+                              "opacity": {
+                                  "condition": {"test": {"param": "hover_media", "empty": false}, "value": 0.5},
+                                  "value": 0
+                              },
+                              tooltip: [
+                                  { field: 'score' },
+                                  { field: 'media' },
+                                  { field: 'proceeding' },
+                                  { field: 'media_title' },
+                                  { field: 'proceeding_title' },
+                                  { field: 'media_speaker' },
+                                  { field: 'proceeding_speaker' },
+                              ]
+                          },
                       }
                   ]
               }, (view) => {
