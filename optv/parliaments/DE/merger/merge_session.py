@@ -289,10 +289,15 @@ def needleman_wunsch_align(proceedings, media, options):
     media_index = build_index(media)
     proceedings_index = build_index(proceedings)
 
+    # Levenshtein has been tested, but gives worse results, because
+    # the differences are too small (last character for TOP)
+    def string_similarity(s1, s2):
+        return s1.strip() == s2.strip()
+
     # Similarity score between 2 items
     def similarity(m, p):
-        # FIXME: use string distance (Levensteihn?) rather than strict equality?
-        return config['speaker_weight'] * int(m['speaker'] == p['speaker']) + config['title_weight'] * int(m['title'] == p['title'])
+        return (config['speaker_weight'] * string_similarity(m['speaker'], p['speaker'])
+                + config['title_weight'] * string_similarity(m['title'], p['title']))
 
     # Build the [m, p] matrix with scores using the Needleman-Wunsch algorithm
     # https://fr.wikipedia.org/wiki/Algorithme_de_Needleman-Wunsch
