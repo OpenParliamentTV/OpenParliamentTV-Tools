@@ -36,7 +36,7 @@ let get_basedir = () => {
         // Localhost server deployment.
         // We assume that the OpenParliamentTV-Tools and
         // OpenParliamentTV-Data-DE clones are in the same directory
-        return '../../../../../../../OpenParliamentTV-Data-DE/';
+        return '../../../../../OpenParliamentTV-Data-DE/';
     }
 };
 
