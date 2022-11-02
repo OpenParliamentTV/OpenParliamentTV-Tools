@@ -235,6 +235,8 @@
               // https://fr.wikipedia.org/wiki/Algorithme_de_Needleman-Wunsch
 
               // Initialize a m x p matrix with 0 scores
+              // We assume that media and proceedings are sorted and continuous (i.e. that
+              // item[i].index = i+1 for each item
               // (0-initialization is required only for row 0 and column 0)
               let scores = media.map(m => proceedings.map(p => similarity(m, p)));
               // let scores = media.map(m => proceedings.map(p => 0));
