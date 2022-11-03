@@ -30,7 +30,7 @@ download:
 	# $(BASEDIR)/scraper/update_media --from-proceedings "$(PROCEEDINGSDIR)" "$(MEDIADIR)" --save-raw-data
 
 forcemerge:
-	$(BASEDIR)/merger/merge_session.py --include-all-proceedings --second-stage-matching --advanced-rematch --output="$(MERGEDDIR)" "$(PROCEEDINGSDIR)" "$(MEDIADIR)"
+	$(BASEDIR)/merger/merge_session.py --output="$(MERGEDDIR)" "$(PROCEEDINGSDIR)" "$(MEDIADIR)"
 
 update: download all
 
@@ -50,7 +50,7 @@ debug:
 	$(BASEDIR)/parsers/media2json.py $< > $@
 
 %-proceedings.json: %-proceedings.xml
-	$(BASEDIR)/parsers/proceedings2json.py --include-nas $< > $@
+	$(BASEDIR)/parsers/proceedings2json.py $< > $@
 
 clean:
 	$(RM) $(MEDIADIR)/[0-9]*.json

@@ -79,8 +79,6 @@ if __name__ == "__main__":
                         help="Display debug messages")
     parser.add_argument("--from-period", type=int,
                         help="Period to fetch (mandatory)")
-    parser.add_argument("--include-nas", action="store_true",
-                        help="Include T_NaS and T_fett classes as speech information for proceedings")
     parser.add_argument("--retry-count", type=int,
                         dest="retry_count", default=0,
                         help="Max number of times to retry a media download")
@@ -90,24 +88,9 @@ if __name__ == "__main__":
     parser.add_argument("--save-raw-data", dest="save_raw_data", action="store_true",
                         default=False,
                         help="Save raw data in JSON format in addition to converted JSON data. It will be an object with 'root' (first page) and 'entries' (all entries for the period/meeting) keys.")
-    parser.add_argument("--check", action="store_true",
-                        default=False,
-                        help="Check mergeability of files")
-    parser.add_argument("--unmatched-count", action="store_true",
-                        default=False,
-                        help="Only display the number of unmatched proceeding items")
-    parser.add_argument("--include-all-proceedings", action="store_true",
-                        default=False,
-                        help="Include all proceedings-issued speeches even if they did not have a match")
-    parser.add_argument("--second-stage-matching", action="store_true",
-                        default=False,
-                        help="Do a second-stage matching using speaker names for non-matching subsequences")
-    parser.add_argument("--advanced-rematch", action="store_true",
-                        default=False,
-                        help="Try harder to realign non-matching proceeding items by skipping some of the items")
     parser.add_argument("--complete", action="store_true",
                         default=False,
-                        help="Add all necessary options for a full update (save raw data, include all proceedings)")
+                        help="Add all necessary options for a full update (save raw data)")
     parser.add_argument("--cache-dir", type=str, default=None,
                         help="Cache directory")
     parser.add_argument("--align-sentences", action="store_true",
@@ -133,12 +116,8 @@ if __name__ == "__main__":
     if args.complete:
         # Force all options
         args.save_raw_data = True
-        args.include_all_proceedings = True
-        args.second_stage_matching = True
-        args.advanced_rematch = True
         args.align_sentences = True
         args.extract_entities = True
-        args.include_nas = True
 
     args.data_dir = Path(args.data_dir)
 
