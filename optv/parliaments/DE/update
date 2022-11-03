@@ -6,6 +6,5 @@
 OUTPUT=${1?Missing output directory parameter (data base directory)}
 
 CALLDIR="$(dirname "$(readlink "$0")")"
-cd "${CALLDIR}" || { echo "Could not cd to the script directory?!?" ; exit 1 ; }
 
-python3 update_and_merge.py --complete --from-period=20 --retry-count=20 "$OUTPUT"
+python3 "${CALLDIR}/update_and_merge.py" --complete --from-period=20 --retry-count=20 "$OUTPUT"
