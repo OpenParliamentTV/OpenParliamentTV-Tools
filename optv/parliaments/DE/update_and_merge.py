@@ -1,13 +1,14 @@
 #! /usr/bin/env python3
 
 # Update media files, proceeding files and merge them
-import logging
-logger = logging.getLogger(__name__)
-
 import argparse
+import logging
+import os
 from pathlib import Path
 import shutil
 import sys
+
+logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basename(sys.argv[0]))
 
 from aligner.align_sentences import align_audiofile
 from ner.ner import extract_entities_from_file
@@ -125,7 +126,9 @@ if __name__ == "__main__":
     loglevel = logging.INFO
     if args.debug:
         loglevel = logging.DEBUG
-    logging.basicConfig(level=loglevel)
+    logging.basicConfig(level=loglevel,
+                        format='%(asctime)s %(levelname)-8s %(name)s %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
 
     if args.complete:
         # Force all options
