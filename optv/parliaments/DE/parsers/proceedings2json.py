@@ -30,8 +30,8 @@ from .common import fix_faction, fix_fullname, parse_fullname
 PROCEEDINGS_LICENSE = "Public Domain"
 PROCEEDINGS_LANGUAGE = "DE-de"
 
-SPEECH_CLASSES = set(('J', 'J_1', 'O'))
-FULL_SPEECH_CLASSES = set(('J', 'J_1', 'O', 'T_NaS', 'T_fett'))
+SPEECH_CLASSES = set(('J', 'J_1', 'O', 'Z'))
+FULL_SPEECH_CLASSES = set(('J', 'J_1', 'O', 'T_NaS', 'T_fett', 'Z'))
 
 LEADING_SPEECH = '-intro'
 TRAILING_SPEECH = '-outro'
