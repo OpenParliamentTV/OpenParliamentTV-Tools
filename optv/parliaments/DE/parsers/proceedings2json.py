@@ -30,8 +30,7 @@ from .common import fix_faction, fix_fullname, parse_fullname
 PROCEEDINGS_LICENSE = "Public Domain"
 PROCEEDINGS_LANGUAGE = "DE-de"
 
-SPEECH_CLASSES = set(('J', 'J_1', 'O', 'Z'))
-FULL_SPEECH_CLASSES = set(('J', 'J_1', 'O', 'T_NaS', 'T_fett', 'Z'))
+SPEECH_CLASSES = set(('J', 'J_1', 'O', 'T_NaS', 'T_fett', 'Z'))
 
 LEADING_SPEECH = '-intro'
 TRAILING_SPEECH = '-outro'
@@ -485,8 +484,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parse Bundestag Proceedings XML files.")
     parser.add_argument("source", type=str, nargs='?',
                         help="Source XML file")
-    parser.add_argument("--include-nas", action="store_true",
-                        help="Include T_NaS and T_fett classes as speech information")
     parser.add_argument("--uri", type=str,
                         help="Origin URI")
     parser.add_argument("--output", type=str, default="-",
@@ -502,10 +499,5 @@ if __name__ == '__main__':
     if args.debug:
         loglevel = logging.DEBUG
     logging.basicConfig(level=loglevel)
-
-    if args.include_nas:
-        # Not clean but using a global variable avoids having to pass
-        # options around, and we will determine an appropriate default afterwards
-        SPEECH_CLASSES = FULL_SPEECH_CLASSES
 
     parse_proceedings(args.source, args.output, args.uri, args)
