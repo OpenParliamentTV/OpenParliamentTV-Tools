@@ -1,10 +1,10 @@
 #! /bin/sh
 
 # Main update script - it expects only a data directory for output
-# Parliament specific options/settings are set in this file (through options passed to update_and_merge.py)
+# Parliament specific options/settings are set in this file (through options passed to workflow.py)
 
 OUTPUT=${1?Missing output directory parameter (data base directory)}
 
 CALLDIR="$(dirname "$(readlink "$0")")"
 
-python3 "${CALLDIR}/update_and_merge.py" --period=20 --retry-count=20 "$OUTPUT"
+python3 "${CALLDIR}/workflow.py" --period=20 --retry-count=20 "$OUTPUT"

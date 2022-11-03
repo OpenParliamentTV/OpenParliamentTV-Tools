@@ -17,7 +17,7 @@ from scraper.fetch_proceedings import download_plenary_protocols
 from merger.merge_session import merge_files_or_dirs
 from parsers.proceedings2json import parse_proceedings_directory
 
-def update_and_merge(args):
+def execute_workflow(args):
     media_dir = args.data_dir / "original" / "media"
     proceedings_dir = args.data_dir / "original" / "proceedings"
     merged_dir = args.cache_dir / "merged"
@@ -131,4 +131,4 @@ if __name__ == "__main__":
     else:
         args.cache_dir = Path(args.cache_dir)
 
-    update_and_merge(args)
+    execute_workflow(args)

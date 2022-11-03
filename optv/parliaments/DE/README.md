@@ -11,11 +11,12 @@ from transformed files.
 
 # General instructions
 
-The main entry point is the `update_and_merge.py` module, which will
-fetch media and proceedings data and merge files as needed. You have
-to specify the output directory as well as the period number:
+The main entry point is the `workflow.py` module, which will fetch
+media and proceedings data, parse them, merge files as needed and
+optionally apply time alignment and NER. You have to specify the
+output directory as well as the period number:
 
-`./update_and_merge.py --complete --from-period=20 data`
+`./update_and_merge.py --period=20 data`
 
 Additionally, a `Makefile` automates the download and merging phases
 and can allow more fine-grained control. You can run
