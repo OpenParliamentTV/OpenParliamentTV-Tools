@@ -22,7 +22,7 @@ def update_and_merge(args):
     update_media_directory_period(args.from_period,
                                   args.media_dir,
                                   force=args.force,
-                                  save_raw_data=args.save_raw_data,
+                                  save_raw_data=True,
                                   retry_count=args.retry_count)
 
     # Download new proceedings data
@@ -85,12 +85,6 @@ if __name__ == "__main__":
     parser.add_argument("--force", dest="force", action="store_true",
                         default=False,
                         help="Force loading of data for a meeting even if the corresponding file already exists")
-    parser.add_argument("--save-raw-data", dest="save_raw_data", action="store_true",
-                        default=False,
-                        help="Save raw data in JSON format in addition to converted JSON data. It will be an object with 'root' (first page) and 'entries' (all entries for the period/meeting) keys.")
-    parser.add_argument("--complete", action="store_true",
-                        default=False,
-                        help="Add all necessary options for a full update (save raw data)")
     parser.add_argument("--cache-dir", type=str, default=None,
                         help="Cache directory")
     parser.add_argument("--align-sentences", action="store_true",
@@ -112,12 +106,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=loglevel,
                         format='%(asctime)s %(levelname)-8s %(name)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
-
-    if args.complete:
-        # Force all options
-        args.save_raw_data = True
-        args.align_sentences = True
-        args.extract_entities = True
 
     args.data_dir = Path(args.data_dir)
 
