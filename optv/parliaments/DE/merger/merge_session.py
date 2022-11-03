@@ -52,7 +52,7 @@ def speaker_cleanup(item, default_value):
         # sorts the people list
         speaker = remove_accents(item['people'][0]['label'].lower()).replace(' von der ', ' ').replace('altersprasident ', '')
     else:
-        speaker = None
+        speaker = default_value
     return speaker
 
 def needleman_wunsch_align(proceedings, media, options):
@@ -67,7 +67,7 @@ def needleman_wunsch_align(proceedings, media, options):
     def build_index(l):
         return [
             { "index": item['agendaItem']['speechIndex'],
-              "speaker": item['people'][0]['label'] if item['people'] else "NO_SPEAKER",
+              "speaker": speaker_cleanup(item, "NO_SPEAKER"),
               "title": item['agendaItem']['officialTitle'],
             "item": item }
             for item in l
