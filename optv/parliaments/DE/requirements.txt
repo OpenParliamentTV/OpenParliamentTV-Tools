@@ -3,4 +3,5 @@ feedparser
 lxml
 spacy
 spacyopentapioca
+numpy
 aeneas
