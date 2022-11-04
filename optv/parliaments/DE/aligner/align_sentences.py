@@ -35,7 +35,7 @@ def sentence_iter(speech: dict) -> Iterable:
                     ident = f"s{speechIndex}-{contentIndex}-{bodyIndex}-{sentenceIndex}"
                     yield ident, sentence
 
-def cachedfile(speech: dict, extension: str, cachedir) -> Path:
+def cachedfile(speech: dict, extension: str, cachedir: Path) -> Path:
     """Return a filename with given extension
     """
     period = speech['electoralPeriod']['number']
@@ -44,7 +44,7 @@ def cachedfile(speech: dict, extension: str, cachedir) -> Path:
     filename = f"{period}{str(meeting).rjust(3, '0')}{speechIndex}.{extension}"
     audiodir = cachedir / "audio"
     if not audiodir.is_dir():
-        audiodir.mkdir(parent=True)
+        audiodir.mkdir(parents=True)
     return audiodir / filename
 
 def audiofile(speech: dict, cachedir: Path) -> Optional[Path]:
