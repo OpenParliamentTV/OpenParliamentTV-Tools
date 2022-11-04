@@ -13,10 +13,11 @@ from transformed files.
 
 The main entry point is the `workflow.py` module, which will fetch
 media and proceedings data, parse them, merge files as needed and
-optionally apply time alignment and NER. You have to specify the
-output directory as well as the period number:
+optionally apply time alignment (with `--align-sentences`) and NER
+(with `--extract-entities`). You have to specify at least the output
+directory as well as the period number:
 
-`./update_and_merge.py --period=20 data`
+`./workflow.py --period=20 data`
 
 Additionally, a `Makefile` automates the download and merging phases
 and can allow more fine-grained control. You can run
