@@ -39,7 +39,7 @@ of the whole media/proceedings directories.
 
 Some modules have external dependencies (for RSS parsing, sentence
 splitting...). The command `python3 -m pip install -r
-parsers/requirements.txt` will install the necessary requirements.
+requirements.txt` will install the necessary requirements.
 
 # Scraping data
 
@@ -49,7 +49,7 @@ Running `make download` will execute the 2 steps involved.
 There are for the moment 2 data sources: proceedings and media.
 
 Proceedings are fetched by the `scraper/fetch_proceedings.py` script,
-into the `data/examples/proceedings` directory.
+into the `data/original/proceedings` directory.
 
 Media data can be fetched by the `scraper/fetch_media.py` script, by
 providing period and meeting numbers - it will handle feed
