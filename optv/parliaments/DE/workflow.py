@@ -69,7 +69,7 @@ def execute_workflow(args):
             if (not aligned_file.exists() or
                 aligned_file.stat().st_mtime < merged_file.stat().st_mtime):
                 align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir)
-                publish_as_processed([ session, aligned_file ])
+                publish_as_processed([ ( session, aligned_file ) ])
 
     # NER aligned files
     if args.extract_entities:
@@ -84,7 +84,7 @@ def execute_workflow(args):
             if (not ner_file.exists() or
                 ner_file.stat().st_mtime < aligned_file.stat().st_mtime):
                 extract_entities_from_file(aligned_file, ner_file, args)
-                publish_as_processed([ session, ner_file ])
+                publish_as_processed([ ( session, ner_file ) ])
 
 if __name__ == "__main__":
 
