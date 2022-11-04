@@ -63,6 +63,8 @@ def execute_workflow(args):
             aligned_dir.mkdir(parents=True)
         for merged_file in merged_dir.glob('*-merged.json'):
             session = merged_file.name[:5]
+            if args.limit_to_period and not session.startswith(str(args.period)):
+                continue
             aligned_file = aligned_dir / f"{session}-aligned.json"
             if (not aligned_file.exists() or
                 aligned_file.stat().st_mtime < merged_file.stat().st_mtime):
@@ -76,6 +78,8 @@ def execute_workflow(args):
             ner_dir.mkdir(parents=True)
         for aligned_file in aligned_dir.glob('*-aligned.json'):
             session = aligned_file.name[:5]
+            if args.limit_to_period and not session.startswith(str(args.period)):
+                continue
             ner_file = ner_dir / f"{session}-ner.json"
             if (not ner_file.exists() or
                 ner_file.stat().st_mtime < aligned_file.stat().st_mtime):
@@ -106,6 +110,9 @@ if __name__ == "__main__":
     parser.add_argument("--download-original", action=argparse.BooleanOptionalAction,
                         default=True,
                         help="Download original files")
+    parser.add_argument("--limit-to-period", action=argparse.BooleanOptionalAction,
+                        default=True,
+                        help="Limit time align and NER to specified period files")
     parser.add_argument("--align-sentences", action="store_true",
                         default=False,
                         help="Do the sentence alignment for downloaded sentences")
