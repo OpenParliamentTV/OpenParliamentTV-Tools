@@ -5,6 +5,7 @@ import argparse
 import logging
 import os
 from pathlib import Path
+import re
 import shutil
 import sys
 
@@ -65,6 +66,8 @@ def execute_workflow(args):
             session = merged_file.name[:5]
             if args.limit_to_period and not session.startswith(str(args.period)):
                 continue
+            if args.limit_session and not re.match(args.limit_session, session):
+                continue
             aligned_file = aligned_dir / f"{session}-aligned.json"
             if (not aligned_file.exists() or
                 aligned_file.stat().st_mtime < merged_file.stat().st_mtime):
@@ -79,6 +82,8 @@ def execute_workflow(args):
         for aligned_file in aligned_dir.glob('*-aligned.json'):
             session = aligned_file.name[:5]
             if args.limit_to_period and not session.startswith(str(args.period)):
+                continue
+            if args.limit_session and not re.match(args.limit_session, session):
                 continue
             ner_file = ner_dir / f"{session}-ner.json"
             if (not ner_file.exists() or
@@ -113,6 +118,9 @@ if __name__ == "__main__":
     parser.add_argument("--limit-to-period", action=argparse.BooleanOptionalAction,
                         default=True,
                         help="Limit time align and NER to specified period files")
+    parser.add_argument("--limit-session", action="store",
+                        default="",
+                        help="Limit time align and NER to sessions matching regexp (eg 2001. for all 2001* sessions)")
     parser.add_argument("--align-sentences", action="store_true",
                         default=False,
                         help="Do the sentence alignment for downloaded sentences")
