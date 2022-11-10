@@ -9,66 +9,76 @@ import re
 import shutil
 import sys
 
+# Allow relative imports if invoked as a script
+# From https://stackoverflow.com/a/65780624/2870028
+if __package__ is None:
+    module_dir = Path(__file__).resolve().parent
+    sys.path.insert(0, str(module_dir.parent))
+    __package__ = module_dir.name
+
+from .common import Config, SessionStatus
+
 logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basename(sys.argv[0]))
 
-from aligner.align_sentences import align_audiofile
-from ner.ner import extract_entities_from_file
-from scraper.update_media import update_media_directory_period
-from scraper.fetch_proceedings import download_plenary_protocols
-from merger.merge_session import merge_files_or_dirs
-from parsers.proceedings2json import parse_proceedings_directory
+from .aligner.align_sentences import align_audiofile
+from .ner.ner import extract_entities_from_file
+from .scraper.update_media import update_media_directory_period
+from .scraper.fetch_proceedings import download_plenary_protocols
+from .merger.merge_session import merge_files_or_dirs
+from .parsers.proceedings2json import parse_proceedings_directory
 
 def execute_workflow(args):
-    media_dir = args.data_dir / "original" / "media"
-    proceedings_dir = args.data_dir / "original" / "proceedings"
-    merged_dir = args.cache_dir / "merged"
-    aligned_dir = args.cache_dir / "aligned"
-    ner_dir = args.cache_dir / "ner"
-    processed_dir = args.data_dir / "processed"
+    config = Config(args.data_dir)
 
     def publish_as_processed(sessionfile_list: list[str, Path]):
         """Finalizing step - copy produced_files into processed
         This will be called after each step that produced a correct (even
-    if incomplete) session file (merge, align, ner)
+        if incomplete) session file (merge, align, ner)
         """
         for session, path in sessionfile_list:
-            processed_file = processed_dir / f"{session}-session.json"
+            processed_file = config.file(session, 'processed')
             shutil.copyfile(path, processed_file)
 
     if args.download_original:
         logger.info(f"Downloading media and proceeding data for period {args.period}")
         # Download/parse new media data
         update_media_directory_period(args.period,
-                                      media_dir,
+                                      config.dir('media'),
                                       force=args.force,
                                       save_raw_data=True,
                                       retry_count=args.retry_count)
 
         # Download new proceedings data
-        download_plenary_protocols(proceedings_dir, fullscan=False, period=args.period)
+        download_plenary_protocols(config.dir('proceedings'),
+                                   fullscan=False,
+                                   period=args.period)
 
-    # Update proceedings that need to be updated
-    parse_proceedings_directory(proceedings_dir, args)
+        # Update proceedings that need to be updated
+        parse_proceedings_directory(config.dir('proceedings'),
+                                    args)
+
+    # FIXME: change testing logic - use config.status to check for stage in final file and execute appropriately
 
     # Produce merged data
-    logger.info(f"Merging data from {media_dir} and {proceedings_dir} into {merged_dir}")
-
+    logger.info(f"Merging data from {config.dir('media')} and {config.dir('proceedings')} into {config.dir('merged')}")
     # Produce merged data into merged_dir
-    merged_files = merge_files_or_dirs(media_dir, proceedings_dir, merged_dir, args)
+    merged_files = merge_files_or_dirs(config.dir('media'),
+                                       config.dir('proceedings'),
+                                       config.dir('merged'),
+                                       args)
     publish_as_processed(merged_files)
 
     # Time-align merged files
     if args.align_sentences:
         logger.info("Updating time-alignment for merged files")
-        if not aligned_dir.is_dir():
-            aligned_dir.mkdir(parents=True)
-        for merged_file in merged_dir.glob('*-merged.json'):
+        aligned_dir = config.dir('aligned', create=True)
+        for merged_file in config.dir('merged').glob('*-merged.json'):
             session = merged_file.name[:5]
             if args.limit_to_period and not session.startswith(str(args.period)):
                 continue
             if args.limit_session and not re.match(args.limit_session, session):
                 continue
-            aligned_file = aligned_dir / f"{session}-aligned.json"
+            aligned_file = config.file(session, 'aligned')
             if (not aligned_file.exists() or
                 aligned_file.stat().st_mtime < merged_file.stat().st_mtime):
                 align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir)
@@ -77,15 +87,14 @@ def execute_workflow(args):
     # NER aligned files
     if args.extract_entities:
         logger.info("Updating NER for aligned files")
-        if not ner_dir.is_dir():
-            ner_dir.mkdir(parents=True)
-        for aligned_file in aligned_dir.glob('*-aligned.json'):
+        ner_dir = config.dir('ner', create=True)
+        for aligned_file in config.dir('aligned').glob('*-aligned.json'):
             session = aligned_file.name[:5]
             if args.limit_to_period and not session.startswith(str(args.period)):
                 continue
             if args.limit_session and not re.match(args.limit_session, session):
                 continue
-            ner_file = ner_dir / f"{session}-ner.json"
+            ner_file = config.file(session, 'ner')
             if (not ner_file.exists() or
                 ner_file.stat().st_mtime < aligned_file.stat().st_mtime):
                 extract_entities_from_file(aligned_file, ner_file, args)
