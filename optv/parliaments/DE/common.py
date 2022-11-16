@@ -1,5 +1,8 @@
 #! /usr/bin/env python3
 
+import logging
+logger = logging.getLogger(__name__)
+
 from enum import Enum, auto
 import json
 from pathlib import Path
@@ -16,7 +19,8 @@ class SessionStatus(Enum):
 
 
 class Config:
-    def __init__(self, data_dir: Path, cache_dir: Path | None = None):
+    def __init__(self, data_dir: Path,
+                 cache_dir: Path | None = None):
         cache_dir = cache_dir or (data_dir / "cache")
         self._dir = {
             'data': data_dir,
@@ -38,6 +42,28 @@ class Config:
     def file(self, session: str, stage: str = 'processed') -> Path:
         d = self._dir[stage]
         return d / f"{session}-{stage}.json"
+
+    def is_newer(self, session: str, stage: str, than: str) -> bool:
+        """Check if the "stage" session file is newer than the "than" stage file.
+        """
+        stage_file = self.file(session, stage)
+        than_file = self.file(session, than)
+        return (not than_file.exists()
+                or (stage_file.exists()
+                    and stage_file.stat().st_mtime > than_file.stat().st_mtime))
+
+    def save_data(self, data: list, session: str, stage: str) -> Path:
+        """Serialize the given data into the appropriate file.
+
+        Return the Path of the created file.
+        """
+        logger.debug(f"Saving {session} {stage} data")
+        outfile = self.file(session, stage)
+        # Make sure the containing directory exists
+        if not outfile.parent.is_dir():
+            outfile.parent.mkdir(parents=True)
+        with open(outfile, "w") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
     def sessions(self, prefix: str = ''):
         """Return the list of current existing sessions
