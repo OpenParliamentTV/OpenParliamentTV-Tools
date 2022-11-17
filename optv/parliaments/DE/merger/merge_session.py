@@ -13,7 +13,6 @@ import itertools
 import json
 from pathlib import Path
 import sys
-from typing import Optional, Tuple, Iterable
 import unicodedata
 
 def remove_accents(input_str):
@@ -123,7 +122,7 @@ def needleman_wunsch_align(proceedings, media, options):
             j = j - 1
     return path
 
-def merge_data(proceedings, media, options):
+def merge_data(proceedings, media, options) -> list:
     """Merge data structures.
 
     If no match is found for a proceedings, we will dump the
@@ -139,87 +138,46 @@ def merge_data(proceedings, media, options):
                        for media_index, group in itertools.groupby(path, lambda i: i['media_index']) ]
     ]
 
-def matching_proceeding(mediafile: Path, proceedings_dir: Path) -> Optional[Path]:
-    p = proceedings_dir / mediafile.name.replace('media', 'proceedings')
-    if p.exists():
-        return p
-    else:
-        return None
+def merge_files(proceedings_file: Path, media_file:Path, options) -> list:
+    try:
+        with open(proceedings_file) as f:
+            proceedings = json.load(f)
+    except FileNotFoundError:
+        proceedings = None
+    try:
+        with open(media_file) as f:
+            media = json.load(f)
+    except FileNotFoundError:
+        media = None
 
-def build_pairs(proceedings_dir, media_dir) -> Iterable[Tuple[Optional[Path], Optional[Path]]]:
-    for m in sorted(media_dir.glob('[0-9]*.json')):
-        # Try to find the matching proceedings file
-        p = matching_proceeding(m, proceedings_dir)
-        yield (p, m)
-
-def merge_files(proceedings_file, media_file, options):
-    with open(proceedings_file) as f:
-        proceedings = json.load(f)
-    with open(media_file) as f:
-        media = json.load(f)
+    if media is None:
+        logger.error("No media file for session")
+        return []
+    if proceedings is None:
+        logger.debug("No proceedings - return media as temporary merged data")
+        return media
     # Order media, according to dateStart
     return merge_data(proceedings, media, options)
 
-def merge_files_or_dirs(media: Path, proceedings: Path, merged_dir: Path, args) -> list[Path]:
-    """Merge files or files from directory into merged_dir
+def merge_session(session: str, config: "Config", options) -> Path:
+    """Merge media/proceeding files for the session.
 
-    Returns a list of tuples (session:str, filename) for produced merged files.
+    Return the produced file Path
     """
-    pairs = [ (proceedings, media) ]
-    if media.is_dir() and proceedings.is_dir():
-        # Directory version. Build the pairs data structure
-        pairs = list(build_pairs(proceedings, media))
-    elif media.is_file() and proceedings.is_dir():
-        # Try to find the matching proceedings given a media file.
-        pairs = [ (matching_proceeding(media, proceedings), media) ]
-    elif media.is_dir() and proceedings.is_file():
-        logger.error("Cannot merge data without a media file")
-        return []
-        sys.exit(1)
+    media_file = config.file(session, "media")
+    proceedings_file = config.file(session, "proceedings")
 
-    output = []
-    for (p, m) in pairs:
-        if p is None:
-            logger.debug(f"Media {m.name} without proceeding. Copying file")
-            data = json.loads(m.read_text())
-        elif m is None:
-            logger.debug(f"Proceeding {p.name} without media. Copying file")
-            data = json.loads(p.read_text())
-        else:
-            logger.debug(f"Merging {p.name} and {m.name}")
-            data = merge_files(p, m, args)
+    logger.debug(f"Merging {proceedings_file.name} and {media_file.name}")
+    output = merge_files(proceedings_file, media_file, options)
 
-        if merged_dir:
-            merged_dir = Path(merged_dir)
-            if not merged_dir.is_dir():
-                merged_dir.mkdir(parents=True)
-            period = data[0]['electoralPeriod']['number']
-            meeting = data[0]['session']['number']
-            session = f"{period}{str(meeting).rjust(3, '0')}"
-            filename = f"{session}-merged.json"
-            merged_file = merged_dir / filename
-
-            # Check dates
-            # Only save if media or proceedings is newer than merged
-            if (not merged_file.exists()
-                or merged_file.stat().st_mtime < m.stat().st_mtime
-                or ( p is not None and merged_file.stat().st_mtime < p.stat().st_mtime)):
-                logger.info(f"Saving into {filename}")
-                with open(merged_file, 'w') as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
-                output.append( (session, merged_file) )
-            else:
-                logger.debug(f"{filename} seems up-to-date")
-        else:
-            json.dump(data, sys.stdout, indent=2, ensure_ascii=False)
-    return output
+    return config.save_data(output, session, "merged")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Merge proceedings and media file.")
+    parser = argparse.ArgumentParser(description="Merge proceedings and media files.")
     parser.add_argument("proceedings_file", type=str, nargs='?',
-                        help="Proceedings file or directory")
+                        help="Proceedings file")
     parser.add_argument("media_file", type=str, nargs='?',
-                        help="Media file or directory")
+                        help="Media file")
     parser.add_argument("--debug", action="store_true",
                         default=False,
                         help="Display debug messages")
@@ -235,4 +193,4 @@ if __name__ == "__main__":
         loglevel=logging.DEBUG
     logging.basicConfig(level=loglevel)
 
-    merge_files_or_dirs(Path(args.media_file), Path(args.proceedings_file), args.output, args)
+    merge_files(Path(args.media_file), Path(args.proceedings_file), args.output, args)
