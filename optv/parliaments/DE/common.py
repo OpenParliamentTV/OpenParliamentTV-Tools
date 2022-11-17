@@ -39,11 +39,15 @@ class Config:
             d.mkdir(parents=True)
         return d
 
-    def file(self, session: str, stage: str = 'processed') -> Path:
+    def file(self, session: str, stage: str = 'processed', create = False) -> Path:
         suffix = stage
         d = self._dir[stage]
         if stage == 'processed':
             suffix = 'session'
+        if create:
+            # Make sure the containing directory exists
+            if not d.is_dir():
+                d.mkdir(parents=True)
         return d / f"{session}-{suffix}.json"
 
     def is_newer(self, session: str, stage: str, than: str) -> bool:
