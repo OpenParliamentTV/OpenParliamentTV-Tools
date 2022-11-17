@@ -40,8 +40,11 @@ class Config:
         return d
 
     def file(self, session: str, stage: str = 'processed') -> Path:
+        suffix = stage
         d = self._dir[stage]
-        return d / f"{session}-{stage}.json"
+        if stage == 'processed':
+            suffix = 'session'
+        return d / f"{session}-{suffix}.json"
 
     def is_newer(self, session: str, stage: str, than: str) -> bool:
         """Check if the "stage" session file is newer than the "than" stage file.
