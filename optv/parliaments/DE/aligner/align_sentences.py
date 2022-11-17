@@ -147,13 +147,13 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
 def align_audiofile(sourcefile: Path,
                     destinationfile: Path,
                     language: str,
-                    cachedir: Path = None) -> Path:
+                    cachedir: Path = None) -> Path | None:
     with open(sourcefile) as f:
         source = json.load(f)
     output = align_audio(source, language, cachedir)
     with open(destinationfile, 'w') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
-    return destinationfile
+    return output
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Time-align speech sentences.")

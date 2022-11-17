@@ -24,20 +24,21 @@ from .aligner.align_sentences import align_audiofile
 from .ner.ner import extract_entities_from_file
 from .scraper.update_media import update_media_directory_period
 from .scraper.fetch_proceedings import download_plenary_protocols
-from .merger.merge_session import merge_files_or_dirs
+from .merger.merge_session import merge_session
 from .parsers.proceedings2json import parse_proceedings_directory
 
 def execute_workflow(args):
     config = Config(args.data_dir)
 
-    def publish_as_processed(sessionfile_list: list[str, Path]):
+    def publish_as_processed(session: str, filepath: Path) -> Path:
         """Finalizing step - copy produced_files into processed
         This will be called after each step that produced a correct (even
         if incomplete) session file (merge, align, ner)
         """
-        for session, path in sessionfile_list:
-            processed_file = config.file(session, 'processed')
-            shutil.copyfile(path, processed_file)
+        logger.warning(f"Publishing {session} from {filepath.name}")
+        processed_file = config.file(session, 'processed', create=True)
+        shutil.copyfile(filepath, processed_file)
+        return processed_file
 
     if args.download_original:
         logger.info(f"Downloading media and proceeding data for period {args.period}")
@@ -57,48 +58,67 @@ def execute_workflow(args):
         parse_proceedings_directory(config.dir('proceedings'),
                                     args)
 
-    # FIXME: change testing logic - use config.status to check for stage in final file and execute appropriately
-
     # Produce merged data
     logger.info(f"Merging data from {config.dir('media')} and {config.dir('proceedings')} into {config.dir('merged')}")
-    # Produce merged data into merged_dir
-    merged_files = merge_files_or_dirs(config.dir('media'),
-                                       config.dir('proceedings'),
-                                       config.dir('merged'),
-                                       args)
-    publish_as_processed(merged_files)
+    for session in config.sessions():
+        # Always redo the merge in case any source was updated
+        if config.is_newer(session, 'media', 'merged') or config.is_newer(session, 'proceedings', 'merged'):
+            merged_file = merge_session(session, config, args)
+            status = config.status(session)
+            # We want to directly publish this file if it did not exist
+            # or if there is no data (time, ner) to lose doing it
+            if (SessionStatus.aligned in status
+                or SessionStatus.ner in status):
+                continue
+            # If we reach here, it is either that the processed file
+            # was not present, or that it has no time/entity info, so
+            # that we will lose nothing.
+            publish_as_processed(session, merged_file)
 
-    # Time-align merged files
+    # Time-align merged files - only when specified and only for processed files
     if args.align_sentences:
         logger.info("Updating time-alignment for merged files")
-        aligned_dir = config.dir('aligned', create=True)
-        for merged_file in config.dir('merged').glob('*-merged.json'):
-            session = merged_file.name[:5]
+        for session in config.sessions():
             if args.limit_to_period and not session.startswith(str(args.period)):
                 continue
             if args.limit_session and not re.match(args.limit_session, session):
                 continue
-            aligned_file = config.file(session, 'aligned')
-            if (not aligned_file.exists() or
-                aligned_file.stat().st_mtime < merged_file.stat().st_mtime):
+            status = config.status(session)
+            if SessionStatus.aligned in status:
+                # Already aligned. Do not overwrite.
+                # If we want
+                logger.debug(f"Session {session} already aligned - not redoing")
+                continue
+            if config.is_newer(session, "merged", "aligned"):
+                logger.warning(f"Time-aligning {session}")
+                merged_file = config.file(session, 'merged')
+                aligned_file = config.file(session, 'aligned', create=True)
                 align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir)
-                publish_as_processed([ ( session, aligned_file ) ])
+                publish_as_processed(session, aligned_file)
 
     # NER aligned files
     if args.extract_entities:
         logger.info("Updating NER for aligned files")
-        ner_dir = config.dir('ner', create=True)
-        for aligned_file in config.dir('aligned').glob('*-aligned.json'):
-            session = aligned_file.name[:5]
+        for session in config.sessions():
             if args.limit_to_period and not session.startswith(str(args.period)):
                 continue
             if args.limit_session and not re.match(args.limit_session, session):
                 continue
-            ner_file = config.file(session, 'ner')
-            if (not ner_file.exists() or
-                ner_file.stat().st_mtime < aligned_file.stat().st_mtime):
-                extract_entities_from_file(aligned_file, ner_file, args)
-                publish_as_processed([ ( session, ner_file ) ])
+            status = config.status(session)
+            if SessionStatus.ner in status:
+                # Already NERed. Do not overwrite.
+                logger.debug(f"Session {session} already NERed - not redoing")
+                continue
+            if config.is_newer(session, "aligned", "ner"):
+                logger.warning(f"Extracting Named Entities for {session}")
+                source_file = config.file(session, 'aligned')
+                if not source_file.exists():
+                    # Maybe we do not have the cache for aligned
+                    # data. Use the session file in this case.
+                    source_file = config.file(session, 'processed')
+                ner_file = config.file(session, 'ner', create=True)
+                extract_entities_from_file(source_file, ner_file, args)
+                publish_as_processed(session, ner_file)
 
 if __name__ == "__main__":
 
