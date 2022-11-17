@@ -67,13 +67,14 @@ class Config:
             outfile.parent.mkdir(parents=True)
         with open(outfile, "w") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        return outfile
 
     def sessions(self, prefix: str = ''):
         """Return the list of current existing sessions
 
         The list is built from the available media source files.
         """
-        return [ f.name[4:9] for f in self.dir('media').glob(f'raw-{prefix}*-media.json') ]
+        return list(sorted(f.name[4:9] for f in self.dir('media').glob(f'raw-{prefix}*-media.json')))
 
     def status(self, session: str) -> set:
         """Return the status for the given session.
@@ -108,8 +109,15 @@ class Config:
             #                     break
             # Just test on s['debug']['align-duration']
             if s.get('debug', {}).get('align-duration'):
-                status.add('aligned')
+                status.add(SessionStatus.aligned)
             if s.get('debug', {}).get('ner-duration'):
-                status.add('ner')
+                status.add(SessionStatus.ner)
 
         return status
+
+if __name__ == '__main__':
+    import sys
+    config = Config(Path(sys.argv[1]))
+    import IPython
+    IPython.embed()
+
