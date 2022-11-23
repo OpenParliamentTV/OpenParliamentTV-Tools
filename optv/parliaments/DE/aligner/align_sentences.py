@@ -147,7 +147,7 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
 def align_audiofile(sourcefile: Path,
                     destinationfile: Path,
                     language: str,
-                    cachedir: Path = None) -> Path | None:
+                    cachedir: Path = None) -> Path:
     with open(sourcefile) as f:
         source = json.load(f)
     output = align_audio(source, language, cachedir)
