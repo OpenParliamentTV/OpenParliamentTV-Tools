@@ -50,6 +50,16 @@ class Config:
                 d.mkdir(parents=True)
         return d / f"{session}-{suffix}.json"
 
+    def data(self, session: str, stage: str = 'processed') -> list:
+        filename = self.file(session, stage)
+        if filename.exists():
+            with open(filename) as f:
+                data = json.read(f)
+        else:
+            logger.warning(f"No data for {session}-{stage}")
+            data = []
+        return data
+
     def is_newer(self, session: str, stage: str, than: str) -> bool:
         """Check if the "stage" session file is newer than the "than" stage file.
         """
@@ -58,7 +68,6 @@ class Config:
         return (not than_file.exists()
                 or (stage_file.exists()
                     and stage_file.stat().st_mtime > than_file.stat().st_mtime))
-
     def save_data(self, data: list, session: str, stage: str) -> Path:
         """Serialize the given data into the appropriate file.
 
