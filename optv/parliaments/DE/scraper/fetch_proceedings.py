@@ -70,7 +70,9 @@ def download_plenary_protocols(destination_dir: str, fullscan: bool = False, per
                         # We make sure to preserve the XML declaration
                         # at the start. If there is no XML
                         # declaration, then we put the PI first.
-                        if first_line.startswith(b'<?xml'):
+                        # Note: some files have the BOM b'\xef\xbb\xbf'
+                        # at the beginning, so we cannot test with .startswith
+                        if b'<?xml' in first_line:
                             out.write(first_line)
                             out.write(pi)
                         else:
