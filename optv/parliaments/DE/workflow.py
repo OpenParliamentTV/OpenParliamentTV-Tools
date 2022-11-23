@@ -61,6 +61,10 @@ def execute_workflow(args):
     # Produce merged data
     logger.info(f"Merging data from {config.dir('media')} and {config.dir('proceedings')} into {config.dir('merged')}")
     for session in config.sessions():
+        if args.limit_to_period and not session.startswith(str(args.period)):
+            continue
+        if args.limit_session and not re.match(args.limit_session, session):
+            continue
         # Always redo the merge in case any source was updated
         if config.is_newer(session, 'media', 'merged') or config.is_newer(session, 'proceedings', 'merged'):
             merged_file = merge_session(session, config, args)
