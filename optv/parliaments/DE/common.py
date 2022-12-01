@@ -21,7 +21,11 @@ class SessionStatus(Enum):
 class Config:
     def __init__(self, data_dir: Path,
                  cache_dir: Path = None):
-        cache_dir = cache_dir or (data_dir / "cache")
+        data_dir = Path(data_dir)
+        if cache_dir is not None:
+            cache_dir = Path(cache_dir)
+        else:
+            cache_dir = data_dir / "cache"
         self._dir = {
             'data': data_dir,
             'cache': cache_dir,
