@@ -49,11 +49,13 @@ def parse_speakers(speakers):
     """Convert a list a list of <redner> to a dict of Person data indexed by fullname
     """
     result = {}
+    identifiers = set()
     for s in speakers:
         ident = s.attrib['id']
-        if ident in result:
-            # Already parsed
+        if ident in identifiers:
+            # Already parsed/present in the list
             continue
+        identifiers.add(ident)
         firstname = s.findtext('.//vorname') or ""
         lastname = s.findtext('.//nachname') or ""
         nameaddition = s.findtext('.//namenszusatz') or ""
