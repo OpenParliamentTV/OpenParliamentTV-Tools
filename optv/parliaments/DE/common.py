@@ -54,7 +54,7 @@ class Config:
         filename = self.file(session, stage)
         if filename.exists():
             with open(filename) as f:
-                data = json.read(f)
+                data = json.load(f)
         else:
             logger.warning(f"No data for {session}-{stage}")
             data = []
