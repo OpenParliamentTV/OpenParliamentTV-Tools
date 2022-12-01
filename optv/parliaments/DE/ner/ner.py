@@ -36,10 +36,9 @@ def extract_entities(source: list, args) -> list:
             for speech in content.get('textBody', []):
                 for sentence in speech.get('sentences', []):
                     doc = nlp(sentence.get('text', ""))
-                    entities = [ dict(text=span.text,
+                    entities = [ dict(label=span.text,
                                       wid=span.kb_id_,
-                                      label=span.label_,
-                                      description=span._.description,
+                                      wtype=span.label_,
                                       score=span._.score)
                                  for span in doc.ents ]
                     sentence['entities'] = entities
