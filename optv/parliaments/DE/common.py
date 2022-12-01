@@ -121,10 +121,10 @@ class Config:
             #                     status.add('aligned')
             #                     break
             # Just test on s['debug']['align-duration']
-            if s.get('debug', {}).get('align-duration'):
-                status.add(SessionStatus.aligned)
-            if s.get('debug', {}).get('ner-duration'):
-                status.add(SessionStatus.ner)
+                if s.get('debug', {}).get('align-duration'):
+                    status.add(SessionStatus.aligned)
+                if s.get('debug', {}).get('ner-duration'):
+                    status.add(SessionStatus.ner)
 
         return status
 
