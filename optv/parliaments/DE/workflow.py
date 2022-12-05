@@ -22,13 +22,14 @@ logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basen
 
 from .aligner.align_sentences import align_audiofile
 from .ner.ner import extract_entities_from_file
+from .nel.nel import link_entities_from_file
 from .scraper.update_media import update_media_directory_period
 from .scraper.fetch_proceedings import download_plenary_protocols
 from .merger.merge_session import merge_session
 from .parsers.proceedings2json import parse_proceedings_directory
 
 def execute_workflow(args):
-    config = Config(args.data_dir)
+    config = Config(args.data_dir, nel_data_dir=args.nel_data_dir)
 
     def publish_as_processed(session: str, filepath: Path) -> Path:
         """Finalizing step - copy produced_files into processed
@@ -54,7 +55,6 @@ def execute_workflow(args):
                                    fullscan=False,
                                    period=args.period)
 
-        # Update proceedings that need to be updated
         parse_proceedings_directory(config.dir('proceedings'),
                                     args)
 
@@ -78,6 +78,28 @@ def execute_workflow(args):
             # was not present, or that it has no time/entity info, so
             # that we will lose nothing.
             publish_as_processed(session, merged_file)
+
+    # Do entity linking for people and factions in merged files
+    if args.link_entities:
+        nel_data_dir = config.dir('nel_data')
+        if nel_data_dir is None:
+            logger.error("Cannot do NEL - no data directory specified")
+        else:
+            logger.info("Linking entities with wikidata IDs")
+            for session in config.sessions():
+                if args.limit_to_period and not session.startswith(str(args.period)):
+                    continue
+                if args.limit_session and not re.match(args.limit_session, session):
+                    continue
+                status = config.status(session)
+                if SessionStatus.linked in status:
+                    continue
+                merged_file = config.file(session, 'merged')
+                logger.warning(f"Linking entities from {merged_file.name}")
+                link_entities_from_file(merged_file,
+                                        merged_file,
+                                        nel_data_dir / 'persons' / 'DE.json',
+                                        nel_data_dir / 'factions.json')
 
     # Time-align merged files - only when specified and only for processed files
     if args.align_sentences:
@@ -142,6 +164,9 @@ if __name__ == "__main__":
                         help="Force loading of data for a meeting even if the corresponding file already exists")
     parser.add_argument("--cache-dir", type=str, default=None,
                         help="Cache directory (default is DATADIR/cache")
+    parser.add_argument("--nel-data-dir", type=str, default=None,
+                        help="NEL data directory")
+
     parser.add_argument("--lang", type=str, default="deu",
                         help="Language")
 
@@ -157,6 +182,9 @@ if __name__ == "__main__":
     parser.add_argument("--align-sentences", action="store_true",
                         default=False,
                         help="Do the sentence alignment for downloaded sentences")
+    parser.add_argument("--link-entities", action=argparse.BooleanOptionalAction,
+                        default=True,
+                        help="Link People/Faction entities")
     parser.add_argument("--extract-entities", action="store_true",
                         default=False,
                         help="Do Entity extraction on aligned sessions (requires --align-sentences)")
