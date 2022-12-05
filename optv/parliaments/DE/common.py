@@ -11,8 +11,9 @@ class SessionStatus(Enum):
     media = auto()
     proceedings = auto()
     merged = auto()
-    aligned = auto()
-    ner = auto()
+    aligned = auto() # Time alignment info is present
+    linked = auto() # Wikidata id for people/factions is present
+    ner = auto() # Entities have been extracted from proceedings text
     session = auto()
     empty = auto()
     no_text = auto()
@@ -20,12 +21,14 @@ class SessionStatus(Enum):
 
 class Config:
     def __init__(self, data_dir: Path,
-                 cache_dir: Path = None):
+                 cache_dir: Path = None,
+                 nel_data_dir: Path = None):
         data_dir = Path(data_dir)
         if cache_dir is not None:
             cache_dir = Path(cache_dir)
         else:
             cache_dir = data_dir / "cache"
+        nel_data_dir = Path(nel_data_dir)
         self._dir = {
             'data': data_dir,
             'cache': cache_dir,
@@ -34,7 +37,8 @@ class Config:
             'merged': cache_dir / "merged",
             'aligned': cache_dir / "aligned",
             'ner': cache_dir / "ner",
-            'processed': data_dir / "processed"
+            'processed': data_dir / "processed",
+            'nel_data': nel_data_dir
         }
 
     def dir(self, stage: str = 'processed', create: bool = False) -> Path:
@@ -112,6 +116,12 @@ class Config:
                 data = json.load(f)
             if len(data) == 0:
                 status.add(SessionStatus.empty)
+            # Check for wid/wtype in people, in the first non-empty people list
+            for s in data:
+                if s['agendaItem'].get('people') and s['agendaItem']['people'][0].get('wid'):
+                    status.add(SessionStatus.linked)
+                    break
+            # Check for proceedingIndex information (indication that proceedings were merged)
             for s in data:
                 if s['agendaItem'].get('proceedingIndex') is None:
                     status.add(SessionStatus.no_text)
