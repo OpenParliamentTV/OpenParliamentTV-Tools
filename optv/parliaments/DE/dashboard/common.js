@@ -87,6 +87,54 @@ let normalized_data = (data) => {
     }).flat();
 };
 
+let data_status = (data) => {
+    // Return a couple (sessionid, status_set) for a given data
+
+    let session = null;
+    let status = new Set();
+    // To mirror behaviour from python
+    // We know that we are merged/session since we got the data as parameter
+    status.add('merged');
+    status.add('session');
+
+    if (data.length == 0) {
+        // If it happens, we have a problem
+        status.add('empty')
+    };
+    // Get session number from data
+    let item = data[0];
+    let sn = `${item.session.number}`.padStart(3, "0");
+    session = `${item.electoralPeriod.number}${sn}`;
+
+    // Using first speech to determine availability of align/ner data
+    if (!! item.debug) {
+        if (item.debug['align-duration'] !== undefined) {
+            status.add('aligned');
+        }
+        if (item.debug['ner-duration'] !== undefined) {
+            status.add('ner');
+        }
+    }
+    // If any speech does not have a proceedingIndex, then we have a text alignment issue
+    if (data.some(s => s.agendaItem?.proceedingIndex === undefined)) {
+        status.add('no_text');
+    }
+    // If any speech with people info does not have wikidata ids, then
+    // entitly linking should be run
+    if (data.some(s => s.people.length && s.people[0].wid !== undefined)) {
+        status.add('linked');
+    }
+
+    return [ session, status ];
+}
+
+let dataset_status = (dataset) => {
+    // Return the status corresponding to the sessions present in dataset
+    // Dataset is a list of data (session) infos i.e. lists
+    // Return a dict with keys = session id, value = status set
+    return Object.fromEntries(dataset.map(data => data_status(data)));
+}
+
 // Fast Levenshtein implementation
 // from https://github.com/gustf/js-levenshtein/blob/master/index.js
 function _min(d0, d1, d2, bx, ay)
