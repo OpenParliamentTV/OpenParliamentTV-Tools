@@ -21,7 +21,7 @@ if __package__ is None:
     sys.path.insert(0, str(module_dir.parent))
     __package__ = module_dir.name
 
-def link_entities(source: list, args, persons: dict, factions: dict) -> list:
+def link_entities(source: list, persons: dict, factions: dict) -> list:
     """Link entities from source file
     """
     for speech in source:
@@ -41,11 +41,24 @@ def link_entities(source: list, args, persons: dict, factions: dict) -> list:
                 }
     return source
 
-def link_entities_from_file(source_file, output_file, persons, factions):
+def link_entities_from_file(source_file: Path,
+                            output_file: Path,
+                            person_file: Path = None,
+                            faction_file: Path = None):
     with open(source_file) as f:
         source = json.load(f)
 
-    output = link_entities(source, args, persons, factions)
+    persons = {}
+    factions = {}
+    if person_file:
+        with open(person_file) as f:
+            # Convert to a dict for basic lookup
+            persons = dict( (p['label'], p) for p in json.load(f) )
+    if faction_file:
+        with open(faction_file) as f:
+            factions = dict( (p.get('labelAlternative', p.get('label')), p) for p in json.load(f) )
+
+    output = link_entities(source, persons, factions)
 
     with open(output_file, 'w') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
@@ -79,14 +92,7 @@ if __name__ == '__main__':
         logger.error("No reference data for persons or factions, bailing out.")
         sys.exit(1)
 
-    persons = {}
-    factions = {}
-    if args.person_data:
-        with open(args.person_data) as f:
-            # Convert to a dict for basic lookup
-            persons = dict( (p['label'], p) for p in json.load(f) )
-    if args.faction_data:
-        with open(args.faction_data) as f:
-            factions = dict( (p.get('labelAlternative', p.get('label')), p) for p in json.load(f) )
-
-    link_entities_from_file(args.source, args.output, persons, factions)
+    link_entities_from_file(Path(args.source),
+                            Path(args.output),
+                            Path(args.person_data),
+                            Path(args.faction_data))
