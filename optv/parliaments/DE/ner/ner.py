@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 import argparse
 import json
 from pathlib import Path
-from spacy.lang.de import German
+import spacy
 import sys
 import time
 
@@ -19,17 +19,19 @@ if __package__ is None:
     sys.path.insert(0, str(module_dir.parent))
     __package__ = module_dir.name
 
-# Global language model - to save load time
-nlp = German()
-if 'opentapioca' in nlp.factory_names:
-    nlp.add_pipe("opentapioca")
-else:
-    logger.error("Cannot find opentapioca spaCy factory. Cannot do NER.")
-    sys.exit(1)
 
 def extract_entities(source: list, args) -> list:
     """Extract entities from source file
+
+    It uses the args.lang parameter to specify the language
     """
+    nlp = spacy.blank(args.lang)
+    if 'opentapioca' in nlp.factory_names:
+        nlp.add_pipe("opentapioca")
+    else:
+        logger.error("Cannot find opentapioca spaCy factory. Cannot do NER.")
+        return
+
     for item in source:
         start_time = time.time()
         for content in item.get('textContents', []):
@@ -63,6 +65,8 @@ if __name__ == '__main__':
                         help="Source JSON file")
     parser.add_argument("output", type=str, nargs='?', default="-",
                         help="Output file")
+    parser.add_argument("--lang", type=str, default="deu",
+                        help="Language")
     parser.add_argument("--debug", dest="debug", action="store_true",
                         default=False,
                         help="Display debug messages")
