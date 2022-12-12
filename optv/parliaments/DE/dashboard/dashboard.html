@@ -399,6 +399,9 @@
       }
       function stats_refresh() {
           document.querySelector('.stats').replaceChildren(stats_viz());
+          // Get all data status
+          let status = dataset_status(whole_data);
+          console.log("Dataset status", status);
       }
 
       function display_filename(filename, basedir, versions) {

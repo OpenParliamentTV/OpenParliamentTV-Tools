@@ -113,7 +113,8 @@ class Config:
         if sfile.exists():
             status.add(SessionStatus.session)
             with open(sfile, 'r') as f:
-                data = json.load(f)
+                info = json.load(f)
+                data = info['data']
             if len(data) == 0:
                 status.add(SessionStatus.empty)
             # Check for wid/wtype in people, in the first non-empty people list

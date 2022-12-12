@@ -128,15 +128,18 @@ def merge_data(proceedings, media, options) -> list:
     If no match is found for a proceedings, we will dump the
     proceedings as-is.
     """
-    path = needleman_wunsch_align(proceedings, media, options)
+    path = needleman_wunsch_align(proceedings['data'], media['data'], options)
 
     # Group by media. There can be multiple proceedings
-    return [
+    speeches = [
         merge_item(group[0]['media'],
                    [ i['proceeding'] for i in group ])
         for group in [ list(group)
                        for media_index, group in itertools.groupby(path, lambda i: i['media_index']) ]
     ]
+    return { "meta": media['meta'],
+             "data": speeches
+            }
 
 def merge_files(proceedings_file: Path, media_file:Path, options) -> list:
     try:

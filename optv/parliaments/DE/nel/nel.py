@@ -32,7 +32,7 @@ def link_entities(source: list, persons: dict, factions: dict) -> list:
                 p['wid'] = persons[label]['id']
                 p['wtype'] = 'PERSON'
             faction = p.get('faction')
-            if factions.get(faction):
+            if not isinstance(faction, dict) and factions.get(faction):
                 f = factions[faction]
                 p['faction'] = {
                     'wid': f['id'],
@@ -58,8 +58,10 @@ def link_entities_from_file(source_file: Path,
         with open(faction_file) as f:
             factions = dict( (p.get('labelAlternative', p.get('label')), p) for p in json.load(f) )
 
-    output = link_entities(source, persons, factions)
+    data = link_entities(source['data'], persons, factions)
 
+    output = { "meta": source['meta'],
+               "data": data }
     with open(output_file, 'w') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 

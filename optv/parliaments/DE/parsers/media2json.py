@@ -71,7 +71,7 @@ def apply_media_fixups(entry: dict, meeting_reference: int, fixups: dict):
         entry = fixup_execute(fix, entry)
     return entry
 
-def parse_media_data(data: dict, fixups: dict = None) -> list[dict]:
+def parse_media_data(data: dict, fixups: dict = None) -> dict:
     """Parse a media-js structure
 
     It is a dict with
@@ -222,10 +222,11 @@ def parse_media_data(data: dict, fixups: dict = None) -> list[dict]:
 
     # Sort output by startDate - we have it here in ISO format so sorting is easy
     output.sort(key=lambda i: i['dateStart'])
-    # Add explicit order field
+    # Add explicit index field
     for i, item in enumerate(output):
         item['agendaItem']['speechIndex'] = i + 1
-    return output
+    return { 'meta': { 'session': str(meeting_reference) },
+             'data': output }
 
 def parse_rss(filename: str, fixups: dict) -> list[dict]:
     """Parse a RSS file.

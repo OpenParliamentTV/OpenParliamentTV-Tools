@@ -145,6 +145,7 @@ def execute_workflow(args):
                 ner_file = config.file(session, 'ner', create=True)
                 extract_entities_from_file(source_file, ner_file, args)
                 publish_as_processed(session, ner_file)
+    logger.info("Workflow done")
 
 if __name__ == "__main__":
 

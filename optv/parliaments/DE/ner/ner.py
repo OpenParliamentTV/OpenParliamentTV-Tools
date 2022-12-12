@@ -54,8 +54,11 @@ def extract_entities_from_file(source_file, output_file, args):
     with open(source_file) as f:
         source = json.load(f)
 
-    output = extract_entities(source, args)
+    data = extract_entities(source['data'], args)
 
+    output = { "meta": source['meta'],
+               "data": data
+              }
     with open(output_file, 'w') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
