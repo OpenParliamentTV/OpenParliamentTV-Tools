@@ -207,7 +207,7 @@ if __name__ == "__main__":
         loglevel=logging.DEBUG
     logging.basicConfig(level=loglevel)
 
-    output = merge_files(Path(args.media_file), Path(args.proceedings_file), args)
+    output = merge_files(Path(args.proceedings_file), Path(args.media_file), args)
     if args.output:
         d = Path(args.output) / f"{output['meta']['session']}-merged.json"
         out = open(d, 'w')
