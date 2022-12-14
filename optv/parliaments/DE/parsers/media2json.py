@@ -272,9 +272,6 @@ if __name__ == '__main__':
     if args.fixups:
         fixups = yaml.safe_load(args.fixups)
 
-    data = [ item
-             for source in args.sources
-             for item in parse_file(source, fixups) ]
-    # Sort data according to dateStart
-    data.sort(key=lambda m: m['dateStart'])
-    json.dump(data, sys.stdout, indent=2, ensure_ascii=False)
+    for source in args.sources:
+        data = parse_file(source, fixups)
+        json.dump(data, sys.stdout, indent=2, ensure_ascii=False)
