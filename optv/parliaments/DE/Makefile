@@ -29,9 +29,6 @@ download:
 	# Fetch media files corresponding to proceedings files
 	# $(BASEDIR)/scraper/update_media --from-proceedings "$(PROCEEDINGSDIR)" "$(MEDIADIR)" --save-raw-data
 
-forcemerge:
-	$(BASEDIR)/merger/merge_session.py --output="$(MERGEDDIR)" "$(PROCEEDINGSDIR)" "$(MEDIADIR)"
-
 update: download all
 
 debug:
@@ -40,8 +37,8 @@ debug:
 	-echo "MERGE DEST"
 	-echo $(MERGE_DEST)
 
-%-merged.json: ../original/proceedings/%-proceedings.json ../original/media/%-media.json
-	$(BASEDIR)/merger/merge_session.py --output=$(DATADIR)/merged $^
+%-merged.json: ../../original/proceedings/%-proceedings.json ../../original/media/%-media.json
+	$(BASEDIR)/merger/merge_session.py --output=$(DATADIR)/cache/merged $^
 
 %-media.json: %-media.xml
 	$(BASEDIR)/parsers/media2json.py $< > $@
