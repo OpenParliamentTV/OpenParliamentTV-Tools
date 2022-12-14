@@ -427,6 +427,8 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
 
             yield {
                 **session_metadata,
+                "speechIndex": speechIndex,
+                "originTextID": speech_id,
                 'agendaItem': {
                     "officialTitle": title,
                     # The human-readable title is not present in proceedings, it will be in media
@@ -434,8 +436,6 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
                 },
                 "debug": {
                 },
-                "speechIndex": speechIndex,
-                "originTextID": speech_id,
                 'people': speakers,
                 'textContents': [
                     {
