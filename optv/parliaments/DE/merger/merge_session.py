@@ -29,6 +29,14 @@ def merge_item(mediaitem, proceedingitems):
     output['debug']['proceedingIndex'] = first_proceeding['speechIndex']
     output['debug']['proceedingIndexes'] = [ p['speechIndex'] for p in proceedingitems ]
     output['debug']['mediaIndex'] = mediaitem['speechIndex']
+
+    # Merge people in case of multiple proceedings. We use a dict for
+    # de-duplication (instead of a set) so that we preserve order.
+    people_dict = dict( (person['label'], person)
+                        for p in proceedingitems
+                        for person in p['people'] )
+    output['people'] = list(people_dict.values())
+
     # Merge textContents from all proceeedings
     output['textContents'] = [ tc
                                for p in proceedingitems
