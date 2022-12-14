@@ -191,9 +191,9 @@
           document.getElementById('content').innerHTML = rendered;
       } else {
           let fname = get_session_url(session, version);
-          d3.json(fname).then(data => {
+          d3.json(fname).then(info => {
               // Convert to speeches structure
-              let speeches = data.map(speech => {
+              let speeches = info.data.map(speech => {
                   let classes = "";
                   let speech_turns = [];
                   let message = "MEDIA_ONLY";

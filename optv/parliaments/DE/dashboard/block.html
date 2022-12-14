@@ -476,11 +476,11 @@
                              d3.json(get_proceedings_url(session)) ] )
                   .then( ([media, proceedings]) => {
                       // Render template
-                      let fixup = l => l.map(item => ({ ...item,
-                                                        index: item.agendaItem.speechIndex,
-                                                        speaker: item.people[0].label,
-                                                        title: item.agendaItem.officialTitle,
-                                                      }));
+                      let fixup = info => info.data.map(item => ({ ...item,
+                                                                   index: item.agendaItem.speechIndex,
+                                                                   speaker: item.people[0].label,
+                                                                   title: item.agendaItem.officialTitle,
+                                                                 }));
                       media = fixup(media);
                       proceedings = fixup(proceedings);
                       let template = document.getElementById('template').innerHTML;

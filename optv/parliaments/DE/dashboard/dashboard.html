@@ -410,7 +410,7 @@
               .map(ver => [ ver, `${basedir}${ver}/${filename}`])
               .map(([ver, url]) => fetch(url)
                    .then(resp => resp.json())
-                   .then(data => data.map(item => {
+                   .then(data => data.data.map(item => {
                        item.version = ver;
                        return item;
                    })));
