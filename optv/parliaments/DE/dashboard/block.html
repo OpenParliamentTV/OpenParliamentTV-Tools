@@ -265,10 +265,10 @@
               let max_score = scores[i][j];
               while (i > 0 && j > 0) {
                   path.push({ media: i,
-                              proceeding: j - 1,
+                              proceeding: j,
                               score: max_score,
                               media_index: media[i].speechIndex,
-                              proceeding_index: proceedings[j - 1].speechIndex,
+                              proceeding_index: proceedings[j].speechIndex,
                               media_title: media[i].title,
                               media_speaker: media[i].speaker,
                               proceeding_title: proceedings[j].title,
@@ -286,6 +286,18 @@
                       j = j - 1;
                   }
               }
+              // Store last (first) step (i == 0 or j == 0)
+              path.push({ media: i,
+                          proceeding: j,
+                          score: max_score,
+                          media_index: media[i].speechIndex,
+                          proceeding_index: proceedings[j].speechIndex,
+                          media_title: media[i].title,
+                          media_speaker: media[i].speaker,
+                          proceeding_title: proceedings[j].title,
+                          proceeding_speaker: proceedings[j].speaker
+                        });
+
               // console.log("Scores", scores);
               return {
                   scores,
