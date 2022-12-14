@@ -120,6 +120,10 @@ def needleman_wunsch_align(proceedings, media, options):
             i = i - 1
         else:
             j = j - 1
+
+    # Reverse the path, so that is in ascending order
+    path.reverse()
+
     return path
 
 def merge_data(proceedings, media, options) -> list:
