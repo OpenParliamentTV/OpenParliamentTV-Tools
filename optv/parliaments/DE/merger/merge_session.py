@@ -26,6 +26,8 @@ def merge_item(mediaitem, proceedingitems):
 
     first_proceeding = proceedingitems[0]
 
+    output['originTextID'] = first_proceeding['originTextID']
+
     # Copy officialDateStart/End from proceedings
     output['session']['officialDateStart'] = first_proceeding['session']['officialDateStart']
     output['session']['officialDateEnd'] = first_proceeding['session']['officialDateEnd']
@@ -72,10 +74,12 @@ def needleman_wunsch_align(proceedings, media, options):
     };
     def build_index(l):
         return [
-            { "index": item['speechIndex'],
-              "speaker": speaker_cleanup(item, "NO_SPEAKER"),
-              "title": item['agendaItem']['officialTitle'],
-            "item": item }
+            {
+                "speech_index": item['speechIndex'],
+                "speaker": speaker_cleanup(item, "NO_SPEAKER"),
+                "title": item['agendaItem']['officialTitle'],
+                "item": item
+             }
             for item in l
         ]
     media_index = build_index(media)
@@ -98,7 +102,7 @@ def needleman_wunsch_align(proceedings, media, options):
     # Or 0-initialization?
     # scores = [ [ 0 for p in proceedings_index ] for m in media_index ]
 
-    # Build the score matrix
+    # Build the score matrix - start at 1 since 0 row/col has no ancestor
     for i in range(1, len(media_index)):
         for j in range(1, len(proceedings_index)):
             scores[i][j] = max( scores[i-1][j-1] + similarity(media_index[i], proceedings_index[j]),
@@ -117,9 +121,9 @@ def needleman_wunsch_align(proceedings, media, options):
                       "media": media_index[i]['item'],
                       "proceeding": proceedings_index[j]['item'],
                      })
-        diagonal = scores[i - 1][j - 1];
-        up = scores[i][j - 1];
-        left = scores[i - 1][j];
+        diagonal = scores[i - 1][j - 1]
+        up = scores[i][j - 1]
+        left = scores[i - 1][j]
         if diagonal >= up and diagonal >= left:
             i = i - 1
             j = j - 1
@@ -127,6 +131,14 @@ def needleman_wunsch_align(proceedings, media, options):
             i = i - 1
         else:
             j = j - 1
+
+    # Either i = 0 or j = 0 - add last (first) step
+    path.append({ "media_index": i,
+                  "proceeding_index": j,
+                  "score": max_score,
+                  "media": media_index[i]['item'],
+                  "proceeding": proceedings_index[j]['item'],
+                })
 
     # Reverse the path, so that is in ascending order
     path.reverse()
