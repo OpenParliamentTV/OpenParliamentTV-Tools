@@ -442,7 +442,7 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
                         "creator": metadata.findtext('.//herausgeber'),
                         "license": PROCEEDINGS_LICENSE,
                         "language": PROCEEDINGS_LANGUAGE,
-                        "originTextID": root.attrib.get('issn', ''),
+                        "originTextID": speech_id,
                         "textBody": speech,
                     }
                 ],
