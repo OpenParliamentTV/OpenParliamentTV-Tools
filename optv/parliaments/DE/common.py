@@ -119,12 +119,12 @@ class Config:
                 status.add(SessionStatus.empty)
             # Check for wid/wtype in people, in the first non-empty people list
             for s in data:
-                if s['agendaItem'].get('people') and s['agendaItem']['people'][0].get('wid'):
+                if s.get('people') and s['people'][0].get('wid'):
                     status.add(SessionStatus.linked)
                     break
             # Check for proceedingIndex information (indication that proceedings were merged)
             for s in data:
-                if s['agendaItem'].get('proceedingIndex') is None:
+                if s['debug'].get('proceedingIndex') is None:
                     status.add(SessionStatus.no_text)
                     return status
             # Trying to find at least 1 timeStart attribute

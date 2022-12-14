@@ -60,9 +60,9 @@ let get_proceedings_url = (session) => {
 
 let normalized_data = (data) => {
     return data.map(item => {
-        let pis = item.agendaItem.proceedingIndexes;
+        let pis = item.debug.proceedingIndexes;
         if (pis === undefined) {
-            pis = [ item.agendaItem.proceedingIndex || 0 ];
+            pis = [ item.debug.proceedingIndex || 0 ];
         };
         // Normalize proceedingIndex (starting at 0 rather than 1000)
         pis = pis.map(pi => pi - (pi >= 1000 ? 1000 : 0));
@@ -72,11 +72,11 @@ let normalized_data = (data) => {
 
         return pis.map(pi => ({
             "proceeding": pi,
-            "media": (item.agendaItem.mediaIndex || 0),
+            "media": (item.debug.mediaIndex || 0),
             "title": item.agendaItem.officialTitle,
             "speaker": item.people[0].label || "",
-            "url": `#speech${item.agendaItem.speechIndex}`,
-            "matching": (pi == 0 ? 'media_only' : ((item.agendaItem.mediaIndex || 0) == 0 ? 'proceeding_only' : 'matching')),
+            "url": `#speech${item.speechIndex}`,
+            "matching": (pi == 0 ? 'media_only' : ((item.debug.mediaIndex || 0) == 0 ? 'proceeding_only' : 'matching')),
             "char_count": item.textContents ? d3.sum(item.textContents.map(tc => d3.sum(tc.textBody.map(tb => tb.text.length)))) : 0,
             "word_count": item.textContents ? d3.sum(item.textContents.map(tc => d3.sum(tc.textBody.map(tb => tb.text.split(' ').length)))) : 0,
             "duration": item.media ? item.media.duration : 0,
@@ -116,7 +116,7 @@ let data_status = (data) => {
         }
     }
     // If any speech does not have a proceedingIndex, then we have a text alignment issue
-    if (data.some(s => s.agendaItem?.proceedingIndex === undefined)) {
+    if (data.some(s => s.debug.proceedingIndex === undefined)) {
         status.add('no_text');
     }
     // If any speech with people info does not have wikidata ids, then

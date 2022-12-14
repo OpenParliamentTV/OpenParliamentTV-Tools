@@ -26,7 +26,7 @@ DEFAULT_CACHEDIR = '/tmp/cache'
 def sentence_iter(speech: dict) -> Iterable:
     """Iterate over all sentences in a speech, adding a unique identifier.
     """
-    speechIndex = speech['agendaItem']['speechIndex']
+    speechIndex = speech['speechIndex']
     for contentIndex, content in enumerate(speech.get('textContents', [])):
         for bodyIndex, body in enumerate(content['textBody']):
             # Consider only 'speech' sentences
@@ -40,7 +40,7 @@ def cachedfile(speech: dict, extension: str, cachedir: Path) -> Path:
     """
     period = speech['electoralPeriod']['number']
     meeting = speech['session']['number']
-    speechIndex = speech['agendaItem']['speechIndex']
+    speechIndex = speech['speechIndex']
     filename = f"{period}{str(meeting).rjust(3, '0')}{speechIndex}.{extension}"
     audiodir = cachedir / "audio"
     if not audiodir.is_dir():
@@ -66,7 +66,7 @@ def audiofile(speech: dict, cachedir: Path) -> Optional[Path]:
         # Not yet cached file - download it
         audioURI = speech.get('media', {}).get('audioFileURI')
         if not audioURI:
-            logger.error(f"No audioFileURI for {speech['session']['number']}{speech['agendaItem']['speechIndex']}")
+            logger.error(f"No audioFileURI for {speech['session']['number']}{speech['speechIndex']}")
             return None
         logger.warning(f"Downloading {audioURI} into {audio.name}")
         try:
@@ -92,7 +92,7 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
         # Do we have proceedings data to align?
         sentence_list = [ (ident, sentence) for ident, sentence in sentence_iter(speech) ]
         if len(sentence_list) == 0:
-            logger.warning(f"No text data to align - skipping {speech['session']['number']}{speech['agendaItem']['speechIndex']}")
+            logger.warning(f"No text data to align - skipping {speech['session']['number']}{speech['speechIndex']}")
             continue
 
         # Do we have any sentence without timing information?

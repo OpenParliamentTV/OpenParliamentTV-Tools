@@ -26,15 +26,9 @@ def merge_item(mediaitem, proceedingitems):
 
     first_proceeding = proceedingitems[0]
     # Copy relevant data from proceedings
-    output['agendaItem']['proceedingIndex'] = first_proceeding['agendaItem']['speechIndex']
-    output['agendaItem']['proceedingIndexes'] = [ p['agendaItem']['speechIndex'] for p in proceedingitems ]
-    output['agendaItem']['mediaIndex'] = mediaitem['agendaItem']['speechIndex']
-    # Merge people in case of multiple proceedings
-    # FIXME: we do a simple append for now, we should filter out duplicated elements, but preserve
-    # order
-    output['people'] = [ person
-                         for p in proceedingitems
-                         for person in p['people'] ]
+    output['debug']['proceedingIndex'] = first_proceeding['speechIndex']
+    output['debug']['proceedingIndexes'] = [ p['speechIndex'] for p in proceedingitems ]
+    output['debug']['mediaIndex'] = mediaitem['speechIndex']
     # Merge textContents from all proceeedings
     output['textContents'] = [ tc
                                for p in proceedingitems
@@ -65,7 +59,7 @@ def needleman_wunsch_align(proceedings, media, options):
     };
     def build_index(l):
         return [
-            { "index": item['agendaItem']['speechIndex'],
+            { "index": item['speechIndex'],
               "speaker": speaker_cleanup(item, "NO_SPEAKER"),
               "title": item['agendaItem']['officialTitle'],
             "item": item }

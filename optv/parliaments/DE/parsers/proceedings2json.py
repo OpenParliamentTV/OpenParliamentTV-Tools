@@ -431,9 +431,11 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
                     "officialTitle": title,
                     # The human-readable title is not present in proceedings, it will be in media
                     # "title": title,
-                    "speechIndex": speechIndex,
-                    "speech_id": speech_id
                 },
+                "debug": {
+                },
+                "speechIndex": speechIndex,
+                "originTextID": speech_id,
                 'people': speakers,
                 'textContents': [
                     {

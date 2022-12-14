@@ -208,7 +208,7 @@
                   ...param
               };
               let fixup = l => l.map(item => ({ ...item,
-                                                index: item.agendaItem.speechIndex,
+                                                index: item.speechIndex,
                                                 speaker: item.people[0].label,
                                                 title: item.agendaItem.officialTitle,
                                               }));
@@ -267,8 +267,8 @@
                   path.push({ media: i,
                               proceeding: j - 1,
                               score: max_score,
-                              media_index: media[i].agendaItem.speechIndex,
-                              proceeding_index: proceedings[j - 1].agendaItem.speechIndex,
+                              media_index: media[i].speechIndex,
+                              proceeding_index: proceedings[j - 1].speechIndex,
                               media_title: media[i].title,
                               media_speaker: media[i].speaker,
                               proceeding_title: proceedings[j].title,
@@ -315,8 +315,8 @@
               let items = scores.map( (line, m) =>
                   line.map( (value, p) => ({ media: m,
                                              proceeding: p,
-                                             media_index: media[m].agendaItem.speechIndex,
-                                             proceeding_index: proceedings[m]?.agendaItem.speechIndex,
+                                             media_index: media[m].speechIndex,
+                                             proceeding_index: proceedings[m]?.speechIndex,
                                              media_title: media[m].title,
                                              media_speaker: media[m].speaker,
                                              proceeding_title: proceedings[p].title,
@@ -477,7 +477,7 @@
                   .then( ([media, proceedings]) => {
                       // Render template
                       let fixup = info => info.data.map(item => ({ ...item,
-                                                                   index: item.agendaItem.speechIndex,
+                                                                   index: item.speechIndex,
                                                                    speaker: item.people[0].label,
                                                                    title: item.agendaItem.officialTitle,
                                                                  }));

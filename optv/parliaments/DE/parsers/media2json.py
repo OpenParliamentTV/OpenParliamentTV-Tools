@@ -224,8 +224,8 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
     output.sort(key=lambda i: i['dateStart'])
     # Add explicit index field
     for i, item in enumerate(output):
-        item['agendaItem']['speechIndex'] = i + 1
     return { 'meta': { 'session': str(meeting_reference) },
+        item['speechIndex'] = i + 1
              'data': output }
 
 def parse_rss(filename: str, fixups: dict) -> list[dict]:
