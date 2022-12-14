@@ -147,7 +147,7 @@ def merge_data(proceedings, media, options) -> list:
              "data": speeches
             }
 
-def merge_files(proceedings_file: Path, media_file:Path, options) -> list:
+def merge_files(proceedings_file: Path, media_file:Path, options) -> dict:
     try:
         with open(proceedings_file) as f:
             proceedings = json.load(f)
@@ -161,7 +161,7 @@ def merge_files(proceedings_file: Path, media_file:Path, options) -> list:
 
     if media is None:
         logger.error("No media file for session")
-        return []
+        return dict()
     if proceedings is None:
         logger.debug("No proceedings - return media as temporary merged data")
         return media
@@ -202,4 +202,11 @@ if __name__ == "__main__":
         loglevel=logging.DEBUG
     logging.basicConfig(level=loglevel)
 
-    merge_files(Path(args.media_file), Path(args.proceedings_file), args.output, args)
+    output = merge_files(Path(args.media_file), Path(args.proceedings_file), args)
+    if args.output:
+        d = Path(args.output) / f"{output['meta']['session']}-merged.json"
+        out = open(d, 'w')
+    else:
+        out = sys.stdout
+    json.dump(output, out, indent=2, ensure_ascii=False)
+
