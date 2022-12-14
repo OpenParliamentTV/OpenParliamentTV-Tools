@@ -222,10 +222,17 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
 
     # Sort output by startDate - we have it here in ISO format so sorting is easy
     output.sort(key=lambda i: i['dateStart'])
+
     # Add explicit index field
     for i, item in enumerate(output):
-    return { 'meta': { 'session': str(meeting_reference) },
         item['speechIndex'] = i + 1
+
+    # Store global dateStart/dateEnd
+    sessionStart = output[0]['dateStart']
+    sessionEnd = output[-1]['dateEnd']
+    return { 'meta': { 'session': str(meeting_reference),
+                       'dateStart': sessionStart,
+                       'dateEnd': sessionEnd },
              'data': output }
 
 def parse_rss(filename: str, fixups: dict) -> list[dict]:

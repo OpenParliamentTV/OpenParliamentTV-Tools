@@ -349,8 +349,8 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
         },
         'session': {
             'number': session,
-            'dateStart': dateStart,
-            'dateEnd': dateEnd,
+            'officialDateStart': dateStart,
+            'officialDateEnd': dateEnd,
         },
     }
 
@@ -469,7 +469,10 @@ def parse_proceedings(source: str, output: str, uri: str, args):
     meeting = speech['session']['number']
     session_id = f"{period}{str(meeting).zfill(3)}"
 
-    data = { "meta": { "session": session_id },
+    data = { "meta": { "session": session_id,
+                       'officialDateStart': speech['session']['officialDateStart'],
+                       'officialDateEnd': speech['session']['officialDateEnd'],
+                      },
              "data": speeches }
     if output == "-":
         # Dump to stdout

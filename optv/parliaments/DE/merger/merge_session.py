@@ -25,6 +25,11 @@ def merge_item(mediaitem, proceedingitems):
     output = deepcopy(mediaitem)
 
     first_proceeding = proceedingitems[0]
+
+    # Copy officialDateStart/End from proceedings
+    output['session']['officialDateStart'] = first_proceeding['session']['officialDateStart']
+    output['session']['officialDateEnd'] = first_proceeding['session']['officialDateEnd']
+
     # Copy relevant data from proceedings
     output['debug']['proceedingIndex'] = first_proceeding['speechIndex']
     output['debug']['proceedingIndexes'] = [ p['speechIndex'] for p in proceedingitems ]
