@@ -24,16 +24,6 @@ from .fetch_media import download_meeting_data, download_data, get_filename
 # Max time to wait between retries (in seconds)
 RETRY_MAX_WAIT_TIME = 10
 
-def update_media_directory(proc_dir, media_dir, force=False, save_raw_data=False):
-    for proc in sorted(proc_dir.glob('*-proceedings.xml')):
-        basename = proc.name
-        period = basename[:2]
-        meeting = basename[2:5]
-        filename = get_filename(period, meeting)
-        if force or not (media_dir / filename).exists():
-            logger.debug(f"Loading {period}-{meeting} data into {filename}")
-            download_data(period, meeting, media_dir, save_raw_data=save_raw_data)
-
 def update_media_directory_period(period, media_dir, force=False, save_raw_data=False, retry_count=0):
     # Fetch root page for period. This will allow us to determine the
     # most recent meeting number and then try to fetch them when needed
@@ -77,7 +67,7 @@ def update_media_directory_period(period, media_dir, force=False, save_raw_data=
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Update media files corresponding to proceeding XML files.")
+    parser = argparse.ArgumentParser(description="Update media files.")
     parser.add_argument("media_dir", type=str, nargs='?',
                         help="Media directory (output)")
     parser.add_argument("--debug", dest="debug", action="store_true",
@@ -86,8 +76,6 @@ if __name__ == "__main__":
     parser.add_argument("--retry-count", type=int,
                         dest="retry_count", default=0,
                         help="Max number of times to retry a media download")
-    parser.add_argument("--from-proceedings", type=str,
-                        help="Proceedings directory (input)")
     parser.add_argument("--from-period", type=int,
                         help="Period to fetch")
     parser.add_argument("--force", dest="force", action="store_true",
@@ -96,16 +84,16 @@ if __name__ == "__main__":
     parser.add_argument("--save-raw-data", dest="save_raw_data", action="store_true",
                         default=False,
                         help="Save raw data in JSON format in addition to converted JSON data. It will be an object with 'root' (first page) and 'entries' (all entries for the period/meeting) keys.")
+
     args = parser.parse_args()
-    if args.media_dir is None or (args.from_proceedings is None
-                                  and args.from_period is None):
+
+    if args.media_dir is None or args.from_period is None:
         parser.print_help()
         sys.exit(1)
+
     loglevel = logging.INFO
     if args.debug:
         loglevel=logging.DEBUG
     logging.basicConfig(level=loglevel)
-    if args.from_proceedings:
-        update_media_directory(Path(args.from_proceedings), Path(args.media_dir), force=args.force, save_raw_data=args.save_raw_data)
-    elif args.from_period:
-        update_media_directory_period(args.from_period, Path(args.media_dir), force=args.force, save_raw_data=args.save_raw_data, retry_count=args.retry_count)
+
+    update_media_directory_period(args.from_period, Path(args.media_dir), force=args.force, save_raw_data=args.save_raw_data, retry_count=args.retry_count)
