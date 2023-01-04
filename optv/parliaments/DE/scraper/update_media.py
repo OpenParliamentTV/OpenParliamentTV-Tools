@@ -6,6 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import argparse
+import json
 from pathlib import Path
 from random import random
 import re
@@ -19,12 +20,29 @@ if __package__ is None:
     sys.path.insert(0, str(module_dir.parent))
     __package__ = module_dir.name
 
-from .fetch_media import download_meeting_data, download_data, get_filename
+from .fetch_media import download_meeting_data, download_data, get_filename, parse_media_data
 
 # Max time to wait between retries (in seconds)
 RETRY_MAX_WAIT_TIME = 10
 
+def update_media_from_raw(media_dir):
+    """Update media files that are older than raw media data, or non-existent
+    """
+    media_dir = Path(media_dir)
+    for raw in media_dir.glob("raw-*.json"):
+        parsed = media_dir / raw.name[4:]
+        if (not parsed.exists() or
+            raw.stat().st_mtime > parsed.stat().st_mtime):
+            # Need an update
+            with open(raw) as f:
+                raw_data = json.load(f)
+            data = parse_media_data(raw_data)
+            with open(parsed, 'w') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
 def update_media_directory_period(period, media_dir, force=False, save_raw_data=False, retry_count=0):
+    """Update the media directory by fetching items related to period.
+    """
     # Fetch root page for period. This will allow us to determine the
     # most recent meeting number and then try to fetch them when needed
     rootinfo = download_meeting_data(period, media_dir, root_only=True)
@@ -87,7 +105,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.media_dir is None or args.from_period is None:
+    if args.media_dir is None:
         parser.print_help()
         sys.exit(1)
 
@@ -96,4 +114,8 @@ if __name__ == "__main__":
         loglevel=logging.DEBUG
     logging.basicConfig(level=loglevel)
 
-    update_media_directory_period(args.from_period, Path(args.media_dir), force=args.force, save_raw_data=args.save_raw_data, retry_count=args.retry_count)
+    if args.from_period is not None:
+        update_media_directory_period(args.from_period, Path(args.media_dir), force=args.force, save_raw_data=args.save_raw_data, retry_count=args.retry_count)
+    else:
+        # Update the media directory using cached raw- files
+        update_media_from_raw(Path(args.media_dir))
