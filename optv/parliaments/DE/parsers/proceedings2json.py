@@ -187,7 +187,7 @@ def parse_ordnungpunkt(op, last_speaker: dict, last_redeid: str, session_id: str
     # Produce a virtual introduction
     introduction = list(takewhile(lambda n: n.tag in ('p', 'name'), elements))
     if introduction:
-        turns = list(parse_speech(introduction, last_speaker, f"{session_id}-{rede_id}{LEADING_SPEECH}"))
+        turns = list(parse_speech(introduction, last_speaker, f"{rede_id}{LEADING_SPEECH}"))
         if turns:
             last_speaker = last_speaker_info(turns)
             yield turns
@@ -199,7 +199,7 @@ def parse_ordnungpunkt(op, last_speaker: dict, last_redeid: str, session_id: str
             continue
         # Get the rede id from original proceedings
         rede_id = el.attrib.get('id', 'unknown_redeid')
-        turns = list(parse_speech(el, last_speaker, f"{session_id}-{rede_id}"))
+        turns = list(parse_speech(el, last_speaker, rede_id))
         if turns:
             last_speaker = last_speaker_info(turns)
             yield turns
@@ -210,7 +210,7 @@ def parse_ordnungpunkt(op, last_speaker: dict, last_redeid: str, session_id: str
         # Trailing <p> elements after last <rede>
         closing = list(reversed(list(takewhile(lambda n: n.tag in ('p', 'name'), reversed(elements)))))
         if closing:
-            turns = list(parse_speech(closing, last_speaker, f"{session_id}-{rede_id}{TRAILING_SPEECH}"))
+            turns = list(parse_speech(closing, last_speaker, f"{rede_id}{TRAILING_SPEECH}"))
             if turns:
                 last_speaker = last_speaker_info(turns)
                 yield turns
