@@ -10,6 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import argparse
+from datetime import datetime
 import json
 from pathlib import Path
 import sys
@@ -60,7 +61,9 @@ def link_entities_from_file(source_file: Path,
 
     data = link_entities(source['data'], persons, factions)
 
-    output = { "meta": source['meta'],
+    output = { "meta": { **source['meta'],
+                         "lastUpdate": datetime.now().isoformat('T', 'seconds'),
+                         "lastProcessing": "nel" },
                "data": data }
     with open(output_file, 'w') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)

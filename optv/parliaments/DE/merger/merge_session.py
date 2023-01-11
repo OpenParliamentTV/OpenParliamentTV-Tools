@@ -9,6 +9,7 @@ logger = logging.getLogger('merge_session' if __name__ == '__main__' else __name
 
 import argparse
 from copy import deepcopy
+from datetime import datetime
 import itertools
 import json
 from pathlib import Path
@@ -160,7 +161,9 @@ def merge_data(proceedings, media, options) -> list:
         for group in [ list(group)
                        for media_index, group in itertools.groupby(path, lambda i: i['media_index']) ]
     ]
-    return { "meta": media['meta'],
+    return { "meta": { **media['meta'],
+                       "lastUpdate": datetime.now().isoformat('T', 'seconds'),
+                       "lastProcessing": "merge_session" },
              "data": speeches
             }
 

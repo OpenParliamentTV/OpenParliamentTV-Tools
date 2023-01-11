@@ -138,6 +138,11 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
         t = datetime.strptime(e['itunes_duration'],"%H:%M:%S")
         delta = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
 
+        # FIXME: el['published_parsed'] in in UTC.  but TZ info is
+        # present in el['published'] and the proceedings official
+        # hours are in local time.
+
+        # But official dates are in local time.
         startdate = datetime(*e['published_parsed'][:6])
         enddate = startdate + delta
         mediaid = os.path.basename(e['link'])
@@ -231,6 +236,8 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
     sessionStart = output[0]['dateStart']
     sessionEnd = output[-1]['dateEnd']
     return { 'meta': { 'session': str(meeting_reference),
+                       "lastUpdate": datetime.now().isoformat('T', 'seconds'),
+                       "lastProcessing": "parse_media",
                        'dateStart': sessionStart,
                        'dateEnd': sessionEnd },
              'data': output }

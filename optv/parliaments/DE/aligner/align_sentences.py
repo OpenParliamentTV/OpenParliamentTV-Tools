@@ -7,6 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import argparse
+from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -150,8 +151,12 @@ def align_audiofile(sourcefile: Path,
                     cachedir: Path = None) -> Path:
     with open(sourcefile) as f:
         source = json.load(f)
-    output = { "meta": source['meta'],
-               "data": align_audio(source['data'], language, cachedir) }
+    output = { "meta": { **source['meta'],
+                         "lastUpdate": datetime.now().isoformat('T', 'seconds'),
+                         "lastProcessing": "ner",
+                         },
+               "data": align_audio(source['data'], language, cachedir)
+              }
     with open(destinationfile, 'w') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
     return output

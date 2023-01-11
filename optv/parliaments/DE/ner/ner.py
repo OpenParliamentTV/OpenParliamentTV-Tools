@@ -6,6 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import argparse
+from datetime import datetime
 import json
 from pathlib import Path
 import spacy
@@ -56,7 +57,10 @@ def extract_entities_from_file(source_file, output_file, args):
 
     data = extract_entities(source['data'], args)
 
-    output = { "meta": source['meta'],
+    output = { "meta": { **source['meta'],
+                         "lastUpdate": datetime.now().isoformat('T', 'seconds'),
+                         "lastProcessing": "ner",
+                        },
                "data": data
               }
     with open(output_file, 'w') as f:

@@ -10,6 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import argparse
+from datetime import datetime
 from itertools import takewhile
 import json
 from lxml import etree
@@ -470,6 +471,8 @@ def parse_proceedings(source: str, output: str, uri: str, args):
     session_id = f"{period}{str(meeting).zfill(3)}"
 
     data = { "meta": { "session": session_id,
+                       "lastUpdate": datetime.now().isoformat('T', 'seconds'),
+                       "lastProcessing": "parse_proceedings",
                        'officialDateStart': speech['session']['officialDateStart'],
                        'officialDateEnd': speech['session']['officialDateEnd'],
                       },
