@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basen
 from .aligner.align_sentences import align_audiofile
 from .ner.ner import extract_entities_from_file
 from .nel.nel import link_entities_from_file
-from .scraper.update_media import update_media_directory_period
+from .scraper.update_media import update_media_directory_period, update_media_from_raw
 from .scraper.fetch_proceedings import download_plenary_protocols
 from .merger.merge_session import merge_session
 from .parsers.proceedings2json import parse_proceedings_directory
@@ -55,8 +55,11 @@ def execute_workflow(args):
                                    fullscan=False,
                                    period=args.period)
 
-        parse_proceedings_directory(config.dir('proceedings'),
-                                    args)
+    # In any case, parse proceedings that need to
+    parse_proceedings_directory(config.dir('proceedings'),
+                                args)
+    # And also media
+    update_media_from_raw(config.dir('media'))
 
     # Produce merged data
     logger.info(f"Merging data from {config.dir('media')} and {config.dir('proceedings')} into {config.dir('merged')}")
