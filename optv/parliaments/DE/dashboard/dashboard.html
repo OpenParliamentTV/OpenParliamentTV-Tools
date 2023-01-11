@@ -410,10 +410,15 @@
               .map(ver => [ ver, `${basedir}${ver}/${filename}`])
               .map(([ver, url]) => fetch(url)
                    .then(resp => resp.json())
-                   .then(data => data.data.map(item => {
-                       item.version = ver;
-                       return item;
-                   })));
+                   .then(data => {
+                       if (data.data !== undefined)
+                           return data.data.map(item => {
+                               item.version = ver;
+                               return item;
+                           })
+                       else
+                           return []
+                   }));
           return Promise.all(fetches).then(datas => {
               // Merge different data files, versioning info has been added
               let viz = merged_viz(session, datas.flat());
