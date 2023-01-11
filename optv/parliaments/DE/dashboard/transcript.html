@@ -29,7 +29,7 @@
       <div class="transcript column2 left">
       {{#speeches}}
       <div class="speechHeading {{classes}}"  id="speech{{speechIndex}}">
-        <strong class="speechIndex">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ main_speaker }}</span> <em>{{message}}</em>{{#videoURI}}<a class="videolink" data-title="{{title}}" href="{{videoURI}}"> Play </a>{{/videoURI}}
+        <strong class="speechIndex" title="Proceeding {{ proceedingIndex }} - Media {{ mediaIndex }}">{{index}}</strong> <span class="speechTitle">{{title}}</span> <span class="mainSpeaker">{{ main_speaker }}</span> <em>{{message}}</em>{{#videoURI}}<a class="videolink" data-title="{{title}}" href="{{videoURI}}"> Play </a>{{/videoURI}}
       </div>
 
       {{#speech_turns}}
@@ -218,6 +218,8 @@
                   return {
                       "index": speech['speechIndex'],
                       "title": speech['agendaItem']['officialTitle'],
+                      "proceedingIndex": speech['debug']['proceedingIndex'],
+                      "mediaIndex": speech['debug']['mediaIndex'],
                       "speechIndex": speech['speechIndex'],
                       "speech_turns": speech_turns,
                       "classes": classes,
