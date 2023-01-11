@@ -193,6 +193,7 @@
           let fname = get_session_url(session, version);
           d3.json(fname).then(info => {
               // Convert to speeches structure
+              let data = info.data;
               let speeches = info.data.map(speech => {
                   let classes = "";
                   let speech_turns = [];
