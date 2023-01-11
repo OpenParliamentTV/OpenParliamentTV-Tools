@@ -135,7 +135,7 @@ def download_data(period, meeting=None, output=None, save_raw_data=False, force=
         return raw_data, []
         # import IPython; IPython.embed()
 
-    logger.warning(f"Saving {len(data)} entries into {filename}")
+    logger.warning(f"Saving {len(data['data'])} entries into {filename}")
     if output:
         with open(output_dir / filename, 'w') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
