@@ -9,6 +9,7 @@ import argparse
 from datetime import datetime
 import json
 from pathlib import Path
+import requests.exceptions
 import spacy
 import sys
 import time
@@ -38,13 +39,17 @@ def extract_entities(source: list, args) -> list:
         for content in item.get('textContents', []):
             for speech in content.get('textBody', []):
                 for sentence in speech.get('sentences', []):
-                    doc = nlp(sentence.get('text', ""))
-                    entities = [ dict(label=span.text,
-                                      wid=span.kb_id_,
-                                      wtype=span.label_,
-                                      score=span._.score)
-                                 for span in doc.ents ]
-                    sentence['entities'] = entities
+                    try:
+                        doc = nlp(sentence.get('text', ""))
+                        entities = [ dict(label=span.text,
+                                          wid=span.kb_id_,
+                                          wtype=span.label_,
+                                          score=span._.score)
+                                     for span in doc.ents ]
+                        sentence['entities'] = entities
+                    except requests.exceptions.HTTPError as e:
+                        # The opentapioca server may respond with a 503 server error
+                        logger.error(f"NER Server error: {e}")
         end_time  = time.time()
         debug = item.setdefault('debug', {})
         debug['ner-duration'] = end_time - start_time
