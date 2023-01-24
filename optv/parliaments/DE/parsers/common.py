@@ -47,6 +47,13 @@ def fix_fullname(label: str) -> str:
     # Replace multiple whitespaces
     label = re.sub(r'\s+', ' ', label)
     label = label.replace('Dr. ', '').replace('h. c. ', '').replace('Prof. ', '').replace('Graf Graf ', 'Graf ')
+    # There are 3 cases:
+    # 19060: Carsten Sieling, Bürgermeister
+    # 19099: Bodo Ramelow, Ministerpräsident (Thüringen
+    # 19104: Dietmar Woidke, Ministerpräsident (Brandenburg
+    # where a fullname has a comma with a role following. Strip it.
+    if ',' in label:
+        label, _ = label.split(',', 2)
     return label
 
 def fix_faction(label: str) -> str:
