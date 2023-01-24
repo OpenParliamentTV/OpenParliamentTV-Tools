@@ -517,4 +517,8 @@ if __name__ == '__main__':
         loglevel = logging.DEBUG
     logging.basicConfig(level=loglevel)
 
-    parse_proceedings(args.source, args.output, args.uri, args)
+    source = Path(args.source)
+    if source.is_dir():
+        parse_proceedings_directory(source, args)
+    else:
+        parse_proceedings(args.source, args.output, args.uri, args)
