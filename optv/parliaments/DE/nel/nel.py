@@ -54,7 +54,11 @@ def link_entities_from_file(source_file: Path,
     if person_file:
         with open(person_file) as f:
             # Convert to a dict for basic lookup
-            persons = dict( (p['label'], p) for p in json.load(f) )
+            for p in json.load(f):
+                persons[p['label']] = p
+                for l in p.get('altLabel', []):
+                    persons[l] = p
+
     if faction_file:
         with open(faction_file) as f:
             factions = dict( (p.get('labelAlternative', p.get('label')), p) for p in json.load(f) )
