@@ -13,7 +13,9 @@ import argparse
 from datetime import datetime
 import json
 from pathlib import Path
+import re
 import sys
+import unicodedata
 
 # Allow relative imports if invoked as a script
 # From https://stackoverflow.com/a/65780624/2870028
@@ -22,17 +24,31 @@ if __package__ is None:
     sys.path.insert(0, str(module_dir.parent))
     __package__ = module_dir.name
 
+def remove_accents(input_str):
+    nfkd_form = unicodedata.normalize('NFKD', input_str)
+    return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
+def cleanup(name):
+    if not name or isinstance(name, dict):
+        return None
+    else:
+        # Replace non-alphanumeric chars with space
+        name = re.sub('[^\w]+', ' ', name)
+        # Replace multiple whitespaces
+        name = re.sub(r'\s+', ' ', name)
+        return remove_accents(name.strip().lower())
+
 def link_entities(source: list, persons: dict, factions: dict) -> list:
     """Link entities from source file
     """
     for speech in source:
-        for p in speech['people']:
-            label = p['label']
+        for p in speech.get('people', []):
+            label = cleanup(p['label'])
             if persons.get(label):
                 # Found exact match
                 p['wid'] = persons[label]['id']
                 p['wtype'] = 'PERSON'
-            faction = p.get('faction')
+            faction = cleanup(p.get('faction'))
             if not isinstance(faction, dict) and factions.get(faction):
                 f = factions[faction]
                 p['faction'] = {
@@ -42,30 +58,36 @@ def link_entities(source: list, persons: dict, factions: dict) -> list:
                 }
     return source
 
-def link_entities_from_file(source_file: Path,
-                            output_file: Path,
-                            person_file: Path = None,
-                            faction_file: Path = None):
-    with open(source_file) as f:
-        source = json.load(f)
-
+def get_nel_data(person_file: Path = None,
+                 faction_file: Path = None):
     persons = {}
     factions = {}
     if person_file:
         with open(person_file) as f:
             # Convert to a dict for basic lookup
             for p in json.load(f):
-                persons[p['label']] = p
+                persons[cleanup(p['label'])] = p
                 # altLabel may be a string or a list (if multiple strings).
                 altLabel = p.get('altLabel', [])
                 if isinstance(altLabel, str):
                     altLabel = [ altLabel ]
                 for l in altLabel:
-                    persons[l] = p
+                    persons[cleanup(l)] = p
 
     if faction_file:
         with open(faction_file) as f:
-            factions = dict( (p.get('labelAlternative', p.get('label')), p) for p in json.load(f) )
+            for p in json.load(f):
+                factions[cleanup(p['label'])] = p
+                if p.get('labelAlternative'):
+                    factions[cleanup(p.get('labelAlternative'))] = p
+    return persons, factions
+
+def link_entities_from_file(source_file: Path,
+                            output_file: Path,
+                            persons: dict,
+                            factions: dict):
+    with open(source_file) as f:
+        source = json.load(f)
 
     data = link_entities(source['data'], persons, factions)
 
@@ -73,8 +95,15 @@ def link_entities_from_file(source_file: Path,
                          "lastUpdate": datetime.now().isoformat('T', 'seconds'),
                          "lastProcessing": "nel" },
                "data": data }
+    logger.info(f"Writing {output_file.name}")
     with open(output_file, 'w') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
+
+def link_entities_from_directory(source_dir: Path,
+                                 persons: dict,
+                                 factions: dict):
+    for source in sorted(source_dir.glob('*.json')):
+        link_entities_from_file(source, source, persons, factions)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Link Named Entities from session file.")
@@ -105,7 +134,15 @@ if __name__ == '__main__':
         logger.error("No reference data for persons or factions, bailing out.")
         sys.exit(1)
 
-    link_entities_from_file(Path(args.source),
-                            Path(args.output),
-                            Path(args.person_data),
-                            Path(args.faction_data))
+    persons, factions = get_nel_data(Path(args.person_data),
+                                     Path(args.faction_data))
+
+    source = Path(args.source)
+    output = Path(args.output)
+    if source.is_dir():
+        link_entities_from_directory(source, persons, factions)
+    else:
+        link_entities_from_file(source,
+                                output,
+                                persons,
+                                factions)
