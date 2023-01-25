@@ -41,11 +41,13 @@ class Config:
             'nel_data': nel_data_dir
         }
 
+
     def dir(self, stage: str = 'processed', create: bool = False) -> Path:
         d = self._dir[stage]
         if create and not d.is_dir():
             d.mkdir(parents=True)
         return d
+
 
     def file(self, session: str, stage: str = 'processed', create = False) -> Path:
         suffix = stage
@@ -58,6 +60,7 @@ class Config:
                 d.mkdir(parents=True)
         return d / f"{session}-{suffix}.json"
 
+
     def data(self, session: str, stage: str = 'processed') -> list:
         filename = self.file(session, stage)
         if filename.exists():
@@ -68,6 +71,7 @@ class Config:
             data = []
         return data
 
+
     def is_newer(self, session: str, stage: str, than: str) -> bool:
         """Check if the "stage" session file is newer than the "than" stage file.
         """
@@ -76,6 +80,8 @@ class Config:
         return (not than_file.exists()
                 or (stage_file.exists()
                     and stage_file.stat().st_mtime > than_file.stat().st_mtime))
+
+
     def save_data(self, data: list, session: str, stage: str) -> Path:
         """Serialize the given data into the appropriate file.
 
@@ -90,12 +96,14 @@ class Config:
             json.dump(data, f, indent=2, ensure_ascii=False)
         return outfile
 
+
     def sessions(self, prefix: str = ''):
         """Return the list of current existing sessions
 
         The list is built from the available media source files.
         """
         return list(sorted(f.name[4:9] for f in self.dir('media').glob(f'raw-{prefix}*-media.json')))
+
 
     def status(self, session: str) -> set:
         """Return the status for the given session.
