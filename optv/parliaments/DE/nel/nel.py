@@ -33,7 +33,7 @@ def cleanup(name):
         return None
     else:
         # Replace non-alphanumeric chars with space
-        name = re.sub('[^\w]+', ' ', name)
+        name = re.sub('[^A-Za-z]+', ' ', name)
         # Replace multiple whitespaces
         name = re.sub(r'\s+', ' ', name)
         return remove_accents(name.strip().lower())
