@@ -140,6 +140,14 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
         debug = speech.setdefault('debug', {})
         debug['align-duration'] = end_time - start_time
 
+        # Store 'aligned' state in 'media'
+
+        # Are there any aligned sentences in the speech?
+        sentence_list = [ (ident, sentence)
+                          for ident, sentence in sentence_iter(speech)
+                          if sentence.get('timeStart') is not None ]
+        speech['media']['aligned'] = (len(sentence_list) > 0)
+
         # Cleanup generated files (keep cached audio)
         sentence_file.unlink()
 
