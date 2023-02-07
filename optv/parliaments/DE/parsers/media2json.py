@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import feedparser
 import json
 import os
@@ -138,12 +138,29 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
         t = datetime.strptime(e['itunes_duration'],"%H:%M:%S")
         delta = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
 
-        # FIXME: el['published_parsed'] in in UTC.  but TZ info is
+        # FIXME: el['published_parsed'] in in UTC.  But TZ info is
         # present in el['published'] and the proceedings official
-        # hours are in local time.
-
-        # But official dates are in local time.
+        # hours (sitzung-start-uhrzeit/sitzung-ende-uhrzeit) are in
+        # local time. So get the UTC offset from media, and we will
+        # add this information to the proceedings one.
         startdate = datetime(*e['published_parsed'][:6])
+
+        # Timezone info is not preserved by feedparser, re-add it:
+        # Get UTC offset from el['published']
+        utc_offset = e['published'].strip()[-5:]
+        m = re.match('^([+-])(\d\d)(\d\d)$', utc_offset)
+        if m:
+            sign, hours, minutes = m.groups()
+            # Found a valid UTC offset - we should make the startdate
+            # aware
+            utc_delta = timedelta(hours=int(f"{sign}{hours}"),
+                                  minutes=int(f"{sign}{minutes}"))
+            tz = timezone(utc_delta)
+            # We add the utc_delta to naive startdate, so that it
+            # corresponds to the tzinfo we replace after.
+            startdate = startdate + utc_delta
+            startdate = startdate.replace(tzinfo=tz)
+
         enddate = startdate + delta
         mediaid = os.path.basename(e['link'])
 
