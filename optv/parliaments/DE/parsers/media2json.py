@@ -280,6 +280,19 @@ def parse_file(filename: str, fixups: dict) -> list[dict]:
         logger.error(f"Unable to determine file type for {filename}")
         return []
 
+def parse_media_directory(directory: Path):
+    """Update parsed versions of media files.
+    """
+    for source in directory.glob('raw-*.json'):
+        output_file = source.parent / source.name[4:]
+        # If the output file does not exist, or is older than source file:
+        if not output_file.exists() or output_file.stat().st_mtime < source.stat().st_mtime:
+            source_data = json.loads(source.read_text())
+            data = parse_media_data(source_data)
+            logger.info(f"Converting {source.name}")
+            with open(output_file, 'w') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parse Bundestag Media XML files or raw JSON files.")
     parser.add_argument("sources", type=str, nargs='*',
@@ -304,5 +317,9 @@ if __name__ == '__main__':
         fixups = yaml.safe_load(args.fixups)
 
     for source in args.sources:
-        data = parse_file(source, fixups)
-        json.dump(data, sys.stdout, indent=2, ensure_ascii=False)
+        source = Path(source)
+        if source.is_dir():
+            parse_media_directory(source)
+        else:
+            data = parse_file(source, fixups)
+            json.dump(data, sys.stdout, indent=2, ensure_ascii=False)
