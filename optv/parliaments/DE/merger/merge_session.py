@@ -166,6 +166,25 @@ def merge_data(proceedings, media, options) -> list:
                        for media_index, group in itertools.groupby(path, lambda i: i['media_index']) ]
     ]
 
+    # Add linkedMediaIndexes info - it indicates the cases where the
+    # same proceeding has been linked with multiple media items.
+
+    # For this case to be properly handled, we should split the
+    # proceedings in the media (through speech recognition and text
+    # alignment).
+    proceeding2media = {}
+    for speech in speeches:
+        mid = speech['debug']['mediaIndex']
+        for pi in speech['debug']['proceedingIndexes']:
+            proceeding2media.setdefault(pi, set()).add(mid)
+    # Now that we have built the index, put the info in each speech
+    for speech in speeches:
+        mid = speech['debug']['mediaIndex']
+        linkedMediaIndexes = list(set(mid
+                                      for pid in speech['debug']['proceedingIndexes']
+                                      for mid in proceeding2media[pid]))
+        speech['debug']['linkedMediaIndexes'] = linkedMediaIndexes
+
     # Let's fix dateStart/dateEnd: the official info is in proceedings
     # (sitzung-start/ende-uhrzeit), but the UTC offset is only defined
     # in media timestamps.
