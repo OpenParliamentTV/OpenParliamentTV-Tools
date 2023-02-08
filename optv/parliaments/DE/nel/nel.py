@@ -49,8 +49,9 @@ def link_entities(source: list, persons: dict, factions: dict) -> list:
                 p['wid'] = persons[label]['id']
                 p['wtype'] = 'PERSON'
             faction = cleanup(p.get('faction'))
-            if not isinstance(faction, dict) and factions.get(faction):
-                f = factions[faction]
+            if not isinstance(faction, dict):
+                # Set a default value wid = '' for undefined elements
+                f = factions.get(faction, { 'id': '' })
                 p['faction'] = {
                     'wid': f['id'],
                     'label': faction,
