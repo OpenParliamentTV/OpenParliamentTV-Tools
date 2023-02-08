@@ -270,9 +270,10 @@ def parse_rss(filename: str, fixups: dict) -> list[dict]:
 def parse_file(filename: str, fixups: dict) -> list[dict]:
     """Allow to parse either .xml files for raw .json files
     """
-    if filename.endswith('.xml'):
+    filename = Path(filename)
+    if filename.suffix == '.xml':
         return parse_rss(filename, fixups)
-    elif filename.endswith('.json'):
+    elif filename.suffix == '.json':
         with open(filename) as f:
             raw_data = json.load(f)
         return parse_media_data(raw_data, fixups)
@@ -283,7 +284,7 @@ def parse_file(filename: str, fixups: dict) -> list[dict]:
 def parse_media_directory(directory: Path):
     """Update parsed versions of media files.
     """
-    for source in directory.glob('raw-*.json'):
+    for source in sorted(directory.glob('raw-*.json')):
         output_file = source.parent / source.name[4:]
         # If the output file does not exist, or is older than source file:
         if not output_file.exists() or output_file.stat().st_mtime < source.stat().st_mtime:
