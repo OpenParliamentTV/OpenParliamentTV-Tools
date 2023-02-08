@@ -13,6 +13,7 @@ from datetime import datetime
 import itertools
 import json
 from pathlib import Path
+import re
 import sys
 import unicodedata
 
@@ -30,8 +31,8 @@ def merge_item(mediaitem, proceedingitems):
     output['originTextID'] = first_proceeding['originTextID']
 
     # Copy officialDateStart/End from proceedings
-    output['session']['officialDateStart'] = first_proceeding['session']['officialDateStart']
-    output['session']['officialDateEnd'] = first_proceeding['session']['officialDateEnd']
+    output['session']['dateStart'] = first_proceeding['session']['dateStart']
+    output['session']['dateEnd'] = first_proceeding['session']['dateEnd']
 
     # Copy relevant data from proceedings
     output['debug']['proceedingIndex'] = first_proceeding['speechIndex']
@@ -146,6 +147,9 @@ def needleman_wunsch_align(proceedings, media, options):
 
     return path
 
+def is_utc_offset(s: str) -> bool:
+    return re.match('^[+-]\d\d:\d\d$', s)
+
 def merge_data(proceedings, media, options) -> list:
     """Merge data structures.
 
@@ -161,7 +165,25 @@ def merge_data(proceedings, media, options) -> list:
         for group in [ list(group)
                        for media_index, group in itertools.groupby(path, lambda i: i['media_index']) ]
     ]
-    return { "meta": { **media['meta'],
+
+    # Let's fix dateStart/dateEnd: the official info is in proceedings
+    # (sitzung-start/ende-uhrzeit), but the UTC offset is only defined
+    # in media timestamps.
+    utc_offset = media['meta']['dateStart'][-6:]
+    # Check that we actually have a UTC offset
+    if is_utc_offset(utc_offset) and not is_utc_offset(proceedings['meta']['dateStart'][-6:]):
+        # Simply copy the UTC offset string at the end.
+        dateStart = proceedings['meta']['dateStart'] + utc_offset
+        dateEnd = proceedings['meta']['dateEnd'] + utc_offset
+
+    # Update session info in all speeches
+    for speech in speeches:
+        speech['session']['dateStart'] = dateStart
+        speech['session']['dateEnd'] = dateEnd
+
+    return { "meta": { **proceedings['meta'],
+                       "dateStart": dateStart,
+                       "dateEnd": dateEnd,
                        "lastUpdate": datetime.now().isoformat('T', 'seconds'),
                        "lastProcessing": "merge_session" },
              "data": speeches
@@ -222,7 +244,10 @@ if __name__ == "__main__":
         loglevel=logging.DEBUG
     logging.basicConfig(level=loglevel)
 
-    output = merge_files(Path(args.proceedings_file), Path(args.media_file), args)
+    p = Path(args.proceedings_file)
+    m = Path(args.media_file)
+
+    output = merge_files(p, m, args)
     if args.output:
         d = Path(args.output) / f"{output['meta']['session']}-merged.json"
         out = open(d, 'w')
