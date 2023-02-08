@@ -80,7 +80,7 @@ def parse_speakers(speakers):
         nameaddition = s.findtext('.//namenszusatz') or ""
         fullname = f"{firstname} {nameaddition} {lastname}"
         fullname, status = parse_fullname(fullname)
-        faction = s.findtext('.//fraktion') or ""
+        faction = fix_faction(s.findtext('.//fraktion') or "")
         # Persons can be without any party (independent) but join a faction. So we cannot assume any correspondence between both.
         #party = faction.split('/')[0]
 
@@ -88,9 +88,12 @@ def parse_speakers(speakers):
             'fullname': fullname,
             'firstname': firstname,
             'lastname': lastname,
-            'faction': fix_faction(faction),
             'identifier': ident
         }
+        # Add faction attribute if it is not empty
+        if faction:
+            result[fullname]['faction'] = faction
+
     return result
 
 def split_sentences(paragraph: str) -> list:

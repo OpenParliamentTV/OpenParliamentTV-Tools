@@ -221,14 +221,14 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
             else:
                 faction = full_faction
                 role = None
-            item['people'] = [
-                {
-                    'label': fix_fullname(metadata.get('fullname', '')),
-                    'faction': fix_faction(faction),
-                    'context': 'main-speaker',
-                    'role': fix_role(role),
-                }
-            ]
+            person = {
+                'label': fix_fullname(metadata.get('fullname', '')),
+                'context': 'main-speaker',
+                'role': fix_role(role),
+            }
+            if faction:
+                person['faction'] = fix_faction(faction)
+            item['people'] = [ person ]
             if metadata.get('session_info') is not None:
                 # According to https://github.com/OpenParliamentTV/OpenParliamentTV-Parsers/issues/1
                 # we should strip the Sitzung prefix from the session_info
