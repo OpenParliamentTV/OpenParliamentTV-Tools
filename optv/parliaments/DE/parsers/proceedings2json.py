@@ -39,12 +39,30 @@ CLOSING_SPEECH = '-closing'
 VIRTUAL_SPEECH = '-post'
 
 ddmmyyyy_re = re.compile('(?P<dd>\d\d)\.(?P<mm>\d\d)\.(?P<yyyy>\d\d\d\d)')
+time_re = re.compile('(?P<h>\d?\d)[\.:](?P<m>\d\d)')
 
 # Global language model - to save load time
 nlp = German()
 # sentencizer is a rule-based sentencizer. It has less dependencies
 # than the model-based one.
 nlp.add_pipe("sentencizer")
+
+def fix_time(t: str) -> str:
+    """Fix a sitzung-start/ende-uhrzeit
+
+    Return a ISO-formatted timecode (with :00 seconds if needed)
+
+    It sometimes has wrong separator, wrong 0-padded info or spurious
+    data (e.g. "13.00 Uhr" in 19117) in some files
+    """
+    match = time_re.match(t)
+    if match:
+        h = int(match['h'])
+        m = int(match['m'])
+        return f"{h:02}:{m:02}:00"
+    else:
+        logger.warning(f"Error in timecode: {t}")
+        return f"ERROR:{t}"
 
 def parse_speakers(speakers):
     """Convert a list a list of <redner> to a dict of Person data indexed by fullname
@@ -320,18 +338,16 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
 
     date = ddmmyyyy_to_iso(root.attrib.get('sitzung-datum', ''))
     nextDate = ddmmyyyy_to_iso(root.attrib.get('sitzung-naechste-datum', ''))
-    timeStart = root.attrib.get('sitzung-start-uhrzeit', '')
-    if ' ' in timeStart:
-        # Fix wrong format ("13.00 Uhr" in 19117) from some files
-        timeStart = timeStart.split(' ')[0]
-    timeEnd = root.attrib.get('sitzung-ende-uhrzeit', '')
-    if ' ' in timeEnd:
-        # Fix wrong format ("13.00 Uhr" in 19117) from some files
-        timeEnd = timeEnd.split(' ')[0]
+    timeStart = fix_time(root.attrib.get('sitzung-start-uhrzeit', ''))
+    timeEnd = fix_time(root.attrib.get('sitzung-ende-uhrzeit', ''))
 
+    # Note: these are local time, naive timestamps.
+    # We will get the UTC offset info from media and update the dates
+    # in the merging phase.
     dateStart = f"{date}T{timeStart}"
     dateEnd = f"{date}T{timeEnd}"
-    if time_to_int(timeEnd) < time_to_int(timeStart):
+    # String comparison works correctly since we 0-padded it.
+    if timeEnd < timeStart:
         # end time < start time: this is a session that went after
         # midnight, and ends on the next day - fix the dateEnd
         dateEnd = f"{nextDate}T{timeEnd}"
@@ -350,8 +366,8 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
         },
         'session': {
             'number': session,
-            'officialDateStart': dateStart,
-            'officialDateEnd': dateEnd,
+            'dateStart': dateStart,
+            'dateEnd': dateEnd,
         },
     }
 
@@ -473,8 +489,8 @@ def parse_proceedings(source: str, output: str, uri: str, args):
     data = { "meta": { "session": session_id,
                        "lastUpdate": datetime.now().isoformat('T', 'seconds'),
                        "lastProcessing": "parse_proceedings",
-                       'officialDateStart': speech['session']['officialDateStart'],
-                       'officialDateEnd': speech['session']['officialDateEnd'],
+                       'dateStart': speech['session']['dateStart'],
+                       'dateEnd': speech['session']['dateEnd'],
                       },
              "data": speeches }
     if output == "-":
