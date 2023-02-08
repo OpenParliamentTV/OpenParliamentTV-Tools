@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basen
 
 from .aligner.align_sentences import align_audiofile
 from .ner.ner import extract_entities_from_file
-from .nel.nel import link_entities_from_file
+from .nel.nel import link_entities_from_file, get_nel_data
 from .scraper.update_media import update_media_directory_period, update_media_from_raw
 from .scraper.fetch_proceedings import download_plenary_protocols
 from .merger.merge_session import merge_session
@@ -88,6 +88,8 @@ def execute_workflow(args):
         if nel_data_dir is None:
             logger.error("Cannot do NEL - no data directory specified")
         else:
+            persons, factions = get_nel_data(nel_data_dir / 'persons' / 'DE.json',
+                                             nel_data_dir / 'factions.json')
             logger.info("Linking entities with wikidata IDs")
             for session in config.sessions():
                 if args.limit_to_period and not session.startswith(str(args.period)):
@@ -101,8 +103,7 @@ def execute_workflow(args):
                 logger.warning(f"Linking entities from {merged_file.name}")
                 link_entities_from_file(merged_file,
                                         merged_file,
-                                        nel_data_dir / 'persons' / 'DE.json',
-                                        nel_data_dir / 'factions.json')
+                                        persons, factions)
 
     # Time-align merged files - only when specified and only for processed files
     if args.align_sentences:
