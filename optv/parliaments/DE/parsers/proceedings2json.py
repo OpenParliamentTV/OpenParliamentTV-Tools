@@ -428,7 +428,7 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
                         "firstname": info['firstname'],
                         "lastname": info['lastname'],
                         "context": status,
-                        "faction": info['faction'],
+                        "faction": info.get('faction', ''),
                     }
                 else:
                     return {
@@ -509,7 +509,7 @@ def parse_proceedings(source: str, output: str, uri: str, args):
 def parse_proceedings_directory(directory: Path, args):
     """Update parsed versions of proceedings files.
     """
-    for source in directory.glob('*.xml'):
+    for source in sorted(directory.glob('*.xml')):
         output_file = get_parsed_proceedings_filename(source, directory)
         # If the output file does not exist, or is older than source file:
         if not output_file.exists() or output_file.stat().st_mtime < source.stat().st_mtime:
