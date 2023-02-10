@@ -224,8 +224,9 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
             person = {
                 'label': fix_fullname(metadata.get('fullname', '')),
                 'context': 'main-speaker',
-                'role': fix_role(role),
             }
+            if role is not None:
+                person['role'] = fix_role(role)
             if faction:
                 person['faction'] = fix_faction(faction)
             item['people'] = [ person ]
