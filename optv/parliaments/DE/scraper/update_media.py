@@ -29,7 +29,7 @@ def update_media_from_raw(media_dir):
     """Update media files that are older than raw media data, or non-existent
     """
     media_dir = Path(media_dir)
-    for raw in media_dir.glob("raw-*.json"):
+    for raw in sorted(media_dir.glob("raw-*.json")):
         parsed = media_dir / raw.name[4:]
         if (not parsed.exists() or
             raw.stat().st_mtime > parsed.stat().st_mtime):
