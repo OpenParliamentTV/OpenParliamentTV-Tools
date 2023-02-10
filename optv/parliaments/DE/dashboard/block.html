@@ -286,17 +286,20 @@
                       j = j - 1;
                   }
               }
-              // Store last (first) step (i == 0 or j == 0)
-              path.push({ media: i,
-                          proceeding: j,
-                          score: max_score,
-                          media_index: media[i].speechIndex,
-                          proceeding_index: proceedings[j].speechIndex,
-                          media_title: media[i].title,
-                          media_speaker: media[i].speaker,
-                          proceeding_title: proceedings[j].title,
-                          proceeding_speaker: proceedings[j].speaker
-                        });
+              // Store last steps (to reach first media)
+              while (i >= 0) {
+                  path.push({ media: i,
+                              proceeding: j,
+                              score: max_score,
+                              media_index: media[i].speechIndex,
+                              proceeding_index: proceedings[j].speechIndex,
+                              media_title: media[i].title,
+                              media_speaker: media[i].speaker,
+                              proceeding_title: proceedings[j].title,
+                              proceeding_speaker: proceedings[j].speaker
+                            });
+                  i = i -1;
+              }
 
               // console.log("Scores", scores);
               return {
@@ -486,13 +489,15 @@
           } else {
               Promise.all( [ d3.json(get_media_url(session)),
                              d3.json(get_proceedings_url(session)) ] )
-                  .then( ([media, proceedings]) => {
+                  .then( ([imedia, iproceedings]) => {
+                      let media = imedia.data;
+                      let proceedings = iproceedings.data;
                       // Render template
-                      let fixup = info => info.data.map(item => ({ ...item,
-                                                                   index: item.speechIndex,
-                                                                   speaker: item.people[0].label,
-                                                                   title: item.agendaItem.officialTitle,
-                                                                 }));
+                      let fixup = info => info.map(item => ({ ...item,
+                                                              index: item.speechIndex,
+                                                              speaker: item.people[0].label,
+                                                              title: item.agendaItem.officialTitle,
+                                                            }));
                       media = fixup(media);
                       proceedings = fixup(proceedings);
                       let template = document.getElementById('template').innerHTML;
