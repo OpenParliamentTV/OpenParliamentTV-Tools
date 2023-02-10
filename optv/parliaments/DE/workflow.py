@@ -97,7 +97,7 @@ def execute_workflow(args):
                 if args.limit_session and not re.match(args.limit_session, session):
                     continue
                 status = config.status(session)
-                if SessionStatus.linked in status:
+                if SessionStatus.linked in status and not args.force:
                     continue
                 merged_file = config.file(session, 'merged')
                 logger.warning(f"Linking entities from {merged_file.name}")
@@ -114,12 +114,12 @@ def execute_workflow(args):
             if args.limit_session and not re.match(args.limit_session, session):
                 continue
             status = config.status(session)
-            if SessionStatus.aligned in status:
+            if SessionStatus.aligned in status and not args.force:
                 # Already aligned. Do not overwrite.
                 # If we want
                 logger.debug(f"Session {session} already aligned - not redoing")
                 continue
-            if config.is_newer(session, "merged", "aligned"):
+            if config.is_newer(session, "merged", "aligned") or args.force:
                 logger.warning(f"Time-aligning {session}")
                 merged_file = config.file(session, 'merged')
                 aligned_file = config.file(session, 'aligned', create=True)
@@ -135,11 +135,11 @@ def execute_workflow(args):
             if args.limit_session and not re.match(args.limit_session, session):
                 continue
             status = config.status(session)
-            if SessionStatus.ner in status:
+            if SessionStatus.ner in status and not args.force:
                 # Already NERed. Do not overwrite.
                 logger.debug(f"Session {session} already NERed - not redoing")
                 continue
-            if config.is_newer(session, "aligned", "ner"):
+            if config.is_newer(session, "aligned", "ner") or args.force:
                 logger.warning(f"Extracting Named Entities for {session}")
                 source_file = config.file(session, 'aligned')
                 if not source_file.exists():
