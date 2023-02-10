@@ -134,13 +134,24 @@ def needleman_wunsch_align(proceedings, media, options):
         else:
             j = j - 1
 
-    # Either i = 0 or j = 0 - add last (first) step
-    path.append({ "media_index": i,
-                  "proceeding_index": j,
-                  "score": max_score,
-                  "media": media_index[i]['item'],
-                  "proceeding": proceedings_index[j]['item'],
-                })
+    # Either i = 0 or j = 0 - add last steps to origin to make sure we
+    # reach first media.
+
+    # If we do not have i == 0, it means that we reached the beginning
+    # of proceedings first. It often happens if Eröffnung is skipped
+    # in the proceedings (eg 19001), or if it is split between
+    # multiple speakers (eg 20021)
+
+    # In this case, we should add mutiple steps to reach first media,
+    # associating it as a best guess with the same proceeding.
+    while i >= 0:
+        path.append({ "media_index": i,
+                      "proceeding_index": j,
+                      "score": max_score,
+                      "media": media_index[i]['item'],
+                      "proceeding": proceedings_index[j]['item'],
+                     })
+        i = i - 1
 
     # Reverse the path, so that is in ascending order
     path.reverse()
