@@ -48,10 +48,10 @@ def link_entities(source: list, persons: dict, factions: dict) -> list:
                 # Found exact match
                 p['wid'] = persons[label]['id']
                 p['wtype'] = 'PERSON'
-            faction = cleanup(p.get('faction'))
+            faction = p.get('faction')
             if faction is not None and not isinstance(faction, dict):
                 # Set a default value wid = '' for elements with non-aligned labels
-                f = factions.get(faction, { 'id': '' })
+                f = factions.get(cleanup(faction), { 'id': '' })
                 p['faction'] = {
                     'wid': f['id'],
                     'label': faction,
