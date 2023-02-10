@@ -40,11 +40,48 @@ def merge_item(mediaitem, proceedingitems):
     output['debug']['mediaIndex'] = mediaitem['speechIndex']
 
     # Merge people in case of multiple proceedings. We use a dict for
-    # de-duplication (instead of a set) so that we preserve order.
+    # de-duplication (instead of a set) so that we preserve order.  We
+    # prepend media-based speaker info so that it always appears first
+    # (and he is always tagged 'main-speaker')
     people_dict = dict( (person['label'], person)
                         for p in proceedingitems
-                        for person in p['people'] )
+                        for person in mediaitem['people'] + p['people'] )
+
+    # Copy back attributes from media if necessary - they may have
+    # been overwritten (in the general case)
+    if mediaitem['people']:
+        media_person = mediaitem['people'][0]
+        person = people_dict[media_person['label']]
+        if media_person.get('role'):
+            person['role'] = media_person['role']
+        person['context'] = media_person['context']
+
     output['people'] = list(people_dict.values())
+
+    # Compute a confidence score:
+    # - if both main speaker and title match, then assume 1
+    # - if main speaker does not match, * .5
+    # - if title does not match, * .9
+    confidence = 1
+
+    # One last check - we should have a main-speaker as first
+    # person. And if the second person also has main-speaker info, it
+    # means that this info comes from proceedings, in which case we
+    # fix it to main-proceedings-speaker
+    if output['people']:
+        first_person = output['people'][0]
+        if first_person['context'] != 'main-speaker':
+            logger.error(f"Error in {mediaitem['session']['number']}: first person ({first_person['label']}) should alway be main-speaker")
+            # Bail out with no info.
+            return []
+        if len(output['people']) > 1:
+            second_person = output['people'][1]
+            if second_person['context'] == 'main-speaker':
+                # We have a mismatch in main speaker definition btw
+                # media and proceedings. Add a specific status to mark
+                # it.
+                second_person['context'] = 'main-proceeding-speaker'
+                confidence *= .5
 
     # Merge textContents from all proceeedings
     output['textContents'] = [ tc
@@ -53,6 +90,8 @@ def merge_item(mediaitem, proceedingitems):
     output['documents'] = [ doc
                             for p in proceedingitems
                             for doc in p['documents'] ]
+
+    output['debug']['confidence'] = confidence
     return output
 
 def speaker_cleanup(item, default_value):
