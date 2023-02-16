@@ -49,38 +49,43 @@ def link_entities(source: list, persons: dict, factions: dict) -> list:
                 p['wid'] = persons[label]['id']
                 p['wtype'] = 'PERSON'
             faction = p.get('faction')
-            if faction is not None and not isinstance(faction, dict):
-                # Set a default value wid = '' for elements with non-aligned labels
-                f = factions.get(cleanup(faction), { 'id': '' })
-                p['faction'] = {
-                    'wid': f['id'],
-                    'label': faction,
-                    'wtype': 'ORG'
-                }
+            if faction is not None:
+                if not isinstance(faction, dict):
+                    # Set a default value wid = '' for elements with non-aligned labels
+                    f = factions.get(cleanup(faction), { 'id': '' })
+                    p['faction'] = {
+                        'wid': f['id'],
+                        'label': faction,
+                        'wtype': 'ORG'
+                    }
+                # Maybe already a dict, but not yet linked. Try again
+                elif not faction.get('wid'):
+                    f = factions.get(cleanup(faction['label']), { 'id': '' })
+                    faction['wid'] = f['id']
     return source
 
-def get_nel_data(person_file: Path = None,
-                 faction_file: Path = None):
+def get_nel_data(nel_data_dir: Path = None):
+    nel_data_file = nel_data_dir / "entities.json"
+
     persons = {}
     factions = {}
-    if person_file:
-        with open(person_file) as f:
-            # Convert to a dict for basic lookup
-            for p in json.load(f):
-                persons[cleanup(p['label'])] = p
-                # altLabel may be a string or a list (if multiple strings).
-                altLabel = p.get('altLabel', [])
-                if isinstance(altLabel, str):
-                    altLabel = [ altLabel ]
-                for l in altLabel:
-                    persons[cleanup(l)] = p
 
-    if faction_file:
-        with open(faction_file) as f:
-            for p in json.load(f):
-                factions[cleanup(p['label'])] = p
-                if p.get('labelAlternative'):
-                    factions[cleanup(p.get('labelAlternative'))] = p
+    if nel_data_file and nel_data_file.is_file():
+        with open(nel_data_file) as f:
+            nel_data = json.load(f)
+        # Convert to a dict for basic lookup
+        for ent in nel_data['data']:
+            if ent['type'] == 'person':
+                store = persons
+            elif ent['type'] == 'organisation':
+                store = factions
+            else:
+                continue
+            store[cleanup(ent['label'])] = ent
+            for alt in ent['labelAlternative']:
+                store[cleanup(alt)] = ent
+    else:
+        logger.error(f"Cannot read entities from {nel_data_file}")
     return persons, factions
 
 def link_entities_from_file(source_file: Path,
@@ -93,8 +98,11 @@ def link_entities_from_file(source_file: Path,
     data = link_entities(source['data'], persons, factions)
 
     output = { "meta": { **source['meta'],
-                         "lastUpdate": datetime.now().isoformat('T', 'seconds'),
-                         "lastProcessing": "nel" },
+                         'processing': {
+                             **source['meta']['processing'],
+                             "nel": datetime.now().isoformat('T', 'seconds'),
+                         }
+                         },
                "data": data }
     logger.info(f"Writing {output_file.name}")
     with open(output_file, 'w') as f:
@@ -112,12 +120,9 @@ if __name__ == '__main__':
                         help="Source JSON file")
     parser.add_argument("output", type=str, nargs='?', default="-",
                         help="Output file")
-    parser.add_argument("--person-data", action="store",
+    parser.add_argument("--nel-data-dir", action="store",
                         default=None,
-                        help="Path to person.json file")
-    parser.add_argument("--faction-data", action="store",
-                        default=None,
-                        help="Path to faction.json file")
+                        help="Path to NEL data dir")
     parser.add_argument("--debug", dest="debug", action="store_true",
                         default=False,
                         help="Display debug messages")
@@ -130,13 +135,12 @@ if __name__ == '__main__':
         loglevel = logging.DEBUG
     logging.basicConfig(level=loglevel)
 
-    if not args.person_data and not args.faction_data:
+    if not args.nel_data_dir:
         # No data specified, nothing to do
-        logger.error("No reference data for persons or factions, bailing out.")
+        logger.error("No data dir for entities -- specify --nel-data-dir option.")
         sys.exit(1)
 
-    persons, factions = get_nel_data(Path(args.person_data),
-                                     Path(args.faction_data))
+    persons, factions = get_nel_data(Path(args.nel_data_dir))
 
     source = Path(args.source)
     output = Path(args.output)
