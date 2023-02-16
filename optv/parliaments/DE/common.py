@@ -21,14 +21,12 @@ class SessionStatus(Enum):
 
 class Config:
     def __init__(self, data_dir: Path,
-                 cache_dir: Path = None,
-                 nel_data_dir: Path = None):
+                 cache_dir: Path = None):
         data_dir = Path(data_dir)
         if cache_dir is not None:
             cache_dir = Path(cache_dir)
         else:
             cache_dir = data_dir / "cache"
-        nel_data_dir = Path(nel_data_dir)
         self._dir = {
             'data': data_dir,
             'cache': cache_dir,
@@ -38,7 +36,7 @@ class Config:
             'aligned': cache_dir / "aligned",
             'ner': cache_dir / "ner",
             'processed': data_dir / "processed",
-            'nel_data': nel_data_dir
+            'nel_data': data_dir / "metadata"
         }
 
 

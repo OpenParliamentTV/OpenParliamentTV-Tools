@@ -29,7 +29,7 @@ from .merger.merge_session import merge_session
 from .parsers.proceedings2json import parse_proceedings_directory
 
 def execute_workflow(args):
-    config = Config(args.data_dir, nel_data_dir=args.nel_data_dir)
+    config = Config(args.data_dir)
 
     def publish_as_processed(session: str, filepath: Path) -> Path:
         """Finalizing step - copy produced_files into processed
@@ -85,11 +85,10 @@ def execute_workflow(args):
     # Do entity linking for people and factions in merged files
     if args.link_entities:
         nel_data_dir = config.dir('nel_data')
-        if nel_data_dir is None:
-            logger.error("Cannot do NEL - no data directory specified")
+        if nel_data_dir is None or not nel_data_dir.is_dir():
+            logger.error(f"Cannot do NEL - {nel_data_dir} does not exist")
         else:
-            persons, factions = get_nel_data(nel_data_dir / 'persons' / 'DE.json',
-                                             nel_data_dir / 'factions.json')
+            persons, factions = get_nel_data(nel_data_dir)
             logger.info("Linking entities with wikidata IDs")
             for session in config.sessions():
                 if args.limit_to_period and not session.startswith(str(args.period)):
