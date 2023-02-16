@@ -62,25 +62,26 @@ def execute_workflow(args):
     update_media_from_raw(config.dir('media'))
 
     # Produce merged data
-    logger.info(f"Merging data from {config.dir('media')} and {config.dir('proceedings')} into {config.dir('merged')}")
-    for session in config.sessions():
-        if args.limit_to_period and not session.startswith(str(args.period)):
-            continue
-        if args.limit_session and not re.match(args.limit_session, session):
-            continue
-        # Always redo the merge in case any source was updated
-        if config.is_newer(session, 'media', 'merged') or config.is_newer(session, 'proceedings', 'merged'):
-            merged_file = merge_session(session, config, args)
-            status = config.status(session)
-            # We want to directly publish this file if it did not exist
-            # or if there is no data (time, ner) to lose doing it
-            if (SessionStatus.aligned in status
-                or SessionStatus.ner in status):
+    if args.merge_speeches:
+        logger.info(f"Merging data from {config.dir('media')} and {config.dir('proceedings')} into {config.dir('merged')}")
+        for session in config.sessions():
+            if args.limit_to_period and not session.startswith(str(args.period)):
                 continue
-            # If we reach here, it is either that the processed file
-            # was not present, or that it has no time/entity info, so
-            # that we will lose nothing.
-            publish_as_processed(session, merged_file)
+            if args.limit_session and not re.match(args.limit_session, session):
+                continue
+            # Always redo the merge in case any source was updated
+            if config.is_newer(session, 'media', 'merged') or config.is_newer(session, 'proceedings', 'merged'):
+                merged_file = merge_session(session, config, args)
+                status = config.status(session)
+                # We want to directly publish this file if it did not exist
+                # or if there is no data (time, ner) to lose doing it
+                if (SessionStatus.aligned in status
+                    or SessionStatus.ner in status):
+                    continue
+                # If we reach here, it is either that the processed file
+                # was not present, or that it has no time/entity info, so
+                # that we will lose nothing.
+                publish_as_processed(session, merged_file)
 
     # Do entity linking for people and factions in merged files
     if args.link_entities:
@@ -168,28 +169,34 @@ if __name__ == "__main__":
                         help="Force loading of data for a meeting even if the corresponding file already exists")
     parser.add_argument("--cache-dir", type=str, default=None,
                         help="Cache directory (default is DATADIR/cache")
-    parser.add_argument("--nel-data-dir", type=str, default=None,
-                        help="NEL data directory")
 
     parser.add_argument("--lang", type=str, default="deu",
                         help="Language")
 
-    parser.add_argument("--download-original", action=argparse.BooleanOptionalAction,
-                        default=True,
-                        help="Download original files")
     parser.add_argument("--limit-to-period", action=argparse.BooleanOptionalAction,
                         default=True,
                         help="Limit time align and NER to specified period files")
     parser.add_argument("--limit-session", action="store",
                         default="",
                         help="Limit time align and NER to sessions matching regexp (eg 2001. for all 2001* sessions)")
-    parser.add_argument("--align-sentences", action="store_true",
+
+    # Processing steps
+    parser.add_argument("--download-original", action=argparse.BooleanOptionalAction,
+                        default=False,
+                        help="Download original files")
+    parser.add_argument("--merge-speeches", action=argparse.BooleanOptionalAction,
+                        default=False,
+                        help="Merge media and proceeding files")
+    parser.add_argument("--align-sentences", action=argparse.BooleanOptionalAction,
                         default=False,
                         help="Do the sentence alignment for downloaded sentences")
+    parser.add_argument("--update-nel-entities", action=argparse.BooleanOptionalAction,
+                        default=False,
+                        help="Download NEL entities from OPTV server")
     parser.add_argument("--link-entities", action=argparse.BooleanOptionalAction,
-                        default=True,
+                        default=False,
                         help="Link People/Faction entities")
-    parser.add_argument("--extract-entities", action="store_true",
+    parser.add_argument("--extract-entities", action=argparse.BooleanOptionalAction,
                         default=False,
                         help="Do Entity extraction on aligned sessions (requires --align-sentences)")
 
