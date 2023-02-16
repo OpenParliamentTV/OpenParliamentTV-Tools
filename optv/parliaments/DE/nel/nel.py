@@ -99,7 +99,7 @@ def link_entities_from_file(source_file: Path,
 
     output = { "meta": { **source['meta'],
                          'processing': {
-                             **source['meta']['processing'],
+                             **source['meta'].get('processing', {}),
                              "nel": datetime.now().isoformat('T', 'seconds'),
                          }
                          },

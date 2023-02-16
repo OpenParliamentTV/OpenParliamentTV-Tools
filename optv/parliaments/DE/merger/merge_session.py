@@ -253,8 +253,12 @@ def merge_data(proceedings, media, options) -> list:
     return { "meta": { **proceedings['meta'],
                        "dateStart": dateStart,
                        "dateEnd": dateEnd,
-                       "lastUpdate": datetime.now().isoformat('T', 'seconds'),
-                       "lastProcessing": "merge_session" },
+                       "processing": {
+                           **proceedings['meta'].get('processing', {}),
+                           **media['meta'].get('processing', {}),
+                           "merge": datetime.now().isoformat('T', 'seconds'),
+                       },
+                      },
              "data": speeches
             }
 

@@ -490,8 +490,9 @@ def parse_proceedings(source: str, output: str, uri: str, args):
     session_id = f"{period}{str(meeting).zfill(3)}"
 
     data = { "meta": { "session": session_id,
-                       "lastUpdate": datetime.now().isoformat('T', 'seconds'),
-                       "lastProcessing": "parse_proceedings",
+                       "processing": {
+                           "parse_proceedings": datetime.now().isoformat('T', 'seconds'),
+                       },
                        'dateStart': speech['session']['dateStart'],
                        'dateEnd': speech['session']['dateEnd'],
                       },

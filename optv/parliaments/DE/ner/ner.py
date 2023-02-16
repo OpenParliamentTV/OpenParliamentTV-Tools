@@ -27,11 +27,13 @@ def extract_entities(source: list, args) -> list:
 
     It uses the args.lang parameter to specify the language
     """
-    nlp = spacy.blank(args.lang)
+    # nlp = spacy.blank(args.lang)
+    nlp = spacy.load(f"{args.lang}_core_news_sm")
     if 'opentapioca' in nlp.factory_names:
-        nlp.add_pipe("opentapioca")
+        nlp.add_pipe("entityfishing", config={ 'language': args.lang,
+                                               'api_ef_base': "<api-endpoint>" })
     else:
-        logger.error("Cannot find opentapioca spaCy factory. Cannot do NER.")
+        logger.error("Cannot find entityfishing spaCy factory. Cannot do NER.")
         return
 
     for item in source:
@@ -41,11 +43,10 @@ def extract_entities(source: list, args) -> list:
                 for sentence in speech.get('sentences', []):
                     try:
                         doc = nlp(sentence.get('text', ""))
-                        entities = [ dict(label=span.text,
-                                          wid=span.kb_id_,
-                                          wtype=span.label_,
-                                          score=span._.score)
-                                     for span in doc.ents ]
+                        entities = [ dict(label=ent.text,
+                                          wid=ent._.kb_qid,
+                                          score=ent._.nerd_score)
+                                     for ent in doc.ents ]
                         sentence['entities'] = entities
                     except requests.exceptions.HTTPError as e:
                         # The opentapioca server may respond with a 503 server error
@@ -63,9 +64,11 @@ def extract_entities_from_file(source_file, output_file, args):
     data = extract_entities(source['data'], args)
 
     output = { "meta": { **source['meta'],
-                         "lastUpdate": datetime.now().isoformat('T', 'seconds'),
-                         "lastProcessing": "ner",
-                        },
+                         'processing': {
+                             **source['meta'].get('processing', {}),
+                             "ner": datetime.now().isoformat('T', 'seconds'),
+                         }
+                    },
                "data": data
               }
     with open(output_file, 'w') as f:
@@ -77,7 +80,7 @@ if __name__ == '__main__':
                         help="Source JSON file")
     parser.add_argument("output", type=str, nargs='?', default="-",
                         help="Output file")
-    parser.add_argument("--lang", type=str, default="deu",
+    parser.add_argument("--lang", type=str, default="de",
                         help="Language")
     parser.add_argument("--debug", dest="debug", action="store_true",
                         default=False,

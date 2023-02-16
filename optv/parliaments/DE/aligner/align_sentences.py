@@ -160,9 +160,11 @@ def align_audiofile(sourcefile: Path,
     with open(sourcefile) as f:
         source = json.load(f)
     output = { "meta": { **source['meta'],
-                         "lastUpdate": datetime.now().isoformat('T', 'seconds'),
-                         "lastProcessing": "ner",
-                         },
+                         'processing': {
+                             **source['meta'].get('processing', {}),
+                             "align": datetime.now().isoformat('T', 'seconds'),
+                         }
+                        },
                "data": align_audio(source['data'], language, cachedir)
               }
     with open(destinationfile, 'w') as f:

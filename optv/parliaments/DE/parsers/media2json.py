@@ -254,8 +254,9 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
     sessionStart = output[0]['dateStart']
     sessionEnd = output[-1]['dateEnd']
     return { 'meta': { 'session': str(meeting_reference),
-                       "lastUpdate": datetime.now().isoformat('T', 'seconds'),
-                       "lastProcessing": "parse_media",
+                       "processing": {
+                           "parse_media": datetime.now().isoformat('T', 'seconds'),
+                       },
                        'dateStart': sessionStart,
                        'dateEnd': sessionEnd },
              'data': output }
