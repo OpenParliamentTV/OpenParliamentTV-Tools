@@ -28,8 +28,8 @@ def extract_entities(source: list, args) -> list:
     It uses the args.lang parameter to specify the language
     """
     # nlp = spacy.blank(args.lang)
-    nlp = spacy.load(f"{args.lang}_core_news_sm")
-    if 'opentapioca' in nlp.factory_names:
+    nlp = spacy.load(f"{args.lang}_core_news_md")
+    if 'entityfishing' in nlp.factory_names:
         nlp.add_pipe("entityfishing", config={ 'language': args.lang,
                                                'api_ef_base': "<api-endpoint>" })
     else:
@@ -45,11 +45,12 @@ def extract_entities(source: list, args) -> list:
                         doc = nlp(sentence.get('text', ""))
                         entities = [ dict(label=ent.text,
                                           wid=ent._.kb_qid,
+                                          wtype=ent.label_,
                                           score=ent._.nerd_score)
                                      for ent in doc.ents ]
                         sentence['entities'] = entities
                     except requests.exceptions.HTTPError as e:
-                        # The opentapioca server may respond with a 503 server error
+                        # The entity-fishing server may respond with a 503 server error
                         logger.error(f"NER Server error: {e}")
         end_time  = time.time()
         debug = item.setdefault('debug', {})
