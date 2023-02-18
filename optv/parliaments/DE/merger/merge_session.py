@@ -43,7 +43,11 @@ def merge_item(mediaitem, proceedingitems):
     # de-duplication (instead of a set) so that we preserve order.  We
     # prepend media-based speaker info so that it always appears first
     # (and he is always tagged 'main-speaker')
-    people_dict = dict( (person['label'], person)
+
+    # We do a copy of person info because we will possibly update its
+    # context info (when checking main-speaker conflicts), so the same
+    # "proceeding" person will have multiple contexts.
+    people_dict = dict( (person['label'], deepcopy(person))
                         for p in proceedingitems
                         for person in mediaitem['people'] + p['people'] )
 
@@ -82,6 +86,12 @@ def merge_item(mediaitem, proceedingitems):
                 # it.
                 second_person['context'] = 'main-proceeding-speaker'
                 confidence *= .5
+            for person in output['people'][2:]:
+                # If many proceedings were merged, there may be
+                # multiple other main-speaker. Give them the "speaker"
+                # status.
+                if person['context'] == 'main-speaker':
+                    person['context'] = 'speaker'
 
     # Merge textContents from all proceeedings
     output['textContents'] = [ tc
