@@ -2,6 +2,7 @@
 
 # Update media files, proceeding files and merge them
 import argparse
+import atexit
 import logging
 import os
 from pathlib import Path
@@ -170,6 +171,10 @@ if __name__ == "__main__":
     parser.add_argument("--cache-dir", type=str, default=None,
                         help="Cache directory (default is DATADIR/cache")
 
+    parser.add_argument("--single-instance", action=argparse.BooleanOptionalAction,
+                        default=True,
+                        help="Exits if a lockfile is present (the process is already running)")
+
     parser.add_argument("--lang", type=str, default="deu",
                         help="Language")
 
@@ -212,6 +217,17 @@ if __name__ == "__main__":
                         datefmt='%Y-%m-%d %H:%M:%S')
 
     args.data_dir = Path(args.data_dir)
+
+    if args.single_instance:
+        lockfile = args.data_dir / "optv.lock"
+        # Checking for the presence of lock file
+        if lockfile.exists():
+            logger.error(f"workflow already running as process {lockfile.read_text()} - exiting")
+            sys.exit(1)
+        else:
+            lockfile.write_text(str(os.getpid()))
+            # Remove file on script exit
+            atexit.register(lambda f: f.unlink(), lockfile)
 
     if args.cache_dir is None:
         args.cache_dir = args.data_dir / "cache"
