@@ -36,6 +36,32 @@ def sentence_iter(speech: dict) -> Iterable:
                     ident = f"s{speechIndex}-{contentIndex}-{bodyIndex}-{sentenceIndex}"
                     yield ident, sentence
 
+def body_iter(speech: dict) -> Iterable:
+    """Iterate over all bodies in a speech
+    """
+    for contentIndex, content in enumerate(speech.get('textContents', [])):
+        for bodyIndex, body in enumerate(content['textBody']):
+            yield body
+
+def previous_current_next(iterable):
+    """Make an iterator that yields an (previous, current, next) tuple per element.
+
+    Returns None if the value does not make sense (i.e. previous before
+    first and next after last).
+    Adapted from: https://gist.github.com/mortenpi/9604377
+    """
+    iterable=iter(iterable)
+    prv = None
+    cur = next(iterable)
+    try:
+        while True:
+            nxt = next(iterable)
+            yield (prv, cur, nxt)
+            prv = cur
+            cur = nxt
+    except StopIteration:
+        yield (prv, cur, None)
+
 def cachedfile(speech: dict, extension: str, cachedir: Path) -> Path:
     """Return a filename with given extension
     """
@@ -151,6 +177,28 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
         # Cleanup generated files (keep cached audio)
         sentence_file.unlink()
 
+    # We have aligned all "speech"-type bodies. Go through all speeches and
+    # use "speech" timecodes to estimate "comment"-type timecodes.
+    for speech in source:
+        for prv, cur, nxt in previous_current_next(body_iter(speech)):
+            if cur['type'] == 'comment':
+                # Copy timestamps from prv/nxt bodies sentences
+                if prv:
+                    # Using start timecode of last sentence of previous body
+                    start = prv['sentences'][-1].get('timeStart', '')
+                else:
+                    # Using first timecode of first sentence of next body
+                    start = nxt['sentences'][0].get('timeStart', '')
+
+                if nxt:
+                    end = nxt['sentences'][0].get('timeEnd', '')
+                else:
+                    end = prv['sentences'][-1].get('timeEnd', '')
+                if start:
+                    cur['sentences'][0]['timeStart'] = start
+                if end:
+                    cur['sentences'][0]['timeEnd'] = end
+
     return source
 
 def align_audiofile(sourcefile: Path,
@@ -187,4 +235,4 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit(1)
 
-    align_audiofile(args.source, args.destinationfile. args.lang, args.cache_dir)
+    align_audiofile(args.source, args.destination, args.lang, args.cache_dir)
