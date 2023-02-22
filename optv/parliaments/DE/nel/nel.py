@@ -75,11 +75,12 @@ def get_nel_data(nel_data_dir: Path = None):
             nel_data = json.load(f)
         # Convert to a dict for basic lookup
         for ent in nel_data['data']:
-            if ent['type'] == 'person':
+            if ent['subType'] == 'memberOfParliament':
                 store = persons
-            elif ent['type'] == 'organisation':
+            elif ent['subType'] == 'faction':
                 store = factions
             else:
+                # Ignore other subTypes (party)
                 continue
             store[cleanup(ent['label'])] = ent
             for alt in ent['labelAlternative']:
