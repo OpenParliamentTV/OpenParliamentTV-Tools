@@ -58,8 +58,8 @@ def link_entities(source: list, persons: dict, factions: dict) -> list:
                         'label': faction,
                         'wtype': 'ORG'
                     }
-                # Maybe already a dict, but not yet linked. Try again
-                elif not faction.get('wid'):
+                # Maybe already a dict. Update the wid in any case (maybe the entity dump changed)
+                else:
                     f = factions.get(cleanup(faction['label']), { 'id': '' })
                     faction['wid'] = f['id']
     return source
