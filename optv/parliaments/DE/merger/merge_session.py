@@ -47,7 +47,7 @@ def merge_item(mediaitem, proceedingitems):
     # We do a copy of person info because we will possibly update its
     # context info (when checking main-speaker conflicts), so the same
     # "proceeding" person will have multiple contexts.
-    people_dict = dict( (person['label'], deepcopy(person))
+    people_dict = dict( (remove_accents(person['label']), deepcopy(person))
                         for p in proceedingitems
                         for person in mediaitem['people'] + p['people'] )
 
@@ -55,7 +55,7 @@ def merge_item(mediaitem, proceedingitems):
     # been overwritten (in the general case)
     if mediaitem['people']:
         media_person = mediaitem['people'][0]
-        person = people_dict[media_person['label']]
+        person = people_dict[remove_accents(media_person['label'])]
         if media_person.get('role'):
             person['role'] = media_person['role']
         person['context'] = media_person['context']
