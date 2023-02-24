@@ -47,7 +47,9 @@ def extract_entities(source: list, args) -> list:
                                           wid=ent._.kb_qid,
                                           wtype=ent.label_,
                                           score=ent._.nerd_score)
-                                     for ent in doc.ents ]
+                                     for ent in doc.ents
+                                     if ent._.kb_qid
+                                    ]
                         sentence['entities'] = entities
                     except requests.exceptions.HTTPError as e:
                         # The entity-fishing server may respond with a 503 server error
