@@ -32,11 +32,12 @@ def cleanup(name):
     if not name or isinstance(name, dict):
         return None
     else:
+        name = remove_accents(name.strip()).lower()
         # Replace non-alphanumeric chars with space
-        name = re.sub('[^A-Za-z]+', ' ', name)
+        name = re.sub('[^A-Za-z0-9]+', ' ', name)
         # Replace multiple whitespaces
         name = re.sub(r'\s+', ' ', name)
-        return remove_accents(name.strip().lower())
+        return name
 
 def link_entities(source: list, persons: dict, factions: dict) -> list:
     """Link entities from source file
