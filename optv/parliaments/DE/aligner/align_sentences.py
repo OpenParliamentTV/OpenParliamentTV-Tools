@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 import argparse
 from datetime import datetime
+from itertools import groupby
 import json
 import os
 from pathlib import Path
@@ -24,7 +25,7 @@ from aeneas.task import Task
 MIN_CACHE_SPACE = 1024 * 1024 * 1024
 DEFAULT_CACHEDIR = '/tmp/cache'
 
-def sentence_iter(speech: dict) -> Iterable:
+def speech_sentence_iter(speech: dict) -> Iterable:
     """Iterate over all sentences in a speech, adding a unique identifier.
     """
     speechIndex = speech['speechIndex']
@@ -104,7 +105,7 @@ def audiofile(speech: dict, cachedir: Path) -> Optional[Path]:
     return audio
 
 
-def align_audio(source: list, language: str, cachedir: Path = None) -> list:
+def align_audio(source: list, language: str, cachedir: Path = None, force: bool = False) -> list:
     """Align list of speeches to add timing information to sentences.
 
     The structure is modified in place, and returned.
@@ -117,7 +118,7 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
 
     for speech in source:
         # Do we have proceedings data to align?
-        sentence_list = [ (ident, sentence) for ident, sentence in sentence_iter(speech) ]
+        sentence_list = [ (ident, sentence) for ident, sentence in speech_sentence_iter(speech) ]
         if len(sentence_list) == 0:
             logger.warning(f"No text data to align - skipping {speech['session']['number']}{speech['speechIndex']}")
             continue
@@ -126,7 +127,7 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
         timing_required = [ sentence
                             for (ident, sentence) in sentence_list
                             if sentence.get('timeStart') is None ]
-        if len(timing_required) == 0:
+        if len(timing_required) == 0 and not force:
             logger.debug("All sentences already aligned")
             continue
 
@@ -159,7 +160,7 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
                            if f.is_regular )
 
         # Inject timing information back into the source data
-        for ident, sentence in sentence_iter(speech):
+        for ident, sentence in speech_sentence_iter(speech):
             sentence['timeStart'] = str(fragments[ident].begin)
             sentence['timeEnd'] = str(fragments[ident].end)
 
@@ -170,7 +171,7 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
 
         # Are there any aligned sentences in the speech?
         sentence_list = [ (ident, sentence)
-                          for ident, sentence in sentence_iter(speech)
+                          for ident, sentence in speech_sentence_iter(speech)
                           if sentence.get('timeStart') is not None ]
         speech['media']['aligned'] = (len(sentence_list) > 0)
 
@@ -180,31 +181,44 @@ def align_audio(source: list, language: str, cachedir: Path = None) -> list:
     # We have aligned all "speech"-type bodies. Go through all speeches and
     # use "speech" timecodes to estimate "comment"-type timecodes.
     for speech in source:
-        for prv, cur, nxt in previous_current_next(body_iter(speech)):
-            if cur['type'] == 'comment':
-                # Copy timestamps from prv/nxt bodies sentences
-                if prv:
-                    # Using start timecode of last sentence of previous body
-                    start = prv['sentences'][-1].get('timeStart', '')
-                else:
-                    # Using first timecode of first sentence of next body
-                    start = nxt['sentences'][0].get('timeStart', '')
+        for prv, cur_list, nxt in previous_current_next(list(arr)
+                                                   for (key, arr) in groupby(body_iter(speech),
+                                                                             key=lambda body: body['type']
+                                                                             )):
+            if prv:
+                # prv is the list of previous bodies. Take the last one.
+                prv = prv[-1]
+            if nxt:
+                nxt = nxt[0]
+            for cur in cur_list:
+                if cur['type'] == 'comment':
+                    # Copy timestamps from prv/nxt bodies sentences
+                    start = ''
+                    end = ''
+                    if prv:
+                        # Using start timecode of last sentence of previous body
+                        start = prv['sentences'][-1].get('timeStart', '')
+                    elif nxt:
+                        # Using first timecode of first sentence of next body
+                        start = nxt['sentences'][0].get('timeStart', '')
 
-                if nxt:
-                    end = nxt['sentences'][0].get('timeEnd', '')
-                else:
-                    end = prv['sentences'][-1].get('timeEnd', '')
-                if start:
-                    cur['sentences'][0]['timeStart'] = start
-                if end:
-                    cur['sentences'][0]['timeEnd'] = end
+                    if nxt:
+                        end = nxt['sentences'][0].get('timeEnd', '')
+                    elif prv:
+                        end = prv['sentences'][-1].get('timeEnd', '')
+
+                    if start:
+                        cur['sentences'][0]['timeStart'] = start
+                    if end:
+                        cur['sentences'][0]['timeEnd'] = end
 
     return source
 
 def align_audiofile(sourcefile: Path,
                     destinationfile: Path,
                     language: str,
-                    cachedir: Path = None) -> Path:
+                    cachedir: Path = None,
+                    force: bool = False) -> Path:
     with open(sourcefile) as f:
         source = json.load(f)
     output = { "meta": { **source['meta'],
@@ -213,7 +227,7 @@ def align_audiofile(sourcefile: Path,
                              "align": datetime.now().isoformat('T', 'seconds'),
                          }
                         },
-               "data": align_audio(source['data'], language, cachedir)
+               "data": align_audio(source['data'], language, cachedir, force)
               }
     with open(destinationfile, 'w') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
@@ -229,10 +243,13 @@ if __name__ == '__main__':
                         help="Language")
     parser.add_argument("--cache-dir", type=str, default=None,
                         help="Cache directory")
+    parser.add_argument("--force", action="store_true",
+                        default=False,
+                        help="Force alignment, even if all sentences are already aligned.")
 
     args = parser.parse_args()
     if args.source is None:
         parser.print_help()
         sys.exit(1)
 
-    align_audiofile(args.source, args.destination, args.lang, args.cache_dir)
+    align_audiofile(args.source, args.destination, args.lang, args.cache_dir, args.force)
