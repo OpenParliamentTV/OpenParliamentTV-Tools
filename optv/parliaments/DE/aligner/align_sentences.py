@@ -181,6 +181,9 @@ def align_audio(source: list, language: str, cachedir: Path = None, force: bool 
     # We have aligned all "speech"-type bodies. Go through all speeches and
     # use "speech" timecodes to estimate "comment"-type timecodes.
     for speech in source:
+        if not speech.get('textContents'):
+            # No text to align
+            continue
         for prv, cur_list, nxt in previous_current_next(list(arr)
                                                    for (key, arr) in groupby(body_iter(speech),
                                                                              key=lambda body: body['type']
