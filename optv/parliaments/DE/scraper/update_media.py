@@ -66,6 +66,7 @@ def update_media_directory_period(period, media_dir, force=False, save_raw_data=
         # "solid" so we can use cached information.
         should_retry = retry_count
         if (force
+            or meeting == latest_number
             or not (media_dir / filename).exists()):
             logger.debug(f"Loading {period}-{meeting} data into {filename}")
             while should_retry >= 0:
