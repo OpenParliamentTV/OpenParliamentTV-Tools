@@ -120,7 +120,7 @@ def align_audio(source: list, language: str, cachedir: Path = None, force: bool 
         # Do we have proceedings data to align?
         sentence_list = [ (ident, sentence) for ident, sentence in speech_sentence_iter(speech) ]
         if len(sentence_list) == 0:
-            logger.warning(f"No text data to align - skipping {speech['session']['number']}{speech['speechIndex']}")
+            logger.debug(f"No text data to align - skipping {speech['session']['number']}{speech['speechIndex']}")
             continue
 
         # Do we have any sentence without timing information?
