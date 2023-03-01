@@ -185,6 +185,9 @@ if __name__ == "__main__":
                         default="",
                         help="Limit time align and NER to sessions matching regexp (eg 2001. for all 2001* sessions)")
 
+    parser.add_argument("--ner-api-endpoint", type=str, default="",
+                        help="API endpoint URL for entityfishing server")
+
     # Processing steps
     parser.add_argument("--download-original", action=argparse.BooleanOptionalAction,
                         default=False,

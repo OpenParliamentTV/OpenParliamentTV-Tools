@@ -28,10 +28,12 @@ def extract_entities(source: list, args) -> list:
     It uses the args.lang parameter to specify the language
     """
     # nlp = spacy.blank(args.lang)
+    if not args.entities_endpoint:
+        pass
     nlp = spacy.load(f"{args.lang}_core_news_md")
     if 'entityfishing' in nlp.factory_names:
         nlp.add_pipe("entityfishing", config={ 'language': args.lang,
-                                               'api_ef_base': "<api-endpoint>" })
+                                               'api_ef_base': args.ner_api_endpoint })
     else:
         logger.error("Cannot find entityfishing spaCy factory. Cannot do NER.")
         return
@@ -85,6 +87,8 @@ if __name__ == '__main__':
                         help="Output file")
     parser.add_argument("--lang", type=str, default="de",
                         help="Language")
+    parser.add_argument("--ner-api-endpoint", type=str, default="",
+                        help="API endpoint URL for entityfishing server")
     parser.add_argument("--debug", dest="debug", action="store_true",
                         default=False,
                         help="Display debug messages")
