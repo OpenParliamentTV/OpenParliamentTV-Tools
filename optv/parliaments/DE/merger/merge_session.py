@@ -289,7 +289,7 @@ def merge_files(proceedings_file: Path, media_file:Path, options) -> dict:
         return dict()
     if proceedings is None:
         logger.debug("No proceedings - return media as temporary merged data")
-        media['meta']['processing']['merge'] = datetime.now().isoformat('T', 'seconds'),
+        media['meta']['processing']['merge'] = datetime.now().isoformat('T', 'seconds')
         return media
     # Order media, according to dateStart
     return merge_data(proceedings, media, options)
