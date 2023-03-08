@@ -64,6 +64,12 @@ def fix_time(t: str) -> str:
         logger.warning(f"Error in timecode: {t}")
         return f"ERROR:{t}"
 
+def clean_text(t: str) -> str:
+    """Clean text before splitting into sentences.
+    """
+    t = re.sub(r'\n\s+', ' ', t)
+    return t
+
 def parse_speakers(speakers):
     """Convert a list a list of <redner> to a dict of Person data indexed by fullname
     """
@@ -120,9 +126,9 @@ def parse_speech(elements: list, last_speaker: dict, speech_id: str):
                     'type': 'comment',
                     'speaker': None,
                     'speakerstatus': None,
-                    'text': c.text,
+                    'text': clean_text(c.text),
                     'sentences': [
-                        { 'text': c.text }
+                        { 'text': clean_text(c.text) }
                     ]
                 }
             continue
@@ -159,8 +165,8 @@ def parse_speech(elements: list, last_speaker: dict, speech_id: str):
                     'type': 'speech',
                     'speaker': speaker,
                     'speakerstatus': speakerstatus,
-                    'text': c.text,
-                    'sentences': split_sentences(c.text)
+                    'text': clean_text(c.text),
+                    'sentences': split_sentences(clean_text(c.text))
                 }
             # FIXME: all other <p> klasses are ignored for now
 
