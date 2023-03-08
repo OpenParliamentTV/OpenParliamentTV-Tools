@@ -20,7 +20,7 @@ if __package__ is None:
     sys.path.insert(0, str(module_dir.parent))
     __package__ = module_dir.name
 
-from .fetch_media import download_meeting_data, download_data, get_filename, parse_media_data
+from .fetch_media import download_meeting_data, download_data, get_filename, parse_media_data, save_if_changed
 
 # Max time to wait between retries (in seconds)
 RETRY_MAX_WAIT_TIME = 10
@@ -37,8 +37,7 @@ def update_media_from_raw(media_dir):
             with open(raw) as f:
                 raw_data = json.load(f)
             data = parse_media_data(raw_data)
-            with open(parsed, 'w') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            save_if_changed(data, parsed)
 
 def update_media_directory_period(period, media_dir, force=False, save_raw_data=False, retry_count=0):
     """Update the media directory by fetching items related to period.
