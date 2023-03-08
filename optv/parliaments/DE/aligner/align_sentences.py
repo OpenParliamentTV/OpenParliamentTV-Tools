@@ -139,7 +139,7 @@ def align_audio(source: list, language: str, cachedir: Path = None, force: bool 
         # Generate parsed text format file with identifier + sentence
         sentence_file = cachedfile(speech, 'txt', cachedir)
         with open(sentence_file, 'wt') as sf:
-            sf.writelines("|".join((ident, sentence['text'])) + os.linesep
+            sf.writelines("|".join((ident, sentence['text'].replace('\n', ' '))) + os.linesep
                           for (ident, sentence) in sentence_list)
 
         start_time = time.time()
