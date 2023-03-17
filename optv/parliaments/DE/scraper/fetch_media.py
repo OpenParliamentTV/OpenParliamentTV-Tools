@@ -189,6 +189,9 @@ if __name__ == "__main__":
                         help="Meeting number")
     parser.add_argument("--output", type=str, default="",
                         help="Output directory")
+    parser.add_argument("--force", action=argparse.BooleanOptionalAction,
+                        default=False,
+                        help="Force downloading even if raw media data is already present")
     parser.add_argument("--save-raw-data", dest="save_raw_data", action="store_true",
                         default=False,
                         help="Save raw data in JSON format in addition to converted JSON data. It will be an object with 'root' (first page) and 'entries' (all entries for the period/meeting) keys.")
@@ -206,4 +209,4 @@ if __name__ == "__main__":
     if args.debug:
         loglevel = logging.DEBUG
     logging.basicConfig(level=loglevel)
-    download_data(args.period, args.meeting, args.output, args.save_raw_data)
+    download_data(args.period, args.meeting, args.output, args.save_raw_data, args.force)
