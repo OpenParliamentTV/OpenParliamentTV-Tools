@@ -75,16 +75,21 @@ def cachedfile(speech: dict, extension: str, cachedir: Path) -> Path:
         audiodir.mkdir(parents=True)
     return audiodir / filename
 
-def audiofile(speech: dict, cachedir: Path) -> Optional[Path]:
-    """Get an audiofile for the given dict.
+def mediafile(speech: dict, cachedir: Path, mediatype='audio') -> Optional[Path]:
+    """Get an mediafile for the given dict.
 
     Either it is already cached (return filename) or download it
     first.
 
     If anything wrong happens, return None
     """
-    audio = cachedfile(speech, 'mp3', cachedir)
-    if not audio.exists():
+    extension = 'mp3'
+    item = 'audioFileURI'
+    if mediatype == 'video':
+        extension = 'mp4'
+        item = 'videoFileURI'
+    media = cachedfile(speech, extension, cachedir)
+    if not media.exists():
         # Check that we have enough disk space for caching
         total, used, free = shutil.disk_usage(cachedir)
         if free < MIN_CACHE_SPACE:
@@ -92,17 +97,17 @@ def audiofile(speech: dict, cachedir: Path) -> Optional[Path]:
             return None
 
         # Not yet cached file - download it
-        audioURI = speech.get('media', {}).get('audioFileURI')
-        if not audioURI:
-            logger.error(f"No audioFileURI for {speech['session']['number']}{speech['speechIndex']}")
+        mediaURI = speech.get('media', {}).get(item)
+        if not mediaURI:
+            logger.error(f"No {item} for {speech['session']['number']}{speech['speechIndex']}")
             return None
-        logger.warning(f"Downloading {audioURI} into {audio.name}")
+        logger.warning(f"Downloading {mediaURI} into {media.name}")
         try:
-            (fname, headers) = urlretrieve(audioURI, str(audio))
+            (fname, headers) = urlretrieve(mediaURI, str(media))
         except Exception as e:
-            logger.error(f"Cannot download {audioURI}: {e}")
+            logger.error(f"Cannot download {mediaURI}: {e}")
             return None
-    return audio
+    return media
 
 
 def align_audio(source: list, language: str, cachedir: Path = None, force: bool = False) -> list:
@@ -131,9 +136,13 @@ def align_audio(source: list, language: str, cachedir: Path = None, force: bool 
             logger.debug("All sentences already aligned")
             continue
 
-        # Download audio file
-        audio = audiofile(speech, cachedir)
-        if audio is None:
+        # Download media file
+        media = mediafile(speech, cachedir, mediatype='audio')
+        if media is None:
+            # No audio. Try to fallback on video.
+            media = mediafile(speech, cachedir, mediatype='video')
+        if media is None:
+            logger.debug("Can find no audio nor video.")
             continue
 
         # Generate parsed text format file with identifier + sentence
@@ -143,12 +152,12 @@ def align_audio(source: list, language: str, cachedir: Path = None, force: bool 
                           for (ident, sentence) in sentence_list)
 
         start_time = time.time()
-        logger.warning(f"Aligning {sentence_file} with {audio}")
+        logger.warning(f"Aligning {sentence_file} with {media}")
         # Do the alignment
         aeneas_options = """task_adjust_boundary_no_zero=false|task_adjust_boundary_nonspeech_min=2|task_adjust_boundary_nonspeech_string=REMOVE|task_adjust_boundary_nonspeech_remove=REMOVE|is_audio_file_detect_head_min=0.1|is_audio_file_detect_head_max=3|is_audio_file_detect_tail_min=0.1|is_audio_file_detect_tail_max=3|task_adjust_boundary_algorithm=aftercurrent|task_adjust_boundary_aftercurrent_value=0.5|is_audio_file_head_length=1"""
 
         task = Task(config_string=f"""task_language={language}|is_text_type=parsed|os_task_file_format=json|{aeneas_options}""")
-        task.audio_file_path_absolute = str(audio.absolute())
+        task.audio_file_path_absolute = str(media.absolute())
         task.text_file_path_absolute = str(sentence_file.absolute())
         # process Task
         ExecuteTask(task).execute()
@@ -175,7 +184,7 @@ def align_audio(source: list, language: str, cachedir: Path = None, force: bool 
                           if sentence.get('timeStart') is not None ]
         speech['media']['aligned'] = (len(sentence_list) > 0)
 
-        # Cleanup generated files (keep cached audio)
+        # Cleanup generated files (keep cached media)
         sentence_file.unlink()
 
     # We have aligned all "speech"-type bodies. Go through all speeches and
@@ -232,8 +241,11 @@ def align_audiofile(sourcefile: Path,
                         },
                "data": align_audio(source['data'], language, cachedir, force)
               }
-    with open(destinationfile, 'w') as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
+    if destinationfile is not None:
+        with open(destinationfile, 'w') as f:
+            json.dump(output, f, indent=2, ensure_ascii=False)
+    else:
+        json.dump(output, sys.stdout, indent=2, ensure_ascii=False)
     return output
 
 if __name__ == '__main__':
@@ -249,10 +261,18 @@ if __name__ == '__main__':
     parser.add_argument("--force", action="store_true",
                         default=False,
                         help="Force alignment, even if all sentences are already aligned.")
+    parser.add_argument("--debug", dest="debug", action="store_true",
+                        default=False,
+                        help="Display debug messages")
 
     args = parser.parse_args()
     if args.source is None:
         parser.print_help()
         sys.exit(1)
+
+    loglevel = logging.INFO
+    if args.debug:
+        loglevel = logging.DEBUG
+    logging.basicConfig(level=loglevel)
 
     align_audiofile(args.source, args.destination, args.lang, args.cache_dir, args.force)
