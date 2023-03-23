@@ -53,7 +53,7 @@ def fix_fullname(label: str) -> str:
     # 19104: Dietmar Woidke, Ministerpräsident (Brandenburg
     # where a fullname has a comma with a role following. Strip it.
     if ',' in label:
-        label, _ = label.split(',', 2)
+        label, _ = label.split(',', 1)
     return label
 
 def fix_faction(label: str) -> str:
