@@ -31,6 +31,8 @@ def download_plenary_protocols(destination_dir: str, fullscan: bool = False, per
 
     Returns a list of (filename, url) for downloaded files.
     """
+    if not AJAX_ID.get(period):
+        return []
     dest = Path(destination_dir)
     # Create directory if necessary
     if not dest.is_dir():
