@@ -155,9 +155,19 @@ def parse_speech(elements: list, last_speaker: dict, speech_id: str):
                 continue
             elif klasse == 'N':
                 # Speaker name - Präsident or Vizepräsident
-                speaker, status = parse_fullname(c.text)
-                speakerstatus = status or "speaker"
-                continue
+                speech_text = c.text
+                if speech_text:
+                    # Remove any leading or trailing spaces
+                    speech_text = speech_text.strip()
+
+                    # Remove any additional tags inside the 'p' tag
+                    for element in c.iterdescendants():
+                        if element.tag != 'a':
+                            speech_text = speech_text.replace(element.text, '')
+
+                    # Parse the speaker and status from the cleaned text
+                    speaker, status = parse_fullname(speech_text)
+                    continue
             elif klasse in SPEECH_CLASSES and c.text:
                 # Actual text. Output it with speaker information.
                 yield {
