@@ -31,7 +31,7 @@ let get_session_list = () => {
 let get_basedir = () => {
     if (location.host.includes('github.io')) {
         // Hardcoding the URL here.
-        return 'https://raw.githubusercontent.com/OpenParliamentTV/OpenParliamentTV-Data-DE/main/';
+        return 'https://raw.githubusercontent.com/OpenParliamentTV/OpenParliamentTV-Data-DE/';
     } else {
         // Localhost server deployment.
         // We assume that the OpenParliamentTV-Tools and
