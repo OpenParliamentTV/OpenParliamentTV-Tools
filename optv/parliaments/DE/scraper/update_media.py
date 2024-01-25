@@ -82,6 +82,12 @@ def update_media_directory_period(period, media_dir, force=False, save_raw_data=
                     timeout = random() * RETRY_MAX_WAIT_TIME
                     logger.warning(f"Loading error - retrying in {timeout:.2f} seconds")
                     time.sleep(timeout)
+        # Sessions numbered 9XX are special sessions, we do not want to
+        # try to download previous ones.
+        if re.match(str(meeting), '^9\d\d$'):
+            logger.info(f"Special session {meeting} - stopping descending download" )
+            return
+
 
 if __name__ == "__main__":
 
