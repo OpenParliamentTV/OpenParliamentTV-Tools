@@ -37,6 +37,10 @@
         text-decoration: none;
         color: #222;
     }
+    .box .title:hover {
+        background-color: #ccc;
+        text-decoration: underline;
+    }
     .control {
         cursor: pointer;
     }
@@ -89,7 +93,9 @@
       <div class="dashboard">
       </div>
       <div class="stat_container">
-        <div id="toggle_notes" class="control">Hide/Show empty notes</div>
+        <div id="toggle_notes"
+             title="You can take notes pertaining to each session. This toggle offers a way to show only sessions that have notes."
+             class="control">Hide/Show empty notes</div>
         <div class="stats">
         </div>
       </div>
@@ -154,7 +160,7 @@
           box.classList.add('box');
           box.dataset.session = session;
           box.style.order = session;
-          box.innerHTML = `<strong data-session="${session}" data-ratio="${matching_ratio}" data-diff="${count_diff}"><a target="_blank" href="block.html?session=${session}" class="title">Session </a> <a class="title" target="_blank" href="transcript.html?session=${session}">${session}</a></strong><span><span title="Matching ratio">${matching_ratio.toFixed(3)}</span> - <span title="Chatterjee">${chatter.toFixed(3)}</span></span><textarea data-session="${session}" class="notes">${sessionNotes[session] || ""}</textarea>`;
+          box.innerHTML = `<strong data-session="${session}" data-ratio="${matching_ratio}" data-diff="${count_diff}"><a target="_blank" href="block.html?session=${session}" title="Access block view - visualize and tweak alignment parameters" class="title">Session </a> <a class="title" target="_blank" title="Access transcript view - processed output data" href="transcript.html?session=${session}">${session}</a></strong><span><span title="Matching ratio">${matching_ratio.toFixed(3)}</span> - <span title="Chatterjee">${chatter.toFixed(3)}</span></span><textarea data-session="${session}" class="notes">${sessionNotes[session] || ""}</textarea>`;
           box.appendChild(vl_viz({
               $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
               width: "container",
@@ -439,7 +445,8 @@
               let button = document.createElement('div');
               button.classList.add('prefix');
               button.dataset.prefix = prefix;
-              button.append(`Display sessions starting with ${prefix}`);
+              button.title = `Load and display sessions starting with ${prefix}`;
+              button.append(`Display ${prefix}*`);
               button.addEventListener('click', b => {
                   display_prefix(prefix).then(datas => stats_refresh());
                   b.target.remove();
