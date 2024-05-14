@@ -203,7 +203,8 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
             },
         }
         if period_number >= 18:
-            item['media']['audioFileURI'] = f"""https://static.p.core.cdn.streamfarm.net/1000153copo/ondemand/145293313/{mediaid}/{mediaid}_mp3_128kb_stereo_de_128.mp3"""
+            # item['media']['audioFileURI'] = f"""https://static.p.core.cdn.streamfarm.net/1000153copo/ondemand/145293313/{mediaid}/{mediaid}_mp3_128kb_stereo_de_128.mp3"""
+            item['media']['audioFileURI'] = f"""https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/{mediaid}/{mediaid}_mp3_128kb_stereo_de_128.mp3"""
 
         metadata = extract_title_data(e['title'])
         if metadata is not None:
