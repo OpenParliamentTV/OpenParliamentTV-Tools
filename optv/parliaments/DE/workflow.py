@@ -105,6 +105,7 @@ def execute_workflow(args):
                 link_entities_from_file(merged_file,
                                         merged_file,
                                         persons, factions)
+                publish_as_processed(session, merged_file)
 
     # Time-align merged files - only when specified and only for processed files
     if args.align_sentences:
