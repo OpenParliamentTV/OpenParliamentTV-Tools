@@ -153,6 +153,8 @@ def needleman_wunsch_align(proceedings, media, options):
     # Or 0-initialization?
     # scores = [ [ 0 for p in proceedings_index ] for m in media_index ]
 
+    # FIXME: maybe we could tweak merge_penalty and split_penalty based on the dissimilarity between media duration and text length.
+    # A long media duration with a short text length should favor the merge option
     # Build the score matrix - start at 1 since 0 row/col has no ancestor
     for i in range(1, len(media_index)):
         for j in range(1, len(proceedings_index)):
