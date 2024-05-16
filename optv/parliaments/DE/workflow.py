@@ -3,6 +3,7 @@
 # Update media files, proceeding files and merge them
 import argparse
 import atexit
+import json
 import logging
 import os
 from pathlib import Path
@@ -17,7 +18,7 @@ if __package__ is None:
     sys.path.insert(0, str(module_dir.parent))
     __package__ = module_dir.name
 
-from .common import Config, SessionStatus
+from .common import Config, SessionStatus, data_signature
 
 logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basename(sys.argv[0]))
 
@@ -37,9 +38,16 @@ def execute_workflow(args):
         This will be called after each step that produced a correct (even
         if incomplete) session file (merge, align, ner)
         """
-        logger.warning(f"Publishing {session} from {filepath.name}")
         processed_file = config.file(session, 'processed', create=True)
-        shutil.copyfile(filepath, processed_file)
+        # Check that content is actually different. If not, do not save.
+        # It happens when process such as nel/align is run again
+        published_data = json.loads(processed_file.read_text())
+        new_data = json.loads(filepath.read_text())
+        # Compare actual data, ignoring metadata (with processing info)
+        if data_signature(published_data['data']) != data_signature(new_data['data']):
+            # Data is updated, copy new version
+            logger.warning(f"Publishing {session} from {filepath.name}")
+            shutil.copyfile(filepath, processed_file)
         return processed_file
 
     if args.download_original:

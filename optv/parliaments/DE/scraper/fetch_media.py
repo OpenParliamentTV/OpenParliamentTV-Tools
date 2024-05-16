@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 import argparse
 import feedparser
-from hashlib import blake2b
 import json
 from pathlib import Path
 import sys
@@ -27,6 +26,8 @@ except ModuleNotFoundError:
     base_dir = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(base_dir))
     from parsers.media2json import parse_media_data
+# We know here that we can do package imports
+from common import save_if_changed
 
 ROOT_URL = "http://webtv.bundestag.de/player/macros/bttv/podcast/video/plenar.xml"
 SERVER_ROOT = "https://www.bundestag.de"
@@ -95,37 +96,6 @@ def get_filename(period, meeting=None):
         return f"{period}-all-media.json"
     else:
         return f"{period}{str(meeting).rjust(3, '0')}-media.json"
-
-def data_signature(data: list) -> str:
-    """Return a signature (as a string) for the given data.
-    """
-    h = blake2b(json.dumps(data).encode('utf-8'))
-    return h.hexdigest()
-
-def save_if_changed(data: dict, output_file: Path) -> bool:
-    """Save the data into file if it is different.
-
-    ignoring the 'meta' properties (which contain processing info).
-
-    Returns True if the data was actually saved.
-    """
-    # Consider it as different by default.
-    updated_content = True
-    if output_file.exists():
-        old_data = json.loads(output_file.read_text())
-        # Compare old_data with data, without taking meta info
-        # (processing info) into account.
-        old_digest = data_signature(old_data['data'])
-        new_digest = data_signature(data['data'])
-        if old_digest == new_digest:
-            # Same content - do not save
-            updated_content = False
-
-    if updated_content:
-        with open(output_file, 'w') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-
-    return updated_content
 
 def download_data(period, meeting=None, output=None, save_raw_data=False, force=False):
     """Download data for a given meeting.

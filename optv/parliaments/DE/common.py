@@ -4,6 +4,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from enum import Enum, auto
+from hashlib import blake2b
 import json
 from pathlib import Path
 
@@ -18,6 +19,36 @@ class SessionStatus(Enum):
     empty = auto()
     no_text = auto()
 
+def data_signature(data: list) -> str:
+    """Return a signature (as a string) for the given data.
+    """
+    h = blake2b(json.dumps(data).encode('utf-8'))
+    return h.hexdigest()
+
+def save_if_changed(data: dict, output_file: Path) -> bool:
+    """Save the data into file if it is different.
+
+    ignoring the 'meta' properties (which contain processing info).
+
+    Returns True if the data was actually saved.
+    """
+    # Consider it as different by default.
+    updated_content = True
+    if output_file.exists():
+        old_data = json.loads(output_file.read_text())
+        # Compare old_data with data, without taking meta info
+        # (processing info) into account.
+        old_digest = data_signature(old_data['data'])
+        new_digest = data_signature(data['data'])
+        if old_digest == new_digest:
+            # Same content - do not save
+            updated_content = False
+
+    if updated_content:
+        with open(output_file, 'w') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    return updated_content
 
 class Config:
     def __init__(self, data_dir: Path,
