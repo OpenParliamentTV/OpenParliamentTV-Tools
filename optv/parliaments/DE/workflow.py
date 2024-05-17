@@ -41,7 +41,9 @@ def execute_workflow(args):
         processed_file = config.file(session, 'processed', create=True)
         # Check that content is actually different. If not, do not save.
         # It happens when process such as nel/align is run again
-        published_data = json.loads(processed_file.read_text())
+        published_data = []
+        if processed_file.exists():
+            published_data = json.loads(processed_file.read_text())
         new_data = json.loads(filepath.read_text())
         # Compare actual data, ignoring metadata (with processing info)
         if data_signature(published_data['data']) != data_signature(new_data['data']):
