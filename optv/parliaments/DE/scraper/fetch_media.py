@@ -59,12 +59,13 @@ def download_meeting_data(period: int, number: int = None, root_only=False):
 
     logger.warning(f'Download meeting data {root_url}')
     root = feedparser.parse(root_url)
-    logger.debug(f"Status {root['status']}")
+    status = root.get('status')
+    logger.debug(f"Status {status}")
     if root['status'] != 200:
         # Frequent error from server. We should retry. For the moment,
         # this will be done by re-running the script, since it will
         # only update necessary files.
-        logger.warning(f"Download error ({root['status']}) - ignoring entries")
+        logger.warning(f"Download error ({status}) - ignoring entries")
         return { 'root': root, 'entries': [] }
     entries = root['entries']
     if root_only:
