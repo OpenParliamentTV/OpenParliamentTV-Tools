@@ -119,6 +119,7 @@ def download_data(period, meeting=None, output=None, save_raw_data=False, force=
         if not output_dir.is_dir():
             output_dir.mkdir(parents=True)
     try:
+        raw_data = []
         if output and (output_dir / raw_filename).exists() and not force:
             # There is a raw data dump. Use it rather than downloading
             # it again.
