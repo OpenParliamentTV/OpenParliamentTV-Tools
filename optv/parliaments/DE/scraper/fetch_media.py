@@ -29,7 +29,7 @@ except ModuleNotFoundError:
 # We know here that we can do package imports
 from common import save_if_changed
 
-ROOT_URL = "http://webtv.bundestag.de/player/macros/bttv/podcast/video/plenar.xml"
+ROOT_URL = "https://webtv.bundestag.de/player/macros/bttv/podcast/video/plenar.xml"
 SERVER_ROOT = "https://www.bundestag.de"
 
 def get_latest():
