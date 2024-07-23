@@ -61,7 +61,7 @@ def download_meeting_data(period: int, number: int = None, root_only=False):
     root = feedparser.parse(root_url)
     status = root.get('status')
     logger.debug(f"Status {status}")
-    if root['status'] != 200:
+    if status != 200:
         # Frequent error from server. We should retry. For the moment,
         # this will be done by re-running the script, since it will
         # only update necessary files.
