@@ -43,7 +43,7 @@ def next_rss(data):
     links = feed.get('links')
     if not links:
         return None
-    nexts = [ l for l in links if l.get('rel') == 'next' ]
+    nexts = [ link for link in links if link.get('rel') == 'next' ]
     if nexts:
         return nexts[0]['href']
     else:

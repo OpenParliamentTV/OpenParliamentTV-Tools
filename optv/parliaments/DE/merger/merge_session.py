@@ -122,8 +122,8 @@ def needleman_wunsch_align(proceedings, media, options):
         "title_weight": 2,
         "merge_penalty": -1,
         "split_penalty": -1,
-    };
-    def build_index(l):
+    }
+    def build_index(items):
         return [
             {
                 "speech_index": item['speechIndex'],
@@ -131,7 +131,7 @@ def needleman_wunsch_align(proceedings, media, options):
                 "title": item['agendaItem']['officialTitle'],
                 "item": item
              }
-            for item in l
+            for item in items
         ]
     media_index = build_index(media)
     proceedings_index = build_index(proceedings)
@@ -210,7 +210,7 @@ def needleman_wunsch_align(proceedings, media, options):
     return path
 
 def is_utc_offset(s: str) -> bool:
-    return re.match('^[+-]\d\d:\d\d$', s)
+    return re.match(r'^[+-]\d\d:\d\d$', s)
 
 def merge_data(proceedings, media, options) -> list:
     """Merge data structures.

@@ -38,8 +38,8 @@ TRAILING_SPEECH = '-outro'
 CLOSING_SPEECH = '-closing'
 VIRTUAL_SPEECH = '-post'
 
-ddmmyyyy_re = re.compile('(?P<dd>\d\d)\.(?P<mm>\d\d)\.(?P<yyyy>\d\d\d\d)')
-time_re = re.compile('(?P<h>\d?\d)[\.:](?P<m>\d\d)')
+ddmmyyyy_re = re.compile(r'(?P<dd>\d\d)\.(?P<mm>\d\d)\.(?P<yyyy>\d\d\d\d)')
+time_re = re.compile(r'(?P<h>\d?\d)[\.:](?P<m>\d\d)')
 
 # Global language model - to save load time
 nlp = German()
@@ -257,7 +257,7 @@ def parse_documents(op):
     for doc in op.findall('p[@klasse="T_Drs"]'):
         # There may be multiple Drucksache in a single .T_Drs:
         # "Drucksachen 19/27871, 19/27822, 19/27315, 19/29694"
-        for session, ref in re.findall('(\d\d)/(\d+)', doc.text):
+        for session, ref in re.findall(r'(\d\d)/(\d+)', doc.text):
             padded = ref.rjust(5, '0')
             yield {
                 "type": "officialDocument",
@@ -284,7 +284,7 @@ def time_to_int(t):
     try:
         # Normally time is HH:MM but in some files (like 19081) the
         # separator is .
-        h, m = re.split('[:\.]', t)
+        h, m = re.split(r'[:\.]', t)
     except IndexError:
         # Single value
         return 0

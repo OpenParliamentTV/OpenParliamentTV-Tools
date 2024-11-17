@@ -50,7 +50,7 @@ def update_media_directory_period(period, media_dir, force=False, save_raw_data=
         return
     # Get latest Sitzung/meeting number from first entry title
     latest_title = rootinfo['entries'][0]['title']
-    numbers = re.findall('\((\d+)\.\sSitzung', latest_title)
+    numbers = re.findall(r'\((\d+)\.\sSitzung', latest_title)
     if not numbers:
         logger.error(f"Cannot determine latest meeting number from latest entry: {latest_title}")
         return
@@ -84,11 +84,11 @@ def update_media_directory_period(period, media_dir, force=False, save_raw_data=
                         logger.warning(f"Loading error - retrying in {timeout:.2f} seconds")
                         time.sleep(timeout)
                     else:
-                        logger.warning(f"Too many failed retries. Cancelling update_media")
+                        logger.warning("Too many failed retries. Cancelling update_media")
                         return
             # Sessions numbered 9XX seem to be special sessions, we do not want to
             # try to download previous ones.
-            if re.match(str(meeting), '^9\d\d$'):
+            if re.match(str(meeting), r'^9\d\d$'):
                 logger.info(f"Special session {meeting} - stopping descending download" )
                 return
 
