@@ -33,7 +33,7 @@ FEED_SUBTITLE = 'Deutscher Bundestag'
 FEED_LICENSE = '&lt;a href=&quot;https://www.bundestag.de/nutzungsbedingungen&quot; target=&quot;_blank&quot;&gt;Nutzungsbedingungen&lt;/a&gt;'
 FEED_AUTHOR_EMAIL = 'mail@bundestag.de'
 # Note that <faction> may be empty (in the case of Nationalhymne)
-title_data_re = re.compile('Redebeitrag\s+von\s+(?P<fullname>.+?)\s+\((?P<faction>.*?)\),?\s+am (?P<title_date>[\d.]+)\s+um\s+(?P<title_time>[\d:]+)\s+Uhr\s+\((?P<session_info>.+)\)')
+title_data_re = re.compile(r'Redebeitrag\s+von\s+(?P<fullname>.+?)\s+\((?P<faction>.*?)\),?\s+am (?P<title_date>[\d.]+)\s+um\s+(?P<title_time>[\d:]+)\s+Uhr\s+\((?P<session_info>.+)\)')
 
 def extract_title_data(title: str) -> Optional[dict]:
     """Extract structured data from title string.
@@ -52,13 +52,13 @@ def fix_title(title: str) -> str:
     """
     title = title.replace("TOP Sitzungsende", "Sitzungsende").replace("TOP Sitzungseröffnung", "Sitzungseröffnung")
 
-    zusatz = re.findall('TOP(?:\s+\d+)?,?\s+(ZP|Epl)\s*(\d+)', title, flags=re.IGNORECASE)
+    zusatz = re.findall(r'TOP(?:\s+\d+)?,?\s+(ZP|Epl)\s*(\d+)', title, flags=re.IGNORECASE)
     if zusatz:
         if zusatz[0][0].lower() == 'zp':
             title = f"Zusatzpunkt {zusatz[0][1]}"
         else:
             title = f"Einzelplan {zusatz[0][1]}"
-    title = re.sub('^TOP\s+(.+)', 'Tagesordnungspunkt \\1', title)
+    title = re.sub(r'^TOP\s+(.+)', 'Tagesordnungspunkt \\1', title)
     title = title.rstrip(".")
     return title
 
@@ -112,7 +112,7 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
         return output
 
     # Convert links list to dict indexed by 'rel'
-    session_links = dict( (l['rel'], l) for l in root['feed']['links'] )
+    session_links = dict( (link['rel'], link) for link in root['feed']['links'] )
     if not session_links.get('self'):
         logger.error("No session information")
         return output
@@ -133,9 +133,9 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
 
     for e in entries:
         e = apply_media_fixups(e, meeting_reference, fixups)
-        links = dict( (l['rel'], l) for l in e ['links'] )
+        links = dict( (link['rel'], link) for link in e['links'] )
 
-        if not 'enclosure' in links:
+        if 'enclosure' not in links:
             # No media associated to the item.
             # FIXME: should we report the issue?
             logger.debug(f"No media associated: {e['title']}")
@@ -155,7 +155,7 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
         # Timezone info is not preserved by feedparser, re-add it:
         # Get UTC offset from el['published']
         utc_offset = e['published'].strip()[-5:]
-        m = re.match('^([+-])(\d\d)(\d\d)$', utc_offset)
+        m = re.match(r'^([+-])(\d\d)(\d\d)$', utc_offset)
         if m:
             sign, hours, minutes = m.groups()
             # Found a valid UTC offset - we should make the startdate
@@ -241,7 +241,7 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
             if metadata.get('session_info') is not None:
                 # According to https://github.com/OpenParliamentTV/OpenParliamentTV-Parsers/issues/1
                 # we should strip the Sitzung prefix from the session_info
-                item['agendaItem']['officialTitle'] = fix_title(re.sub('^\d+\.\sSitzung,\s', '', metadata.get('session_info')))
+                item['agendaItem']['officialTitle'] = fix_title(re.sub(r'^\d+\.\sSitzung,\s', '', metadata.get('session_info')))
             # FIXME: we have other fields: title_date, title_time that we could use for validation
 
         # Fix AgendaItemTitle if necessary
