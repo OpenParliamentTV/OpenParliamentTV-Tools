@@ -94,7 +94,14 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
         fixups = {}
     output: list[dict] = []
     root = data['root']
-    entries = data['entries']
+    entries = list(data['entries'])
+    if root.get('entries'):
+        # Some entries are sometimes wrongly placed in the root node.
+        # Add them to the main 'entries' list if their title is different.
+        titles = set(entry['title'] for entry in entries)
+        entries.extend(entry
+                       for entry in root['entries']
+                       if entry['title'] not in titles)
 
     # Do some validity checks
     if root['feed'].get('subtitle') != FEED_SUBTITLE:
