@@ -78,8 +78,8 @@ def download_meeting_data(period: int, number: int = None, root_only=False):
         logger.info(f"Downloading {next_url}")
         data = feedparser.parse(next_url)
         status = data.get('status')
-        entries = data.get('entries') or []
-        logger.debug(f"Status {status} - {len(entries)} entries")
+        next_entries = data.get('entries') or []
+        logger.debug(f"Status {status} - {len(next_entries)} entries")
         if status != 200:
             # Frequent error from server. Ignore the already fetched entries.
             # We should retry. For the moment,
@@ -88,7 +88,7 @@ def download_meeting_data(period: int, number: int = None, root_only=False):
             logger.warning(f"Download error ({status}) - ignoring entries")
             return { 'root': root, 'entries': [] }
 
-        entries.extend(data['entries'])
+        entries.extend(next_entries)
         next_url = next_rss(data)
     return { "root": root,
              "entries": entries }
