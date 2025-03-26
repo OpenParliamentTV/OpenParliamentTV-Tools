@@ -24,7 +24,9 @@ AJAX_ID = {
     # Ajax ID Period 19
     19: "543410-543410",
     # Ajax ID Period 20
-    20: "866354-866354"
+    20: "866354-866354",
+    # Ajax ID Period 21
+    21: "1058442-1058442"
 }
 
 def download_plenary_protocols(destination_dir: str, fullscan: bool = False, period: int = 20) -> "list[(str, str)]":
