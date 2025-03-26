@@ -67,7 +67,8 @@ def download_plenary_protocols(destination_dir: str, fullscan: bool = False, per
                     return created_files
             else:
                 # Download file
-                file_url = f"{SERVER_ROOT}{link_href}"
+                #file_url = f"{SERVER_ROOT}{link_href}"
+                file_url = f"{link_href}"
                 logger.info(f"downloading URL {file_url}")
                 with urllib.request.urlopen(file_url) as f:
                     # Add source URL as a processing instruction, but
