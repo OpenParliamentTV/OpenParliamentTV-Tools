@@ -30,8 +30,36 @@ from .scraper.fetch_proceedings import download_plenary_protocols
 from .merger.merge_session import merge_session
 from .parsers.proceedings2json import parse_proceedings_directory
 
+try:
+    from optv.shared.validators import validate_stage2
+except ImportError:
+    _repo_root = Path(__file__).resolve().parent.parent.parent.parent
+    if str(_repo_root) not in sys.path:
+        sys.path.insert(0, str(_repo_root))
+    from optv.shared.validators import validate_stage2
+
 def execute_workflow(args):
     config = Config(args.data_dir)
+
+    def run_stage2_validation(session: str, doc: dict) -> None:
+        if not getattr(args, "validate", True):
+            return
+        findings = validate_stage2(doc, schema="full", semantic=True)
+        errors = [f for f in findings if f["severity"] == "error"]
+        warnings_ = [f for f in findings if f["severity"] == "warning"]
+        if errors:
+            logger.error(
+                f"[{session}] stage2 validation: {len(errors)} error(s), "
+                f"{len(warnings_)} warning(s) — publish NOT blocked"
+            )
+            for f in errors[:10]:
+                logger.error(f"  [{session}] {f['rule']} @ {f['path']}: {f['message'][:240]}")
+            if len(errors) > 10:
+                logger.error(f"  [{session}] ... {len(errors) - 10} more error(s) suppressed")
+        elif warnings_:
+            logger.info(
+                f"[{session}] stage2 validation: {len(warnings_)} warning(s)"
+            )
 
     def publish_as_processed(session: str, filepath: Path) -> Path:
         """Finalizing step - copy produced_files into processed
@@ -49,6 +77,7 @@ def execute_workflow(args):
         if data_signature(published_data['data']) != data_signature(new_data['data']):
             # Data is updated, copy new version
             logger.warning(f"Publishing {session} from {filepath.name}")
+            run_stage2_validation(session, new_data)
             shutil.copyfile(filepath, processed_file)
         return processed_file
 
@@ -218,6 +247,9 @@ if __name__ == "__main__":
     parser.add_argument("--extract-entities", action=argparse.BooleanOptionalAction,
                         default=False,
                         help="Do Entity extraction on aligned sessions (requires --align-sentences)")
+    parser.add_argument("--validate", action=argparse.BooleanOptionalAction,
+                        default=True,
+                        help="Run Stage 2 schema+semantic validation on each publish (warning-only, does not block)")
 
     args = parser.parse_args()
     if args.data_dir is None or args.period is None:

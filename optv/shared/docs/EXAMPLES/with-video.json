@@ -1,0 +1,1025 @@
+{
+  "meta": {
+    "session": "21002",
+    "processing": {
+      "parse_proceedings": "2025-05-16T12:41:42",
+      "parse_media": "2025-05-16T12:41:41",
+      "merge": "2025-05-16T12:41:50",
+      "nel": "2025-07-16T15:15:14",
+      "align": "2025-05-16T12:41:54"
+    },
+    "dateStart": "2025-05-06T09:00:00+02:00",
+    "dateEnd": "2025-05-06T19:12:00+02:00"
+  },
+  "data": [
+    {
+      "parliament": "DE",
+      "electoralPeriod": {
+        "number": 21
+      },
+      "session": {
+        "number": 2,
+        "dateStart": "2025-05-06T09:00:00+02:00",
+        "dateEnd": "2025-05-06T19:12:00+02:00"
+      },
+      "agendaItem": {
+        "title": "Sitzungseröffnung",
+        "officialTitle": "Sitzungseröffnung"
+      },
+      "dateStart": "2025-05-06T09:00:00+02:00",
+      "dateEnd": "2025-05-06T09:04:58+02:00",
+      "debug": {
+        "originalTitle": "Redebeitrag von Julia Klöckner (Bundestagspräsidentin/CDU/CSU) am 06.05.2025 um 09:00 Uhr (2. Sitzung, TOP Sitzungseröffnung)",
+        "proceedingIndex": 1001,
+        "proceedingIndexes": [
+          1001
+        ],
+        "mediaIndex": 1,
+        "confidence": 1,
+        "linkedMediaIndexes": [
+          1
+        ],
+        "align-duration": 5.228546380996704
+      },
+      "media": {
+        "videoFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/7630688/7630688_h264_1280_720_3000kb_baseline_de_3000.mp4",
+        "sourcePage": "http://dbtg.tv/fvid/7630688",
+        "duration": 298.0,
+        "creator": "Deutscher Bundestag",
+        "license": "&lt;a href=&quot;https://www.bundestag.de/nutzungsbedingungen&quot; target=&quot;_blank&quot;&gt;Nutzungsbedingungen&lt;/a&gt;",
+        "originMediaID": "7630688",
+        "audioFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/7630688/7630688_mp3_128kb_stereo_de_128.mp3",
+        "aligned": true
+      },
+      "people": [
+        {
+          "type": "memberOfParliament",
+          "label": "Julia Klöckner",
+          "context": "main-speaker",
+          "role": "Bundestagspräsidentin",
+          "wid": "Q88158",
+          "wtype": "PERSON"
+        }
+      ],
+      "speechIndex": 1,
+      "originTextID": "begin-intro",
+      "textContents": [
+        {
+          "type": "proceedings",
+          "sourceURI": "https://www.bundestag.de/resource/blob/1064580/5c36bdcfce269e58d5f23f4bece5d44c/21002.xml",
+          "creator": "Deutscher Bundestag",
+          "license": "Public Domain",
+          "language": "DE-de",
+          "originTextID": "begin-intro",
+          "textBody": [
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Guten Morgen, alle zusammen! Ich freue mich über die fröhliche Stimmung im Hause. Ich darf die heutige Sitzung eröffnen, freue mich, dass Sie alle da sind; es sieht sehr gut gefüllt aus.",
+              "sentences": [
+                {
+                  "text": "Guten Morgen, alle zusammen!",
+                  "timeStart": "1.000",
+                  "timeEnd": "43.120"
+                },
+                {
+                  "text": "Ich freue mich über die fröhliche Stimmung im Hause.",
+                  "timeStart": "43.120",
+                  "timeEnd": "61.820"
+                },
+                {
+                  "text": "Ich darf die heutige Sitzung eröffnen, freue mich, dass Sie alle da sind; es sieht sehr gut gefüllt aus.",
+                  "timeStart": "61.820",
+                  "timeEnd": "71.800"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Ich begrüße sehr herzlich unsere Gäste, die heute bei uns sind. Das sind die Präsidentin des Bundesrates, Frau Anke Rehlinger, sowie die Wehrbeauftragte, Frau Dr. Eva Högl. Herzlich willkommen heiße ich auf der Ehrentribüne die ehemalige Präsidentin unseres Deutschen Bundestages, Frau Dr. Rita Süssmuth.",
+              "sentences": [
+                {
+                  "text": "Ich begrüße sehr herzlich unsere Gäste, die heute bei uns sind.",
+                  "timeStart": "71.800",
+                  "timeEnd": "76.400"
+                },
+                {
+                  "text": "Das sind die Präsidentin des Bundesrates, Frau Anke Rehlinger, sowie die Wehrbeauftragte, Frau Dr. Eva Högl.",
+                  "timeStart": "76.400",
+                  "timeEnd": "85.120"
+                },
+                {
+                  "text": "Herzlich willkommen heiße ich auf der Ehrentribüne die ehemalige Präsidentin unseres Deutschen Bundestages, Frau Dr. Rita Süssmuth.",
+                  "timeStart": "85.120",
+                  "timeEnd": "96.080"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Und ich freue mich über die Anwesenheit unserer ehemaligen Bundeskanzlerin, Frau Dr. Angela Merkel. Herzlich willkommen!",
+              "sentences": [
+                {
+                  "text": "Und ich freue mich über die Anwesenheit unserer ehemaligen Bundeskanzlerin, Frau Dr. Angela Merkel.",
+                  "timeStart": "96.080",
+                  "timeEnd": "114.080"
+                },
+                {
+                  "text": "Herzlich willkommen!",
+                  "timeStart": "114.080",
+                  "timeEnd": "123.080"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Stellvertretend für das diplomatische Korps darf ich begrüßen Seine Exzellenz den Apostolischen Nuntius. Herr Nuntius, willkommen! Ich begrüße auch alle weiteren Gäste auf der Tribüne.",
+              "sentences": [
+                {
+                  "text": "Stellvertretend für das diplomatische Korps darf ich begrüßen Seine Exzellenz den Apostolischen Nuntius.",
+                  "timeStart": "123.080",
+                  "timeEnd": "128.760"
+                },
+                {
+                  "text": "Herr Nuntius, willkommen!",
+                  "timeStart": "128.760",
+                  "timeEnd": "131.040"
+                },
+                {
+                  "text": "Ich begrüße auch alle weiteren Gäste auf der Tribüne.",
+                  "timeStart": "131.040",
+                  "timeEnd": "134.320"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Sehr herzlich will ich auch die Familien und Angehörigen derer begrüßen, die hier heute einen ganz besonderen Tag haben. Denn diejenigen, die sich für den politischen Weg entscheiden, üben auch immer Einfluss auf das Leben derer aus, die ganz nahe mit ihnen leben. Herzlich willkommen!",
+              "sentences": [
+                {
+                  "text": "Sehr herzlich will ich auch die Familien und Angehörigen derer begrüßen, die hier heute einen ganz besonderen Tag haben.",
+                  "timeStart": "134.320",
+                  "timeEnd": "150.680"
+                },
+                {
+                  "text": "Denn diejenigen, die sich für den politischen Weg entscheiden, üben auch immer Einfluss auf das Leben derer aus, die ganz nahe mit ihnen leben.",
+                  "timeStart": "150.680",
+                  "timeEnd": "157.880"
+                },
+                {
+                  "text": "Herzlich willkommen!",
+                  "timeStart": "157.880",
+                  "timeEnd": "165.000"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "An dieser Stelle – so ist das hier üblich und gute Tradition – darf ich noch Glückwünsche aussprechen. Nachträglich gratuliere ich sehr herzlich dem Kollegen Leon Eckert zum 30. Geburtstag ",
+              "sentences": [
+                {
+                  "text": "An dieser Stelle – so ist das hier üblich und gute Tradition – darf ich noch Glückwünsche aussprechen.",
+                  "timeStart": "165.000",
+                  "timeEnd": "171.480"
+                },
+                {
+                  "text": "Nachträglich gratuliere ich sehr herzlich dem Kollegen Leon Eckert zum 30. Geburtstag",
+                  "timeStart": "171.480",
+                  "timeEnd": "177.200"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "– je jünger, desto stärker der Applaus –, dem Kollegen Pascal Reddig zum 30. Geburtstag,",
+              "sentences": [
+                {
+                  "text": "– je jünger, desto stärker der Applaus –, dem Kollegen Pascal Reddig zum 30. Geburtstag,",
+                  "timeStart": "177.200",
+                  "timeEnd": "187.360"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "dem Kollegen Dr. Wolfgang Stefinger zum 40. Geburtstag,",
+              "sentences": [
+                {
+                  "text": "dem Kollegen Dr. Wolfgang Stefinger zum 40. Geburtstag,",
+                  "timeStart": "187.360",
+                  "timeEnd": "194.440"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "dem Kollegen Günter Baumgartner zum 50. Geburtstag,",
+              "sentences": [
+                {
+                  "text": "dem Kollegen Günter Baumgartner zum 50. Geburtstag,",
+                  "timeStart": "194.440",
+                  "timeEnd": "200.840"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "dem Kollegen Tino Chrupalla zum 50. Geburtstag,",
+              "sentences": [
+                {
+                  "text": "dem Kollegen Tino Chrupalla zum 50. Geburtstag,",
+                  "timeStart": "200.840",
+                  "timeEnd": "206.440"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "sowie dem Kollegen Matthias Moosdorf zum 60. Geburtstag.",
+              "sentences": [
+                {
+                  "text": "sowie dem Kollegen Matthias Moosdorf zum 60. Geburtstag.",
+                  "timeStart": "206.440",
+                  "timeEnd": "214.360"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Und am heutigen Tag feiert der Kollege Wolfgang Dahler seinen 50. Geburtstag.",
+              "sentences": [
+                {
+                  "text": "Und am heutigen Tag feiert der Kollege Wolfgang Dahler seinen 50. Geburtstag.",
+                  "timeStart": "214.360",
+                  "timeEnd": "225.640"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Ich gratuliere allen sehr, sehr herzlich im Namen des gesamten Hauses und wünsche Ihnen alles Gute für Ihr neues Lebensjahr.",
+              "sentences": [
+                {
+                  "text": "Ich gratuliere allen sehr, sehr herzlich im Namen des gesamten Hauses und wünsche Ihnen alles Gute für Ihr neues Lebensjahr.",
+                  "timeStart": "225.640",
+                  "timeEnd": "233.600"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Liebe Kolleginnen und Kollegen, bevor ich in die Tagesordnung einsteige, möchte ich Ihnen mitteilen, dass heute zum letzten Mal Herr Dr. Michael Schäfer als Direktor beim Deutschen Bundestag hinter mir Platz genommen hat. ",
+              "sentences": [
+                {
+                  "text": "Liebe Kolleginnen und Kollegen, bevor ich in die Tagesordnung einsteige, möchte ich Ihnen mitteilen, dass heute zum letzten Mal Herr Dr. Michael Schäfer als Direktor beim Deutschen Bundestag hinter mir Platz genommen hat.",
+                  "timeStart": "233.600",
+                  "timeEnd": "246.680"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Lieber Herr Dr. Schäfer, ich möchte Ihnen an dieser Stelle von Herzen für Ihre Arbeit, für Ihr Engagement danken. Sie haben sich in den Dienst dieses Deutschen Bundestages und der Ermöglichung unserer Demokratie gestellt. Sie haben eines wirklich sehr gestärkt: eine offene, eine produktive und konstruktive Kommunikationsstruktur und auch -kultur hier in diesem Deutschen Bundestag. Alles Gute für Sie! Mögen Sie behütet bleiben für das, was jetzt kommt. Herzlichen Dank im Namen des ganzen Hauses!",
+              "sentences": [
+                {
+                  "text": "Lieber Herr Dr. Schäfer, ich möchte Ihnen an dieser Stelle von Herzen für Ihre Arbeit, für Ihr Engagement danken.",
+                  "timeStart": "246.680",
+                  "timeEnd": "253.920"
+                },
+                {
+                  "text": "Sie haben sich in den Dienst dieses Deutschen Bundestages und der Ermöglichung unserer Demokratie gestellt.",
+                  "timeStart": "253.920",
+                  "timeEnd": "260.360"
+                },
+                {
+                  "text": "Sie haben eines wirklich sehr gestärkt: eine offene, eine produktive und konstruktive Kommunikationsstruktur und auch -kultur hier in diesem Deutschen Bundestag.",
+                  "timeStart": "260.360",
+                  "timeEnd": "272.240"
+                },
+                {
+                  "text": "Alles Gute für Sie!",
+                  "timeStart": "272.240",
+                  "timeEnd": "273.720"
+                },
+                {
+                  "text": "Mögen Sie behütet bleiben für das, was jetzt kommt.",
+                  "timeStart": "273.720",
+                  "timeEnd": "276.600"
+                },
+                {
+                  "text": "Herzlichen Dank im Namen des ganzen Hauses!",
+                  "timeStart": "276.600",
+                  "timeEnd": "278.920"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Herzlich willkommen heißen möchte ich seinen Nachfolger, Herrn Paul Göttke!",
+              "sentences": [
+                {
+                  "text": "Herzlich willkommen heißen möchte ich seinen Nachfolger, Herrn Paul Göttke!",
+                  "timeStart": "278.920",
+                  "timeEnd": "297.960"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "documents": []
+    },
+    {
+      "parliament": "DE",
+      "electoralPeriod": {
+        "number": 21
+      },
+      "session": {
+        "number": 2,
+        "dateStart": "2025-05-06T09:00:00+02:00",
+        "dateEnd": "2025-05-06T19:12:00+02:00"
+      },
+      "agendaItem": {
+        "title": "Wahl des Bundeskanzlers",
+        "officialTitle": "Tagesordnungspunkt 1"
+      },
+      "dateStart": "2025-05-06T09:04:58+02:00",
+      "dateEnd": "2025-05-06T10:06:47+02:00",
+      "debug": {
+        "originalTitle": "Redebeitrag von Julia Klöckner (Bundestagspräsidentin/CDU/CSU) am 06.05.2025 um 09:04 Uhr (2. Sitzung, TOP 1)",
+        "proceedingIndex": 1002,
+        "proceedingIndexes": [
+          1002
+        ],
+        "mediaIndex": 2,
+        "confidence": 1,
+        "linkedMediaIndexes": [
+          2
+        ],
+        "align-duration": 47.89896273612976
+      },
+      "media": {
+        "videoFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/7630691/7630691_h264_1280_720_3000kb_baseline_de_3000.mp4",
+        "sourcePage": "http://dbtg.tv/fvid/7630691",
+        "duration": 3709.0,
+        "creator": "Deutscher Bundestag",
+        "license": "&lt;a href=&quot;https://www.bundestag.de/nutzungsbedingungen&quot; target=&quot;_blank&quot;&gt;Nutzungsbedingungen&lt;/a&gt;",
+        "originMediaID": "7630691",
+        "audioFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/7630691/7630691_mp3_128kb_stereo_de_128.mp3",
+        "aligned": true
+      },
+      "people": [
+        {
+          "type": "memberOfParliament",
+          "label": "Julia Klöckner",
+          "context": "main-speaker",
+          "role": "Bundestagspräsidentin",
+          "wid": "Q88158",
+          "wtype": "PERSON"
+        }
+      ],
+      "speechIndex": 2,
+      "originTextID": "begin-intro-post-intro",
+      "textContents": [
+        {
+          "type": "proceedings",
+          "sourceURI": "https://www.bundestag.de/resource/blob/1064580/5c36bdcfce269e58d5f23f4bece5d44c/21002.xml",
+          "creator": "Deutscher Bundestag",
+          "license": "Public Domain",
+          "language": "DE-de",
+          "originTextID": "begin-intro-post-intro",
+          "textBody": [
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Ich rufe nun auf den Tagesordnungspunkt 1: ",
+              "sentences": [
+                {
+                  "text": "Ich rufe nun auf den Tagesordnungspunkt 1:",
+                  "timeStart": "1.000",
+                  "timeEnd": "3.920"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "\t\tWahl des Bundeskanzlers ",
+              "sentences": [
+                {
+                  "text": "Wahl des Bundeskanzlers",
+                  "timeStart": "3.920",
+                  "timeEnd": "6.380"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Der Herr Bundespräsident hat mir hierzu mitgeteilt:",
+              "sentences": [
+                {
+                  "text": "Der Herr Bundespräsident hat mir hierzu mitgeteilt:",
+                  "timeStart": "6.380",
+                  "timeEnd": "10.660"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "„Gemäß Artikel 63 Absatz 1 des Grundgesetzes für die Bundesrepublik Deutschland schlage ich dem Deutschen Bundestag vor, Herrn Friedrich Merz zum Bundeskanzler zu wählen.“",
+              "sentences": [
+                {
+                  "text": "„Gemäß Artikel 63 Absatz 1 des Grundgesetzes für die Bundesrepublik Deutschland schlage ich dem Deutschen Bundestag vor, Herrn Friedrich Merz zum Bundeskanzler zu wählen.“",
+                  "timeStart": "10.660",
+                  "timeEnd": "61.080"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Ich bitte nun um Ihre Aufmerksamkeit für einige Hinweise zum Wahlverfahren, gerade auch deshalb, weil einige Kolleginnen und Kollegen das erste Mal dabei sind.",
+              "sentences": [
+                {
+                  "text": "Ich bitte nun um Ihre Aufmerksamkeit für einige Hinweise zum Wahlverfahren, gerade auch deshalb, weil einige Kolleginnen und Kollegen das erste Mal dabei sind.",
+                  "timeStart": "61.080",
+                  "timeEnd": "85.360"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Mit dieser Wahl wird der Namensaufruf der Mitglieder des Deutschen Bundestages verbunden. Die Wahl findet mit verdeckten Stimmkarten, also geheim, statt. Gewählt ist, wer die Stimmen der Mehrheit der Mitglieder des Bundestages, also mindestens 316 Stimmen, erhält. Für diese Wahl benötigen Sie Ihren Wahlausweis; er hat die Farbe Orange. Er liegt in Ihrem Stimmkartenfach in der Westlobby. Bitte kontrollieren Sie, ob dieser Wahlausweis Ihren Namen trägt.",
+              "sentences": [
+                {
+                  "text": "Mit dieser Wahl wird der Namensaufruf der Mitglieder des Deutschen Bundestages verbunden.",
+                  "timeStart": "85.360",
+                  "timeEnd": "95.760"
+                },
+                {
+                  "text": "Die Wahl findet mit verdeckten Stimmkarten, also geheim, statt.",
+                  "timeStart": "95.760",
+                  "timeEnd": "115.080"
+                },
+                {
+                  "text": "Gewählt ist, wer die Stimmen der Mehrheit der Mitglieder des Bundestages, also mindestens 316 Stimmen, erhält.",
+                  "timeStart": "115.080",
+                  "timeEnd": "140.420"
+                },
+                {
+                  "text": "Für diese Wahl benötigen Sie Ihren Wahlausweis; er hat die Farbe Orange.",
+                  "timeStart": "140.420",
+                  "timeEnd": "173.520"
+                },
+                {
+                  "text": "Er liegt in Ihrem Stimmkartenfach in der Westlobby.",
+                  "timeStart": "173.520",
+                  "timeEnd": "186.660"
+                },
+                {
+                  "text": "Bitte kontrollieren Sie, ob dieser Wahlausweis Ihren Namen trägt.",
+                  "timeStart": "186.660",
+                  "timeEnd": "201.460"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Die Wahl wird in der Abgeordnetenlobby stattfinden. Gehen Sie dort bitte erst nach dem Aufruf Ihres Namens hin. Dort erhalten Sie eine Stimmkarte in der Farbe Orange und den amtlichen Wahlumschlag von den Schriftführerinnen und Schriftführern an den Ausgabetischen in der Abgeordnetenlobby.",
+              "sentences": [
+                {
+                  "text": "Die Wahl wird in der Abgeordnetenlobby stattfinden.",
+                  "timeStart": "201.460",
+                  "timeEnd": "215.520"
+                },
+                {
+                  "text": "Gehen Sie dort bitte erst nach dem Aufruf Ihres Namens hin.",
+                  "timeStart": "215.520",
+                  "timeEnd": "227.420"
+                },
+                {
+                  "text": "Dort erhalten Sie eine Stimmkarte in der Farbe Orange und den amtlichen Wahlumschlag von den Schriftführerinnen und Schriftführern an den Ausgabetischen in der Abgeordnetenlobby.",
+                  "timeStart": "227.420",
+                  "timeEnd": "287.980"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Gültig sind nur die Stimmkarten mit einem Kreuz bei „ja“, „nein“ oder „enthalte mich“. Ungültig sind Stimmen auf nichtamtlichen Stimmkarten sowie Stimmkarten, die mehr als ein Kreuz, kein Kreuz, andere Namen oder Zusätze enthalten. Sie dürfen Ihre Stimmkarte nur in der Wahlkabine ankreuzen – darauf legen wir Wert –, und Sie müssen ebenfalls noch in der Wahlkabine die Stimmkarte in den Umschlag legen. Die Schriftführerinnen und Schriftführer sind verpflichtet, jeden, der seine Stimmkarte außerhalb der Wahlkabine kennzeichnet oder in den Umschlag legt, zurückzuweisen. Die Stimmabgabe kann in diesem Fall jedoch vorschriftsmäßig wiederholt werden.",
+              "sentences": [
+                {
+                  "text": "Gültig sind nur die Stimmkarten mit einem Kreuz bei „ja“, „nein“ oder „enthalte mich“.",
+                  "timeStart": "287.980",
+                  "timeEnd": "967.800"
+                },
+                {
+                  "text": "Ungültig sind Stimmen auf nichtamtlichen Stimmkarten sowie Stimmkarten, die mehr als ein Kreuz, kein Kreuz, andere Namen oder Zusätze enthalten.",
+                  "timeStart": "967.800",
+                  "timeEnd": "989.660"
+                },
+                {
+                  "text": "Sie dürfen Ihre Stimmkarte nur in der Wahlkabine ankreuzen – darauf legen wir Wert –, und Sie müssen ebenfalls noch in der Wahlkabine die Stimmkarte in den Umschlag legen.",
+                  "timeStart": "989.660",
+                  "timeEnd": "1045.080"
+                },
+                {
+                  "text": "Die Schriftführerinnen und Schriftführer sind verpflichtet, jeden, der seine Stimmkarte außerhalb der Wahlkabine kennzeichnet oder in den Umschlag legt, zurückzuweisen.",
+                  "timeStart": "1045.080",
+                  "timeEnd": "1082.760"
+                },
+                {
+                  "text": "Die Stimmabgabe kann in diesem Fall jedoch vorschriftsmäßig wiederholt werden.",
+                  "timeStart": "1082.760",
+                  "timeEnd": "1096.720"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Nachdem Sie die Stimmkarte in einer Wahlkabine gekennzeichnet und dort in den Wahlumschlag gelegt haben, gehen Sie bitte zu den Wahlurnen. Bevor Sie den Wahlumschlag in eine der Wahlurnen werfen, müssen Sie Ihren Wahlausweis einer der Schriftführerinnen oder einem der Schriftführer an der Wahlurne übergeben. Der Nachweis der Teilnahme an der Wahl kann nur durch die Abgabe dieses Wahlausweises erbracht werden.",
+              "sentences": [
+                {
+                  "text": "Nachdem Sie die Stimmkarte in einer Wahlkabine gekennzeichnet und dort in den Wahlumschlag gelegt haben, gehen Sie bitte zu den Wahlurnen.",
+                  "timeStart": "1096.720",
+                  "timeEnd": "1139.120"
+                },
+                {
+                  "text": "Bevor Sie den Wahlumschlag in eine der Wahlurnen werfen, müssen Sie Ihren Wahlausweis einer der Schriftführerinnen oder einem der Schriftführer an der Wahlurne übergeben.",
+                  "timeStart": "1139.120",
+                  "timeEnd": "1174.040"
+                },
+                {
+                  "text": "Der Nachweis der Teilnahme an der Wahl kann nur durch die Abgabe dieses Wahlausweises erbracht werden.",
+                  "timeStart": "1174.040",
+                  "timeEnd": "1201.520"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Noch ein Hinweis",
+              "sentences": [
+                {
+                  "text": "Noch ein Hinweis",
+                  "timeStart": "1201.520",
+                  "timeEnd": "1205.480"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "– der ist wirklich wichtig, und es lohnt sich auch, zuzuhören –: Das Fotografieren oder Filmen der ausgefüllten Stimmkarte stellt einen Verstoß gegen das Wahlgeheimnis dar und verletzt die Ordnung und die Würde des Hauses. Ich behalte mir vor, auch bei nachträglicher Kenntnis von entsprechenden Verstößen Ordnungsmaßnahmen zu ergreifen.",
+              "sentences": [
+                {
+                  "text": "– der ist wirklich wichtig, und es lohnt sich auch, zuzuhören –: Das Fotografieren oder Filmen der ausgefüllten Stimmkarte stellt einen Verstoß gegen das Wahlgeheimnis dar und verletzt die Ordnung und die Würde des Hauses.",
+                  "timeStart": "1205.480",
+                  "timeEnd": "1254.600"
+                },
+                {
+                  "text": "Ich behalte mir vor, auch bei nachträglicher Kenntnis von entsprechenden Verstößen Ordnungsmaßnahmen zu ergreifen.",
+                  "timeStart": "1254.600",
+                  "timeEnd": "1275.560"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Ich bitte jetzt die eingeteilten Schriftführerinnen und Schriftführer, die vorgesehenen Plätze einzunehmen. – Das ist erledigt. Ich bedanke mich.",
+              "sentences": [
+                {
+                  "text": "Ich bitte jetzt die eingeteilten Schriftführerinnen und Schriftführer, die vorgesehenen Plätze einzunehmen.",
+                  "timeStart": "1275.560",
+                  "timeEnd": "1296.760"
+                },
+                {
+                  "text": "– Das ist erledigt.",
+                  "timeStart": "1296.760",
+                  "timeEnd": "1298.860"
+                },
+                {
+                  "text": "Ich bedanke mich.",
+                  "timeStart": "1298.860",
+                  "timeEnd": "1305.500"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Ich bitte Sie nun, den Namensaufruf zu verfolgen und sich nach dem Aufruf Ihres Namens zur Entgegennahme der Stimmkarte und des Wahlumschlages zu den Ausgabetischen in der Abgeordnetenlobby zu begeben.",
+              "sentences": [
+                {
+                  "text": "Ich bitte Sie nun, den Namensaufruf zu verfolgen und sich nach dem Aufruf Ihres Namens zur Entgegennahme der Stimmkarte und des Wahlumschlages zu den Ausgabetischen in der Abgeordnetenlobby zu begeben.",
+                  "timeStart": "1305.500",
+                  "timeEnd": "1337.040"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Ich schaue noch mal: Haben die Schriftführerinnen und Schriftführer ihre Plätze eingenommen? – Das ist der Fall. Es kann losgehen.",
+              "sentences": [
+                {
+                  "text": "Ich schaue noch mal: Haben die Schriftführerinnen und Schriftführer ihre Plätze eingenommen?",
+                  "timeStart": "1337.040",
+                  "timeEnd": "1354.820"
+                },
+                {
+                  "text": "– Das ist der Fall.",
+                  "timeStart": "1354.820",
+                  "timeEnd": "1357.680"
+                },
+                {
+                  "text": "Es kann losgehen.",
+                  "timeStart": "1357.680",
+                  "timeEnd": "1359.760"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Ich eröffne die Wahl und bitte, mit dem Aufruf der Namen zu beginnen.",
+              "sentences": [
+                {
+                  "text": "Ich eröffne die Wahl und bitte, mit dem Aufruf der Namen zu beginnen.",
+                  "timeStart": "1359.760",
+                  "timeEnd": "1370.740"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Liebe Kolleginnen und Kollegen, der Namensaufruf ist hiermit beendet. Eine Frage an alle: Haben alle Mitglieder des Hauses – auch die Schriftführerinnen und Schriftführer – ihre Stimme abgegeben? – Sollte das nicht der Fall sein, bitte ich, jetzt diesen Moment noch zu nutzen, um die Stimme abzugeben.",
+              "sentences": [
+                {
+                  "text": "Liebe Kolleginnen und Kollegen, der Namensaufruf ist hiermit beendet.",
+                  "timeStart": "1370.740",
+                  "timeEnd": "1381.760"
+                },
+                {
+                  "text": "Eine Frage an alle: Haben alle Mitglieder des Hauses – auch die Schriftführerinnen und Schriftführer – ihre Stimme abgegeben?",
+                  "timeStart": "1381.760",
+                  "timeEnd": "1430.700"
+                },
+                {
+                  "text": "– Sollte das nicht der Fall sein, bitte ich, jetzt diesen Moment noch zu nutzen, um die Stimme abzugeben.",
+                  "timeStart": "1430.700",
+                  "timeEnd": "1445.880"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Liebe Kolleginnen und Kollegen, hiermit schließe ich die Wahl und bitte die Schriftführerinnen und Schriftführer, mit der Auszählung zu beginnen.",
+              "sentences": [
+                {
+                  "text": "Liebe Kolleginnen und Kollegen, hiermit schließe ich die Wahl und bitte die Schriftführerinnen und Schriftführer, mit der Auszählung zu beginnen.",
+                  "timeStart": "1445.880",
+                  "timeEnd": "1499.440"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Darf ich Sie noch um einen Moment Aufmerksamkeit bitten – ich freue mich über gut gelaunte Ministerpräsidenten –: Ich darf noch einen Geburtstagsglückwunsch nachholen an unseren Kollegen Kai Whittaker, der 40. Geburtstag gefeiert hat. Herzlichen Glückwunsch dazu!",
+              "sentences": [
+                {
+                  "text": "Darf ich Sie noch um einen Moment Aufmerksamkeit bitten – ich freue mich über gut gelaunte Ministerpräsidenten –: Ich darf noch einen Geburtstagsglückwunsch nachholen an unseren Kollegen Kai Whittaker, der 40. Geburtstag gefeiert hat.",
+                  "timeStart": "1499.440",
+                  "timeEnd": "1798.080"
+                },
+                {
+                  "text": "Herzlichen Glückwunsch dazu!",
+                  "timeStart": "1798.080",
+                  "timeEnd": "1800.800"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Und herzlich begrüßen darf ich heute auch die Präsidentin des Bayerischen Landtages, Ilse Aigner. Herzlich willkommen!",
+              "sentences": [
+                {
+                  "text": "Und herzlich begrüßen darf ich heute auch die Präsidentin des Bayerischen Landtages, Ilse Aigner.",
+                  "timeStart": "1809.760",
+                  "timeEnd": "1847.460"
+                },
+                {
+                  "text": "Herzlich willkommen!",
+                  "timeStart": "1847.460",
+                  "timeEnd": "1853.340"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Sehr geehrte Damen und Herren, liebe Kolleginnen und Kollegen, nun unterbreche ich diese Sitzung für etwa 25 Minuten; das ist die Auszählzeit. Der Wiederbeginn der Sitzung wird rechtzeitig durch das Klingelsignal angekündigt.",
+              "sentences": [
+                {
+                  "text": "Sehr geehrte Damen und Herren, liebe Kolleginnen und Kollegen, nun unterbreche ich diese Sitzung für etwa 25 Minuten; das ist die Auszählzeit.",
+                  "timeStart": "1853.340",
+                  "timeEnd": "1876.760"
+                },
+                {
+                  "text": "Der Wiederbeginn der Sitzung wird rechtzeitig durch das Klingelsignal angekündigt.",
+                  "timeStart": "1876.760",
+                  "timeEnd": "1890.480"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Liebe Kolleginnen und Kollegen, bitte nehmen Sie Platz. Die unterbrochene Sitzung ist wieder eröffnet.",
+              "sentences": [
+                {
+                  "text": "Liebe Kolleginnen und Kollegen, bitte nehmen Sie Platz.",
+                  "timeStart": "1890.480",
+                  "timeEnd": "1894.360"
+                },
+                {
+                  "text": "Die unterbrochene Sitzung ist wieder eröffnet.",
+                  "timeStart": "1894.360",
+                  "timeEnd": "1927.120"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Ich gebe das von den Schriftführerinnen und Schriftführern ermittelte Ergebnis der Wahl bekannt:",
+              "sentences": [
+                {
+                  "text": "Ich gebe das von den Schriftführerinnen und Schriftführern ermittelte Ergebnis der Wahl bekannt:",
+                  "timeStart": "1927.120",
+                  "timeEnd": "2228.520"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Mitgliederzahl 630, abgegebene Stimmen 621, ungültige Stimmzettel 1. Mit Ja haben gestimmt 310 Abgeordnete, mit Nein haben gestimmt 307, Enthaltungen 3. Der Abgeordnete Friedrich Merz hat die erforderliche Mehrheit von mindestens 316 Stimmen nicht erreicht. Er ist gemäß Artikel 63 Absatz 2 des Grundgesetzes zum Bundeskanzler der Bundesrepublik Deutschland nicht gewählt.",
+              "sentences": [
+                {
+                  "text": "Mitgliederzahl 630, abgegebene Stimmen 621, ungültige Stimmzettel 1. Mit Ja haben gestimmt 310 Abgeordnete, mit Nein haben gestimmt 307, Enthaltungen 3. Der Abgeordnete Friedrich Merz hat die erforderliche Mehrheit von mindestens 316 Stimmen nicht erreicht.",
+                  "timeStart": "2228.520",
+                  "timeEnd": "2255.360"
+                },
+                {
+                  "text": "Er ist gemäß Artikel 63 Absatz 2 des Grundgesetzes zum Bundeskanzler der Bundesrepublik Deutschland nicht gewählt.",
+                  "timeStart": "2255.360",
+                  "timeEnd": "2283.080"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Das heißt, dass ich jetzt die Sitzung unterbreche. Die Fraktionen möchten sich beraten, und wir werden mit einem Signal bekannt geben, wann die Sitzung weitergeht; dann werden wir Sie weiter informieren wegen anderer Wahlgänge.",
+              "sentences": [
+                {
+                  "text": "Das heißt, dass ich jetzt die Sitzung unterbreche.",
+                  "timeStart": "2283.080",
+                  "timeEnd": "2285.840"
+                },
+                {
+                  "text": "Die Fraktionen möchten sich beraten, und wir werden mit einem Signal bekannt geben, wann die Sitzung weitergeht; dann werden wir Sie weiter informieren wegen anderer Wahlgänge.",
+                  "timeStart": "2285.840",
+                  "timeEnd": "2482.120"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Damit ist die Sitzung unterbrochen.",
+              "sentences": [
+                {
+                  "text": "Damit ist die Sitzung unterbrochen.",
+                  "timeStart": "2482.120",
+                  "timeEnd": "2483.840"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Liebe Kolleginnen und Kollegen, die unterbrochene Sitzung ist wieder eröffnet. Ich bedanke mich ob Ihrer Geduld.",
+              "sentences": [
+                {
+                  "text": "Liebe Kolleginnen und Kollegen, die unterbrochene Sitzung ist wieder eröffnet.",
+                  "timeStart": "2483.840",
+                  "timeEnd": "2487.120"
+                },
+                {
+                  "text": "Ich bedanke mich ob Ihrer Geduld.",
+                  "timeStart": "2487.120",
+                  "timeEnd": "2490.000"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Vielleicht für diejenigen, die uns den Tag über bei dieser besonderen Veranstaltung begleiten und von außen zuschauen, die Erläuterung, dass es diese längere Unterbrechung auch deshalb gegeben hat, weil die Fraktionen sich zur Geschäftsordnung beraten mussten – ich werde das gleich erläutern –, wenn man von der Tagesordnung abweicht. Das ist der Grund dafür. Die langen Beratungen der Fraktionen sind jetzt abgeschlossen.",
+              "sentences": [
+                {
+                  "text": "Vielleicht für diejenigen, die uns den Tag über bei dieser besonderen Veranstaltung begleiten und von außen zuschauen, die Erläuterung, dass es diese längere Unterbrechung auch deshalb gegeben hat, weil die Fraktionen sich zur Geschäftsordnung beraten mussten – ich werde das gleich erläutern –, wenn man von der Tagesordnung abweicht.",
+                  "timeStart": "2490.000",
+                  "timeEnd": "2733.480"
+                },
+                {
+                  "text": "Das ist der Grund dafür.",
+                  "timeStart": "2733.480",
+                  "timeEnd": "2734.800"
+                },
+                {
+                  "text": "Die langen Beratungen der Fraktionen sind jetzt abgeschlossen.",
+                  "timeStart": "2734.800",
+                  "timeEnd": "2759.800"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Gemäß Artikel 63 Absatz 3 des Grundgesetzes in Verbindung mit dem § 4 unserer Geschäftsordnung haben die Fraktionen CDU/CSU und SPD vorgeschlagen, Herrn Friedrich Merz zum Bundeskanzler zu wählen. Der Wahlvorschlag ist als Drucksache 21/111 verteilt worden.",
+              "sentences": [
+                {
+                  "text": "Gemäß Artikel 63 Absatz 3 des Grundgesetzes in Verbindung mit dem § 4 unserer Geschäftsordnung haben die Fraktionen CDU/CSU und SPD vorgeschlagen, Herrn Friedrich Merz zum Bundeskanzler zu wählen.",
+                  "timeStart": "2759.800",
+                  "timeEnd": "3662.440"
+                },
+                {
+                  "text": "Der Wahlvorschlag ist als Drucksache 21/111 verteilt worden.",
+                  "timeStart": "3662.440",
+                  "timeEnd": "3668.460"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "Die Fraktionen CDU/CSU, SPD, Bündnis 90/Die Grünen und Die Linke haben beantragt,",
+              "sentences": [
+                {
+                  "text": "Die Fraktionen CDU/CSU, SPD, Bündnis 90/Die Grünen und Die Linke haben beantragt,",
+                  "timeStart": "3668.460",
+                  "timeEnd": "3678.080"
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro-post-intro",
+              "type": "speech",
+              "speaker": "Julia Klöckner",
+              "speakerstatus": "president",
+              "text": "diesbezüglich von der Frist des § 78 Absatz 5 unserer Geschäftsordnung abzuweichen. Das sind Regelungen, die hier möglich sind. Hierzu ist gemäß § 126 unserer Geschäftsordnung eine Mehrheit von zwei Dritteln der anwesenden Mitglieder des Bundestages erforderlich.",
+              "sentences": [
+                {
+                  "text": "diesbezüglich von der Frist des § 78 Absatz 5 unserer Geschäftsordnung abzuweichen.",
+                  "timeStart": "3678.080",
+                  "timeEnd": "3690.200"
+                },
+                {
+                  "text": "Das sind Regelungen, die hier möglich sind.",
+                  "timeStart": "3690.200",
+                  "timeEnd": "3692.840"
+                },
+                {
+                  "text": "Hierzu ist gemäß § 126 unserer Geschäftsordnung eine Mehrheit von zwei Dritteln der anwesenden Mitglieder des Bundestages erforderlich.",
+                  "timeStart": "3692.840",
+                  "timeEnd": "3708.960"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "documents": []
+    }
+  ]
+}

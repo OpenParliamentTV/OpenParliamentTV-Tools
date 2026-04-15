@@ -6,3 +6,4 @@ spacyopentapioca
 numpy
 aeneas
 pyyaml
+jsonschema>=4.0

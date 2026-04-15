@@ -1,0 +1,96 @@
+{
+  "meta": {
+    "session": "17001",
+    "lastUpdate": "2023-02-15T12:26:48",
+    "lastProcessing": "nel",
+    "processing": {
+      "nel": "2023-02-24T10:51:24"
+    }
+  },
+  "data": [
+    {
+      "parliament": "DE",
+      "electoralPeriod": {
+        "number": 17
+      },
+      "session": {
+        "number": 1
+      },
+      "agendaItem": {
+        "title": "Eröffnung der Sitzung",
+        "officialTitle": "Tagesordnungspunkt 1",
+        "speechIndex": 1
+      },
+      "dateStart": "2009-10-27T10:00:05",
+      "dateEnd": "2009-10-27T10:29:39",
+      "debug": {
+        "originalTitle": "Redebeitrag von Dr. Heinz Riesenhuber (Alterspräsident/CDU/CSU) am 27.10.2009 um 11:00 Uhr (1. Sitzung, TOP 1)"
+      },
+      "media": {
+        "videoFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/381248/381248_h264_720_576_2000kb_de_2192.mp4",
+        "sourcePage": "http://dbtg.tv/fvid/381248",
+        "duration": 1774.0,
+        "creator": "Deutscher Bundestag",
+        "license": "&lt;a href=&quot;https://www.bundestag.de/nutzungsbedingungen&quot; target=&quot;_blank&quot;&gt;Nutzungsbedingungen&lt;/a&gt;",
+        "originMediaID": "381248",
+        "aligned": false
+      },
+      "people": [
+        {
+          "label": "Heinz Riesenhuber",
+          "faction": {
+            "wid": "Q1023134",
+            "label": "CDU/CSU",
+            "wtype": "ORG"
+          },
+          "context": "main-speaker",
+          "role": "interim-president",
+          "wid": "Q73951",
+          "wtype": "PERSON"
+        }
+      ]
+    },
+    {
+      "parliament": "DE",
+      "electoralPeriod": {
+        "number": 17
+      },
+      "session": {
+        "number": 1
+      },
+      "agendaItem": {
+        "title": "Wahl des Präsidenten",
+        "officialTitle": "Tagesordnungspunkt 2",
+        "speechIndex": 2
+      },
+      "dateStart": "2009-10-27T10:29:39",
+      "dateEnd": "2009-10-27T10:30:02",
+      "debug": {
+        "originalTitle": "Redebeitrag von Dr. Heinz Riesenhuber (Alterspräsident/CDU/CSU) am 27.10.2009 um 11:29 Uhr (1. Sitzung, TOP 2)"
+      },
+      "media": {
+        "videoFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/381247/381247_h264_720_576_2000kb_de_2192.mp4",
+        "sourcePage": "http://dbtg.tv/fvid/381247",
+        "duration": 23.0,
+        "creator": "Deutscher Bundestag",
+        "license": "&lt;a href=&quot;https://www.bundestag.de/nutzungsbedingungen&quot; target=&quot;_blank&quot;&gt;Nutzungsbedingungen&lt;/a&gt;",
+        "originMediaID": "381247",
+        "aligned": false
+      },
+      "people": [
+        {
+          "label": "Heinz Riesenhuber",
+          "faction": {
+            "wid": "Q1023134",
+            "label": "CDU/CSU",
+            "wtype": "ORG"
+          },
+          "context": "main-speaker",
+          "role": "interim-president",
+          "wid": "Q73951",
+          "wtype": "PERSON"
+        }
+      ]
+    }
+  ]
+}

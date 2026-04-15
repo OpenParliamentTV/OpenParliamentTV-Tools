@@ -1,0 +1,600 @@
+{
+  "meta": {
+    "session": "19019",
+    "lastUpdate": "2023-02-15T12:27:02",
+    "lastProcessing": "nel",
+    "dateStart": "2018-03-14T09:00:00+01:00",
+    "dateEnd": "2018-03-14T13:38:00+01:00",
+    "processing": {
+      "ner": "2023-02-21T04:00:22",
+      "nel": "2023-02-24T10:51:42"
+    }
+  },
+  "data": [
+    {
+      "parliament": "DE",
+      "electoralPeriod": {
+        "number": 19
+      },
+      "session": {
+        "number": 19,
+        "dateStart": "2018-03-14T09:00:00+01:00",
+        "dateEnd": "2018-03-14T13:38:00+01:00"
+      },
+      "agendaItem": {
+        "title": "Sitzungseröffnung",
+        "officialTitle": "Sitzungseröffnung"
+      },
+      "dateStart": "2018-03-14T09:00:06+01:00",
+      "dateEnd": "2018-03-14T09:01:17+01:00",
+      "debug": {
+        "originalTitle": "Redebeitrag von Dr. Wolfgang Schäuble (Bundestagspräsident/CDU/CSU) am 14.03.2018 um 09:00 Uhr (19. Sitzung, TOP Sitzungseröffnung)",
+        "proceedingIndex": 1001,
+        "proceedingIndexes": [
+          1001
+        ],
+        "mediaIndex": 1,
+        "align-duration": 0.7094850540161133,
+        "linkedMediaIndexes": [
+          1
+        ],
+        "confidence": 1,
+        "ner-duration": 0.19514155387878418
+      },
+      "media": {
+        "videoFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/7209636/7209636_h264_720_400_2000kb_baseline_de_2192.mp4",
+        "sourcePage": "http://dbtg.tv/fvid/7209636",
+        "duration": 71.0,
+        "creator": "Deutscher Bundestag",
+        "license": "&lt;a href=&quot;https://www.bundestag.de/nutzungsbedingungen&quot; target=&quot;_blank&quot;&gt;Nutzungsbedingungen&lt;/a&gt;",
+        "originMediaID": "7209636",
+        "audioFileURI": "https://static.p.core.cdn.streamfarm.net/1000153copo/ondemand/145293313/7209636/7209636_mp3_128kb_stereo_de_128.mp3",
+        "aligned": true
+      },
+      "people": [
+        {
+          "type": "memberOfParliament",
+          "label": "Wolfgang Schäuble",
+          "firstname": "Dr. Wolfgang",
+          "lastname": "Schäuble",
+          "context": "main-speaker",
+          "faction": {
+            "wid": "",
+            "label": "",
+            "wtype": "ORG"
+          },
+          "role": "Bundestagspräsident",
+          "wid": "Q16019",
+          "wtype": "PERSON"
+        }
+      ],
+      "speechIndex": 1,
+      "originTextID": "begin-intro",
+      "textContents": [
+        {
+          "type": "proceedings",
+          "sourceURI": "https://www.bundestag.de/resource/blob/547472/ce5d79a3de7731d32430c008b8fbd2b1/19019-data.xml",
+          "creator": "Deutscher Bundestag",
+          "license": "Public Domain",
+          "language": "DE-de",
+          "originTextID": "begin-intro",
+          "textBody": [
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Guten Morgen, liebe Kolleginnen und Kollegen! Bitte nehmen Sie Platz. Die Sitzung ist eröffnet.",
+              "sentences": [
+                {
+                  "text": "Guten Morgen, liebe Kolleginnen und Kollegen!",
+                  "timeStart": "1.000",
+                  "timeEnd": "27.560",
+                  "entities": []
+                },
+                {
+                  "text": "Bitte nehmen Sie Platz.",
+                  "timeStart": "27.560",
+                  "timeEnd": "33.880",
+                  "entities": []
+                },
+                {
+                  "text": "Die Sitzung ist eröffnet.",
+                  "timeStart": "33.880",
+                  "timeEnd": "42.680",
+                  "entities": []
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Vor Eintritt in die Tagesordnung gratuliere ich dem Kollegen Dr. Karl-Heinz Brunner sehr herzlich zu seinem heutigen 65. Geburtstag.",
+              "sentences": [
+                {
+                  "text": "Vor Eintritt in die Tagesordnung gratuliere ich dem Kollegen Dr. Karl-Heinz Brunner sehr herzlich zu seinem heutigen 65. Geburtstag.",
+                  "timeStart": "42.680",
+                  "timeEnd": "68.600",
+                  "entities": [
+                    {
+                      "label": "Karl-Heinz Brunner",
+                      "wid": "Q14946405",
+                      "wtype": "PER",
+                      "score": 0.9688
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "speech_id": "begin-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Alle guten Wünsche im Namen des ganzen Hauses!",
+              "sentences": [
+                {
+                  "text": "Alle guten Wünsche im Namen des ganzen Hauses!",
+                  "timeStart": "68.600",
+                  "timeEnd": "70.960",
+                  "entities": [
+                    {
+                      "label": "Hauses!",
+                      "wid": null,
+                      "wtype": "ORG",
+                      "score": null
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "documents": []
+    },
+    {
+      "parliament": "DE",
+      "electoralPeriod": {
+        "number": 19
+      },
+      "session": {
+        "number": 19,
+        "dateStart": "2018-03-14T09:00:00+01:00",
+        "dateEnd": "2018-03-14T13:38:00+01:00"
+      },
+      "agendaItem": {
+        "title": "Wahl der Bundeskanzlerin",
+        "officialTitle": "Tagesordnungspunkt 1"
+      },
+      "dateStart": "2018-03-14T09:01:17+01:00",
+      "dateEnd": "2018-03-14T09:55:49+01:00",
+      "debug": {
+        "originalTitle": "Redebeitrag von Dr. Wolfgang Schäuble (Bundestagspräsident/CDU/CSU) am 14.03.2018 um 09:01 Uhr (19. Sitzung, TOP 1)",
+        "proceedingIndex": 1002,
+        "proceedingIndexes": [
+          1002
+        ],
+        "mediaIndex": 2,
+        "align-duration": 12.810896396636963,
+        "linkedMediaIndexes": [
+          2
+        ],
+        "confidence": 1,
+        "ner-duration": 1.534973382949829
+      },
+      "media": {
+        "videoFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/7209646/7209646_h264_720_400_2000kb_baseline_de_2192.mp4",
+        "sourcePage": "http://dbtg.tv/fvid/7209646",
+        "duration": 3272.0,
+        "creator": "Deutscher Bundestag",
+        "license": "&lt;a href=&quot;https://www.bundestag.de/nutzungsbedingungen&quot; target=&quot;_blank&quot;&gt;Nutzungsbedingungen&lt;/a&gt;",
+        "originMediaID": "7209646",
+        "audioFileURI": "https://static.p.core.cdn.streamfarm.net/1000153copo/ondemand/145293313/7209646/7209646_mp3_128kb_stereo_de_128.mp3",
+        "aligned": true
+      },
+      "people": [
+        {
+          "type": "memberOfParliament",
+          "label": "Wolfgang Schäuble",
+          "firstname": "Dr. Wolfgang",
+          "lastname": "Schäuble",
+          "context": "main-speaker",
+          "faction": {
+            "wid": "",
+            "label": "",
+            "wtype": "ORG"
+          },
+          "role": "Bundestagspräsident",
+          "wid": "Q16019",
+          "wtype": "PERSON"
+        }
+      ],
+      "speechIndex": 2,
+      "originTextID": "ID191900100-intro",
+      "textContents": [
+        {
+          "type": "proceedings",
+          "sourceURI": "https://www.bundestag.de/resource/blob/547472/ce5d79a3de7731d32430c008b8fbd2b1/19019-data.xml",
+          "creator": "Deutscher Bundestag",
+          "license": "Public Domain",
+          "language": "DE-de",
+          "originTextID": "ID191900100-intro",
+          "textBody": [
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Wahl der Bundeskanzlerin",
+              "sentences": [
+                {
+                  "text": "Wahl der Bundeskanzlerin",
+                  "timeStart": "1.000",
+                  "timeEnd": "19.900",
+                  "entities": [
+                    {
+                      "label": "Bundeskanzlerin",
+                      "wid": null,
+                      "wtype": "ORG",
+                      "score": null
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Der Herr Bundespräsident hat mir mitgeteilt:",
+              "sentences": [
+                {
+                  "text": "Der Herr Bundespräsident hat mir mitgeteilt:",
+                  "timeStart": "19.900",
+                  "timeEnd": "38.640",
+                  "entities": [
+                    {
+                      "label": "Herr Bundespräsident",
+                      "wid": null,
+                      "wtype": "LOC",
+                      "score": null
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Gemäß Artikel 63 Absatz 1 des Grundgesetzes für die Bundesrepublik Deutschland schlage ich dem Deutschen Bundestag vor, Frau Dr. Angela Merkel zur Bundeskanzlerin zu wählen.",
+              "sentences": [
+                {
+                  "text": "Gemäß Artikel 63 Absatz 1 des Grundgesetzes für die Bundesrepublik Deutschland schlage ich dem Deutschen Bundestag vor, Frau Dr. Angela Merkel zur Bundeskanzlerin zu wählen.",
+                  "timeStart": "38.640",
+                  "timeEnd": "97.880",
+                  "entities": [
+                    {
+                      "label": "Bundesrepublik Deutschland",
+                      "wid": "Q183",
+                      "wtype": "LOC",
+                      "score": 0.8507
+                    },
+                    {
+                      "label": "Deutschen Bundestag",
+                      "wid": "Q154797",
+                      "wtype": "ORG",
+                      "score": 0.9556
+                    },
+                    {
+                      "label": "Angela Merkel",
+                      "wid": "Q567",
+                      "wtype": "PER",
+                      "score": 0.9919
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Ich bitte jetzt um Aufmerksamkeit für einige Hinweise zum Wahlverfahren. Nach unserer Geschäftsordnung wird die Bundeskanzlerin mit verdeckten Stimmkarten, also geheim, gewählt. Gewählt ist, wer die Stimmen der Mehrheit der Mitglieder des Bundestags, also mindestens 355 Stimmen, erhält. Sie benötigen für diese Wahl Ihren Wahlausweis aus Ihrem Stimmkartenfach in der Lobby. Bitte kontrollieren Sie, ob der Wahlausweis Ihren Namen trägt. Die Stimmkarte und den amtlichen Wahlumschlag erhalten Sie nach Aufruf Ihres Namens von den Schriftführerinnen und Schriftführern an den Ausgabetischen hier oben neben den Wahlkabinen.",
+              "sentences": [
+                {
+                  "text": "Ich bitte jetzt um Aufmerksamkeit für einige Hinweise zum Wahlverfahren.",
+                  "timeStart": "97.880",
+                  "timeEnd": "115.040",
+                  "entities": []
+                },
+                {
+                  "text": "Nach unserer Geschäftsordnung wird die Bundeskanzlerin mit verdeckten Stimmkarten, also geheim, gewählt.",
+                  "timeStart": "115.040",
+                  "timeEnd": "139.320",
+                  "entities": [
+                    {
+                      "label": "Bundeskanzlerin",
+                      "wid": null,
+                      "wtype": "ORG",
+                      "score": null
+                    }
+                  ]
+                },
+                {
+                  "text": "Gewählt ist, wer die Stimmen der Mehrheit der Mitglieder des Bundestags, also mindestens 355 Stimmen, erhält.",
+                  "timeStart": "139.320",
+                  "timeEnd": "172.200",
+                  "entities": [
+                    {
+                      "label": "Bundestags",
+                      "wid": null,
+                      "wtype": "ORG",
+                      "score": null
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Nachdem Sie die Stimmkarte in einer Wahlkabine gekennzeichnet und dort in den Wahlumschlag gelegt haben, gehen Sie bitte zu den Wahlurnen hier vor dem Rednerpult. Sie dürfen Ihre Stimmkarte nur in der Wahlkabine ankreuzen, und Sie müssen Ihre Stimmkarte ebenfalls noch in der Wahlkabine in den Umschlag legen. Die Schriftführerinnen und Schriftführer sind verpflichtet, jeden, der seine Stimmkarte außerhalb der Wahlkabine kennzeichnet oder in den Umschlag legt, zurückzuweisen. Die Stimmabgabe kann aber in einem solchen Fall vorschriftsmäßig wiederholt werden.",
+              "sentences": [
+                {
+                  "text": "Nachdem Sie die Stimmkarte in einer Wahlkabine gekennzeichnet und dort in den Wahlumschlag gelegt haben, gehen Sie bitte zu den Wahlurnen hier vor dem Rednerpult.",
+                  "timeStart": "377.080",
+                  "timeEnd": "437.840",
+                  "entities": [
+                    {
+                      "label": "Wahlurnen",
+                      "wid": "Q577947",
+                      "wtype": "LOC",
+                      "score": 0.2897
+                    },
+                    {
+                      "label": "Rednerpult",
+                      "wid": "Q390539",
+                      "wtype": "LOC",
+                      "score": 0.3727
+                    }
+                  ]
+                },
+                {
+                  "text": "Sie dürfen Ihre Stimmkarte nur in der Wahlkabine ankreuzen, und Sie müssen Ihre Stimmkarte ebenfalls noch in der Wahlkabine in den Umschlag legen.",
+                  "timeStart": "437.840",
+                  "timeEnd": "579.760",
+                  "entities": [
+                    {
+                      "label": "Wahlkabine",
+                      "wid": "Q1416523",
+                      "wtype": "LOC",
+                      "score": 0.7925
+                    },
+                    {
+                      "label": "Wahlkabine",
+                      "wid": "Q1416523",
+                      "wtype": "LOC",
+                      "score": 0.7925
+                    }
+                  ]
+                },
+                {
+                  "text": "Die Schriftführerinnen und Schriftführer sind verpflichtet, jeden, der seine Stimmkarte außerhalb der Wahlkabine kennzeichnet oder in den Umschlag legt, zurückzuweisen.",
+                  "timeStart": "579.760",
+                  "timeEnd": "747.920",
+                  "entities": [
+                    {
+                      "label": "Wahlkabine",
+                      "wid": "Q1416523",
+                      "wtype": "LOC",
+                      "score": 0.8142
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Gültig sind nur Stimmkarten mit einem Kreuz bei „ja“, „nein“ oder „enthalte mich“. Ungültig sind Stimmen auf nichtamtlichen Stimmkarten sowie Stimmkarten, die mehr als ein Kreuz, kein Kreuz, andere Namen oder Zusätze enthalten.",
+              "sentences": [
+                {
+                  "text": "Gültig sind nur Stimmkarten mit einem Kreuz bei „ja“, „nein“ oder „enthalte mich“.",
+                  "timeStart": "810.640",
+                  "timeEnd": "948.480",
+                  "entities": []
+                },
+                {
+                  "text": "Ungültig sind Stimmen auf nichtamtlichen Stimmkarten sowie Stimmkarten, die mehr als ein Kreuz, kein Kreuz, andere Namen oder Zusätze enthalten.",
+                  "timeStart": "948.480",
+                  "timeEnd": "992.360",
+                  "entities": []
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Bevor Sie den Umschlag mit der Stimmkarte in eine der Wahlurnen werfen, übergeben Sie bitte Ihren Wahlausweis einer der Schriftführerinnen oder einem der Schriftführer an der Wahlurne. Der Nachweis der Teilnahme an der Wahl kann nur durch die Abgabe des Wahlausweises erbracht werden.",
+              "sentences": [
+                {
+                  "text": "Bevor Sie den Umschlag mit der Stimmkarte in eine der Wahlurnen werfen, übergeben Sie bitte Ihren Wahlausweis einer der Schriftführerinnen oder einem der Schriftführer an der Wahlurne.",
+                  "timeStart": "992.360",
+                  "timeEnd": "1251.400",
+                  "entities": []
+                },
+                {
+                  "text": "Der Nachweis der Teilnahme an der Wahl kann nur durch die Abgabe des Wahlausweises erbracht werden.",
+                  "timeStart": "1251.400",
+                  "timeEnd": "1277.280",
+                  "entities": [
+                    {
+                      "label": "Wahlausweises",
+                      "wid": null,
+                      "wtype": "MISC",
+                      "score": null
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Jetzt bitte ich die eingeteilten Schriftführerinnen und Schriftführer, die vorgesehenen Plätze einzunehmen. Die beiden Schriftführer neben mir werden nun Ihre Namen in alphabetischer Reihenfolge aufrufen. Ich bitte Sie, den Namensaufruf zu verfolgen, und ich bitte Sie, sich erst nach dem Aufruf Ihres Namens zur Entgegennahme der Stimmkarte zu den Ausgabetischen vor den Wahlkabinen zu begeben.",
+              "sentences": [
+                {
+                  "text": "Jetzt bitte ich die eingeteilten Schriftführerinnen und Schriftführer, die vorgesehenen Plätze einzunehmen.",
+                  "timeStart": "1277.280",
+                  "timeEnd": "1352.080",
+                  "entities": []
+                },
+                {
+                  "text": "Die beiden Schriftführer neben mir werden nun Ihre Namen in alphabetischer Reihenfolge aufrufen.",
+                  "timeStart": "1352.080",
+                  "timeEnd": "1392.960",
+                  "entities": []
+                },
+                {
+                  "text": "Ich bitte Sie, den Namensaufruf zu verfolgen, und ich bitte Sie, sich erst nach dem Aufruf Ihres Namens zur Entgegennahme der Stimmkarte zu den Ausgabetischen vor den Wahlkabinen zu begeben.",
+                  "timeStart": "1392.960",
+                  "timeEnd": "1453.200",
+                  "entities": [
+                    {
+                      "label": "Wahlkabinen",
+                      "wid": null,
+                      "wtype": "LOC",
+                      "score": null
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Haben alle Schriftführerinnen und Schriftführer ihre Plätze eingenommen? – Jetzt bekomme ich die Meldung, dass alle Schriftführerinnen und Schriftführer ihre Plätze eingenommen haben.",
+              "sentences": [
+                {
+                  "text": "Haben alle Schriftführerinnen und Schriftführer ihre Plätze eingenommen?",
+                  "timeStart": "1453.200",
+                  "timeEnd": "3049.440",
+                  "entities": []
+                },
+                {
+                  "text": "– Jetzt bekomme ich die Meldung, dass alle Schriftführerinnen und Schriftführer ihre Plätze eingenommen haben.",
+                  "timeStart": "3049.440",
+                  "timeEnd": "3108.300",
+                  "entities": []
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Damit eröffne ich die Wahl und bitte, mit dem Aufruf der Namen zu beginnen.",
+              "sentences": [
+                {
+                  "text": "Damit eröffne ich die Wahl und bitte, mit dem Aufruf der Namen zu beginnen.",
+                  "timeStart": "3108.300",
+                  "timeEnd": "3120.420",
+                  "entities": []
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Meine Damen und Herren, der Namensaufruf ist beendet. Ich darf fragen, ob alle Mitglieder – auch die Schriftführerinnen und Schriftführer – ihre Stimme abgegeben haben. – Ich frage noch einmal: Haben alle Kolleginnen und Kollegen die Gelegenheit gehabt, ihre Stimme abzugeben? – Das ist offensichtlich der Fall. Dann schließe ich die Wahl und bitte die Schriftführerinnen und Schriftführer, mit der Auszählung zu beginnen.",
+              "sentences": [
+                {
+                  "text": "Meine Damen und Herren, der Namensaufruf ist beendet.",
+                  "timeStart": "3120.420",
+                  "timeEnd": "3125.180",
+                  "entities": []
+                },
+                {
+                  "text": "Ich darf fragen, ob alle Mitglieder – auch die Schriftführerinnen und Schriftführer – ihre Stimme abgegeben haben.",
+                  "timeStart": "3125.180",
+                  "timeEnd": "3144.120",
+                  "entities": []
+                },
+                {
+                  "text": "– Ich frage noch einmal: Haben alle Kolleginnen und Kollegen die Gelegenheit gehabt, ihre Stimme abzugeben?",
+                  "timeStart": "3144.120",
+                  "timeEnd": "3249.480",
+                  "entities": []
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Zur Auszählung unterbreche ich die Sitzung für etwa 30 Minuten. Der Wiederbeginn der Sitzung wird rechtzeitig durch Klingelsignal angekündigt.",
+              "sentences": [
+                {
+                  "text": "Zur Auszählung unterbreche ich die Sitzung für etwa 30 Minuten.",
+                  "timeStart": "3260.960",
+                  "timeEnd": "3265.520",
+                  "entities": []
+                },
+                {
+                  "text": "Der Wiederbeginn der Sitzung wird rechtzeitig durch Klingelsignal angekündigt.",
+                  "timeStart": "3265.520",
+                  "timeEnd": "3270.120",
+                  "entities": [
+                    {
+                      "label": "Klingelsignal",
+                      "wid": "Q2174765",
+                      "wtype": "LOC",
+                      "score": 0.4754
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "speech_id": "ID191900100-intro",
+              "type": "speech",
+              "speaker": "Wolfgang Schäuble",
+              "speakerstatus": "president",
+              "text": "Die Sitzung ist unterbrochen.",
+              "sentences": [
+                {
+                  "text": "Die Sitzung ist unterbrochen.",
+                  "timeStart": "3270.120",
+                  "timeEnd": "3271.960",
+                  "entities": []
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "documents": []
+    }
+  ]
+}

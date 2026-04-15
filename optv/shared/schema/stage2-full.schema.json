@@ -1,0 +1,245 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openparliament.tv/schema/stage2/1.0/full",
+  "title": "OPTV Stage 2 - Full",
+  "description": "Canonical Stage 2 shape. Supersets the minimal schema and describes every field observed in OpenParliamentTV-Data-DE as of 2026-04-15. See ../../../_planning/stage2-discrepancy.md for field-by-field rationale.",
+  "type": "object",
+  "required": ["meta", "data"],
+  "additionalProperties": true,
+  "definitions": {
+    "datetime": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([+-]\\d{2}:\\d{2}|Z)?$"
+    },
+    "wikidataId": {
+      "type": "string",
+      "pattern": "^(Q\\d+)?$",
+      "description": "Wikidata QID. Empty string is allowed (= unresolved); semantic validator warns."
+    },
+    "wikidataIdNullable": {
+      "type": ["string", "null"],
+      "pattern": "^(Q\\d+)?$"
+    },
+    "numericString": {
+      "type": "string",
+      "pattern": "^\\d+(\\.\\d+)?$"
+    },
+    "speakerContext": {
+      "type": "string",
+      "enum": [
+        "main-speaker",
+        "speaker",
+        "president",
+        "vice-president",
+        "main-proceeding-speaker",
+        "interim-president",
+        "Unknown"
+      ]
+    },
+    "faction": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "wid": {"$ref": "#/definitions/wikidataId"},
+        "label": {"type": "string"},
+        "wtype": {"type": "string"}
+      }
+    },
+    "person": {
+      "type": "object",
+      "required": ["label", "context"],
+      "additionalProperties": true,
+      "properties": {
+        "label": {"type": "string", "minLength": 1},
+        "context": {"$ref": "#/definitions/speakerContext"},
+        "role": {"type": ["string", "null"]},
+        "wid": {"$ref": "#/definitions/wikidataId"},
+        "wtype": {"type": "string"},
+        "faction": {"$ref": "#/definitions/faction"},
+        "firstname": {"type": "string"},
+        "lastname": {"type": "string"},
+        "type": {"type": "string"}
+      }
+    },
+    "nerEntity": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "label": {"type": "string"},
+        "wid": {"$ref": "#/definitions/wikidataIdNullable"},
+        "wtype": {"type": "string"},
+        "score": {"type": ["number", "null"]}
+      }
+    },
+    "sentence": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "text": {"type": "string"},
+        "timeStart": {"$ref": "#/definitions/numericString"},
+        "timeEnd": {"$ref": "#/definitions/numericString"},
+        "entities": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/nerEntity"}
+        }
+      }
+    },
+    "textBodyItem": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["speech", "comment"]
+        },
+        "speaker": {"type": ["string", "null"]},
+        "speakerstatus": {"type": ["string", "null"]},
+        "text": {"type": "string"},
+        "speech_id": {"type": "string"},
+        "sentences": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/sentence"}
+        }
+      }
+    },
+    "textContent": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {"type": "string"},
+        "language": {"type": "string"},
+        "originTextID": {"type": "string"},
+        "sourceURI": {"type": "string"},
+        "creator": {"type": "string"},
+        "license": {"type": "string"},
+        "textBody": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/textBodyItem"}
+        }
+      }
+    },
+    "mediaItem": {
+      "type": "object",
+      "required": ["videoFileURI", "sourcePage"],
+      "additionalProperties": true,
+      "properties": {
+        "videoFileURI": {"type": "string", "minLength": 1},
+        "sourcePage": {"type": "string", "minLength": 1},
+        "audioFileURI": {"type": "string"},
+        "duration": {"type": "number", "minimum": 0},
+        "creator": {"type": "string"},
+        "license": {"type": "string"},
+        "originMediaID": {"type": "string"},
+        "aligned": {"type": "boolean"},
+        "additionalInformation": {"type": ["object", "array", "string", "null"]},
+        "thumbnailURI": {"type": "string"},
+        "thumbnailCreator": {"type": "string"},
+        "thumbnailLicense": {"type": "string"}
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "label": {"type": "string"},
+        "sourceURI": {"type": "string"},
+        "type": {"type": "string"}
+      }
+    },
+    "agendaItem": {
+      "type": "object",
+      "required": ["officialTitle", "title"],
+      "additionalProperties": true,
+      "properties": {
+        "officialTitle": {"type": "string"},
+        "title": {"type": "string"},
+        "speechIndex": {
+          "type": "integer",
+          "description": "DEPRECATED - legacy period-17 nested index. New writers must use top-level data[].speechIndex."
+        }
+      }
+    },
+    "speech": {
+      "type": "object",
+      "required": [
+        "parliament",
+        "electoralPeriod",
+        "session",
+        "agendaItem",
+        "dateStart",
+        "media"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "parliament": {"type": "string", "minLength": 1},
+        "electoralPeriod": {
+          "type": "object",
+          "required": ["number"],
+          "additionalProperties": true,
+          "properties": {
+            "number": {"type": "integer", "minimum": 1}
+          }
+        },
+        "session": {
+          "type": "object",
+          "required": ["number"],
+          "additionalProperties": true,
+          "properties": {
+            "number": {"type": "integer", "minimum": 1},
+            "dateStart": {"$ref": "#/definitions/datetime"},
+            "dateEnd": {"$ref": "#/definitions/datetime"}
+          }
+        },
+        "agendaItem": {"$ref": "#/definitions/agendaItem"},
+        "dateStart": {"$ref": "#/definitions/datetime"},
+        "dateEnd": {"$ref": "#/definitions/datetime"},
+        "speechIndex": {"type": "integer", "minimum": 1},
+        "originTextID": {"type": "string"},
+        "documents": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/document"}
+        },
+        "media": {"$ref": "#/definitions/mediaItem"},
+        "people": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/person"}
+        },
+        "textContents": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/textContent"}
+        },
+        "debug": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  },
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["session"],
+      "additionalProperties": true,
+      "properties": {
+        "session": {"type": "string", "minLength": 1},
+        "schemaVersion": {
+          "type": "string",
+          "description": "Optional. Absent is treated as '1.0'."
+        },
+        "dateStart": {"$ref": "#/definitions/datetime"},
+        "dateEnd": {"$ref": "#/definitions/datetime"},
+        "lastUpdate": {"$ref": "#/definitions/datetime"},
+        "lastProcessing": {"type": "string"},
+        "processing": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/definitions/datetime"}
+        }
+      }
+    },
+    "data": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/speech"}
+    }
+  }
+}

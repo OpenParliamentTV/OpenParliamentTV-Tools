@@ -17,6 +17,7 @@ pids
 *.seed
 .idea/
 __pycache__
+_planning/
 
 # Media files
 *.m4v
