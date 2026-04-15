@@ -263,6 +263,7 @@ def merge_data(proceedings, media, options) -> list:
         speech['session']['dateEnd'] = dateEnd
 
     return { "meta": { **proceedings['meta'],
+                       "schemaVersion": "1.0",
                        "dateStart": dateStart,
                        "dateEnd": dateEnd,
                        "processing": {
