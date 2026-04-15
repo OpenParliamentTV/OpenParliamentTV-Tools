@@ -11,32 +11,28 @@ import re
 import shutil
 import sys
 
-# Allow relative imports if invoked as a script
+# Allow relative imports (for .common, .scraper, etc.) and absolute
+# imports (for optv.shared.*) when invoked as a script.
 # From https://stackoverflow.com/a/65780624/2870028
 if __package__ is None:
     module_dir = Path(__file__).resolve().parent
     sys.path.insert(0, str(module_dir.parent))
+    sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = module_dir.name
 
 from .common import Config, SessionStatus, data_signature
 
 logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basename(sys.argv[0]))
 
-from .aligner.align_sentences import align_audiofile
-from .ner.ner import extract_entities_from_file
-from .nel.nel import link_entities_from_file, get_nel_data
+from optv.shared.align import align_audiofile
+from optv.shared.ner import extract_entities_from_file
+from optv.shared.nel import link_entities_from_file, get_nel_data
+from optv.shared.validators import validate_stage2
+
 from .scraper.update_media import update_media_directory_period, update_media_from_raw
 from .scraper.fetch_proceedings import download_plenary_protocols
 from .merger.merge_session import merge_session
 from .parsers.proceedings2json import parse_proceedings_directory
-
-try:
-    from optv.shared.validators import validate_stage2
-except ImportError:
-    _repo_root = Path(__file__).resolve().parent.parent.parent.parent
-    if str(_repo_root) not in sys.path:
-        sys.path.insert(0, str(_repo_root))
-    from optv.shared.validators import validate_stage2
 
 def execute_workflow(args):
     config = Config(args.data_dir)

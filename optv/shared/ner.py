@@ -14,13 +14,6 @@ import spacy
 import sys
 import time
 
-# Allow relative imports if invoked as a script
-# From https://stackoverflow.com/a/65780624/2870028
-if __package__ is None:
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    __package__ = module_dir.name
-
 
 def extract_entities(source: list, args) -> list:
     """Extract entities from source file
