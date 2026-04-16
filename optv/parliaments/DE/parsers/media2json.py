@@ -229,7 +229,7 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
             if role is not None:
                 person['role'] = fix_role(role)
             if faction:
-                person['faction'] = fix_faction(faction)
+                person['faction'] = {'label': fix_faction(faction)}
             item['people'] = [ person ]
             if metadata.get('session_info') is not None:
                 # According to https://github.com/OpenParliamentTV/OpenParliamentTV-Parsers/issues/1

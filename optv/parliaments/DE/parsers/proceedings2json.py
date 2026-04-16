@@ -436,7 +436,7 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
             def speaker_item(fullname, status):
                 info = speaker_info.get(fullname)
                 if info:
-                    return {
+                    item = {
                         # FIXME: this could be memberOfGovernment / Other
                         # But this information is present in media, not in proceedings
                         "type": "memberOfParliament",
@@ -444,8 +444,10 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
                         "firstname": info['firstname'],
                         "lastname": info['lastname'],
                         "context": status,
-                        "faction": info.get('faction', ''),
                     }
+                    if info.get('faction'):
+                        item["faction"] = {"label": info['faction']}
+                    return item
                 else:
                     return {
                         # FIXME: this could be memberOfGovernment / Other
