@@ -177,7 +177,13 @@ def _rule_people(doc):
                     f"wid {wid!r} does not match ^Q\\d+$.",
                 ))
             fac = person.get("faction")
-            if not fac or not (fac.get("wid") or fac.get("label")):
+            if isinstance(fac, str):
+                out.append(_err(
+                    "semantic.people.faction.type.invalid",
+                    f"{base}/faction",
+                    f"faction must be an object, got string {fac!r} (pre-NEL parser output leaked through).",
+                ))
+            elif not fac or not (fac.get("wid") or fac.get("label")):
                 if ctx in FACTION_EXPECTED_CONTEXTS:
                     out.append(_warn(
                         "semantic.people.faction.missing",
