@@ -2,7 +2,6 @@ feedparser
 lxml
 spacy
 spacyfishing
-spacyopentapioca
 numpy
 aeneas
 pyyaml
