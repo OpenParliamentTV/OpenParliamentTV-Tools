@@ -280,6 +280,7 @@ def align_audio(source: list, language: str, cachedir: Path = None,
                   str(sync_out.absolute()), language, aeneas_options),
         )
         timed_out = False
+        exit_code = None
         try:
             proc.start()
             proc.join(timeout)
@@ -298,27 +299,24 @@ def align_audio(source: list, language: str, cachedir: Path = None,
                 if proc.is_alive():
                     proc.kill()
                     proc.join(5)
-            elif proc.exitcode != 0:
+            exit_code = proc.exitcode
+            if not timed_out and exit_code != 0:
                 logger.error(
-                    f"aeneas child exited {proc.exitcode} for speech "
+                    f"aeneas child exited {exit_code} for speech "
                     f"{speech_label} ({media.name}) — skipping"
                 )
         finally:
             if proc.is_alive():
                 proc.kill()
                 proc.join(5)
-            if hasattr(proc, 'close'):
-                try:
-                    proc.close()
-                except ValueError:
-                    pass
+            proc.close()
             if sentence_file.exists():
                 sentence_file.unlink()
 
-        if timed_out or proc.exitcode != 0 or not sync_out.exists():
+        if timed_out or exit_code != 0 or not sync_out.exists():
             debug = speech.setdefault('debug', {})
             debug['align-error'] = (
-                'timeout' if timed_out else f'exit {proc.exitcode}'
+                'timeout' if timed_out else f'exit {exit_code}'
             )
             if sync_out.exists():
                 sync_out.unlink()
