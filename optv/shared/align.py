@@ -10,6 +10,7 @@ import argparse
 from datetime import datetime
 from itertools import groupby
 import json
+import multiprocessing
 import os
 from pathlib import Path
 import shutil
@@ -18,9 +19,6 @@ import sys
 import time
 from typing import Iterable, Optional
 from urllib.request import urlretrieve
-
-from aeneas.executetask import ExecuteTask
-from aeneas.task import Task
 
 # We want to check that we have 1GB minimum available cache size
 MIN_CACHE_SPACE = 1024 * 1024 * 1024
@@ -130,7 +128,50 @@ def convert_video_to_audio(video_path: Path, audio_path: Path) -> bool:
         return False
 
 
-def align_audio(source: list, language: str, cachedir: Path = None, force: bool = False) -> list:
+def _probe_duration_seconds(media: Path) -> Optional[float]:
+    """Return media duration in seconds via ffprobe, or None if it fails."""
+    try:
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error',
+             '-show_entries', 'format=duration',
+             '-of', 'csv=p=0', str(media)],
+            capture_output=True, timeout=30, text=True)
+        if result.returncode != 0:
+            return None
+        return float(result.stdout.strip())
+    except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
+        return None
+
+
+def _aeneas_worker(audio_path: str, text_path: str, out_path: str,
+                   language: str, aeneas_options: str) -> None:
+    """Run aeneas in a child process; write fragments as JSON to out_path.
+
+    Top-level (picklable under spawn); no closure captures — args are plain
+    strings. aeneas Task/SyncMap objects never cross the process boundary.
+    """
+    from aeneas.executetask import ExecuteTask
+    from aeneas.task import Task
+    task = Task(config_string=(
+        f"task_language={language}|is_text_type=parsed|"
+        f"os_task_file_format=json|{aeneas_options}"
+    ))
+    task.audio_file_path_absolute = audio_path
+    task.text_file_path_absolute = text_path
+    ExecuteTask(task).execute()
+    fragments = [
+        {"id": f.identifier, "begin": str(f.begin), "end": str(f.end)}
+        for f in task.sync_map_leaves()
+        if f.is_regular
+    ]
+    with open(out_path, 'w') as fh:
+        json.dump({"fragments": fragments}, fh)
+
+
+def align_audio(source: list, language: str, cachedir: Path = None,
+                force: bool = False,
+                timeout: int = 1200,
+                max_audio_seconds: int = 2400) -> list:
     """Align list of speeches to add timing information to sentences.
 
     The structure is modified in place, and returned.
@@ -179,57 +220,134 @@ def align_audio(source: list, language: str, cachedir: Path = None, force: bool 
             logger.debug("Can find no audio nor video.")
             continue
 
+        speech_label = f"{speech['session']['number']}/{speech['speechIndex']}"
+
+        # Pre-flight: reject media whose duration exceeds the policy cap.
+        # Catches the wrong-URL-to-whole-session bug in milliseconds instead
+        # of waiting for the wall-clock timeout.
+        duration = _probe_duration_seconds(media)
+        if duration is not None and duration > max_audio_seconds:
+            try:
+                size = media.stat().st_size
+            except OSError:
+                size = -1
+            logger.warning(
+                f"Skipping alignment for speech {speech_label} "
+                f"({media.name}, {size} bytes, {duration:.0f}s audio): "
+                f"exceeds --align-max-audio-seconds={max_audio_seconds}"
+            )
+            debug = speech.setdefault('debug', {})
+            debug['align-error'] = f"audio too long ({duration:.0f}s > {max_audio_seconds}s)"
+            continue
+
         # Generate parsed text format file with identifier + sentence
         sentence_file = cachedfile(speech, 'txt', cachedir)
         with open(sentence_file, 'wt') as sf:
             sf.writelines("|".join((ident, sentence['text'].replace('\n', ' ').replace('|', '-'))) + os.linesep
                           for (ident, sentence) in sentence_list)
 
+        sync_out = cachedfile(speech, 'sync.json', cachedir)
+        if sync_out.exists():
+            sync_out.unlink()
+
         start_time = time.time()
         logger.warning(f"Aligning {sentence_file} with {media}")
-        # Do the alignment
-        aeneas_options = """task_adjust_boundary_no_zero=false|task_adjust_boundary_nonspeech_min=2|task_adjust_boundary_nonspeech_string=REMOVE|task_adjust_boundary_nonspeech_remove=REMOVE|is_audio_file_detect_head_min=0.1|is_audio_file_detect_head_max=3|is_audio_file_detect_tail_min=0.1|is_audio_file_detect_tail_max=3|task_adjust_boundary_algorithm=aftercurrent|task_adjust_boundary_aftercurrent_value=0.5|is_audio_file_head_length=1"""
+        # Do the alignment. task_max_audio_length is a second line of
+        # defence: aeneas itself will refuse if our ffprobe pre-flight was
+        # somehow bypassed (ffprobe missing, unreadable container).
+        aeneas_options = (
+            "task_adjust_boundary_no_zero=false|"
+            "task_adjust_boundary_nonspeech_min=2|"
+            "task_adjust_boundary_nonspeech_string=REMOVE|"
+            "task_adjust_boundary_nonspeech_remove=REMOVE|"
+            "is_audio_file_detect_head_min=0.1|"
+            "is_audio_file_detect_head_max=3|"
+            "is_audio_file_detect_tail_min=0.1|"
+            "is_audio_file_detect_tail_max=3|"
+            "task_adjust_boundary_algorithm=aftercurrent|"
+            "task_adjust_boundary_aftercurrent_value=0.5|"
+            "is_audio_file_head_length=1|"
+            f"task_max_audio_length={max_audio_seconds}"
+        )
 
-        speech_label = f"{speech['session']['number']}/{speech['speechIndex']}"
+        # Run aeneas in a child process so a CPU-bound hang can actually be
+        # killed. signal.alarm() won't interrupt the C-level DTW loop;
+        # concurrent.futures cancellation doesn't kill a running task.
+        ctx = multiprocessing.get_context("spawn")
+        proc = ctx.Process(
+            target=_aeneas_worker,
+            args=(str(media.absolute()), str(sentence_file.absolute()),
+                  str(sync_out.absolute()), language, aeneas_options),
+        )
+        timed_out = False
         try:
-            task = Task(config_string=f"""task_language={language}|is_text_type=parsed|os_task_file_format=json|{aeneas_options}""")
-            task.audio_file_path_absolute = str(media.absolute())
-            task.text_file_path_absolute = str(sentence_file.absolute())
-            # process Task
-            ExecuteTask(task).execute()
-            end_time = time.time()
-
-            # Keep only REGULAR fragments (other can be HEAD/TAIL...)
-            fragments = dict(  (f.identifier, f)
-                               for f in task.sync_map_leaves()
-                               if f.is_regular )
-
-            # Inject timing information back into the source data
-            for ident, sentence in speech_sentence_iter(speech):
-                frag = fragments.get(ident)
-                if frag is None:
-                    continue
-                sentence['timeStart'] = str(frag.begin)
-                sentence['timeEnd'] = str(frag.end)
-
-            debug = speech.setdefault('debug', {})
-            debug['align-duration'] = end_time - start_time
-
-            # Store 'aligned' state in 'media'
-
-            # Are there any aligned sentences in the speech?
-            sentence_list = [ (ident, sentence)
-                              for ident, sentence in speech_sentence_iter(speech)
-                              if sentence.get('timeStart') is not None ]
-            speech['media']['aligned'] = (len(sentence_list) > 0)
-        except Exception as e:
-            logger.error(f"Aeneas failed for speech {speech_label} ({media.name}): {type(e).__name__}: {e}")
-            debug = speech.setdefault('debug', {})
-            debug['align-error'] = f"{type(e).__name__}: {e}"
+            proc.start()
+            proc.join(timeout)
+            if proc.is_alive():
+                timed_out = True
+                try:
+                    size = media.stat().st_size
+                except OSError:
+                    size = -1
+                logger.error(
+                    f"aeneas timed out after {timeout}s for speech "
+                    f"{speech_label} ({media.name}, {size} bytes) — skipping"
+                )
+                proc.terminate()
+                proc.join(5)
+                if proc.is_alive():
+                    proc.kill()
+                    proc.join(5)
+            elif proc.exitcode != 0:
+                logger.error(
+                    f"aeneas child exited {proc.exitcode} for speech "
+                    f"{speech_label} ({media.name}) — skipping"
+                )
         finally:
-            # Cleanup generated files (keep cached media)
+            if proc.is_alive():
+                proc.kill()
+                proc.join(5)
+            if hasattr(proc, 'close'):
+                try:
+                    proc.close()
+                except ValueError:
+                    pass
             if sentence_file.exists():
                 sentence_file.unlink()
+
+        if timed_out or proc.exitcode != 0 or not sync_out.exists():
+            debug = speech.setdefault('debug', {})
+            debug['align-error'] = (
+                'timeout' if timed_out else f'exit {proc.exitcode}'
+            )
+            if sync_out.exists():
+                sync_out.unlink()
+            continue
+
+        # Parent reads fragments back from disk — no pickling of aeneas objects.
+        try:
+            with open(sync_out) as fh:
+                fragments = {f['id']: (f['begin'], f['end'])
+                             for f in json.load(fh)['fragments']}
+        finally:
+            if sync_out.exists():
+                sync_out.unlink()
+
+        # Inject timing information back into the source data
+        for ident, sentence in speech_sentence_iter(speech):
+            pair = fragments.get(ident)
+            if pair is None:
+                continue
+            sentence['timeStart'], sentence['timeEnd'] = pair
+
+        debug = speech.setdefault('debug', {})
+        debug['align-duration'] = time.time() - start_time
+
+        # Store 'aligned' state in 'media'
+        aligned_sentences = [1
+                             for _ident, sentence in speech_sentence_iter(speech)
+                             if sentence.get('timeStart') is not None]
+        speech['media']['aligned'] = (len(aligned_sentences) > 0)
 
     # We have aligned all "speech"-type bodies. Go through all speeches and
     # use "speech" timecodes to estimate "comment"-type timecodes.
@@ -274,7 +392,9 @@ def align_audiofile(sourcefile: Path,
                     destinationfile: Path,
                     language: str,
                     cachedir: Path = None,
-                    force: bool = False) -> Path:
+                    force: bool = False,
+                    timeout: int = 1200,
+                    max_audio_seconds: int = 2400) -> Path:
     with open(sourcefile) as f:
         source = json.load(f)
     output = { "meta": { **source['meta'],
@@ -283,7 +403,9 @@ def align_audiofile(sourcefile: Path,
                              "align": datetime.now().isoformat('T', 'seconds'),
                          }
                         },
-               "data": align_audio(source['data'], language, cachedir, force)
+               "data": align_audio(source['data'], language, cachedir, force,
+                                   timeout=timeout,
+                                   max_audio_seconds=max_audio_seconds)
               }
     if destinationfile is not None:
         with open(destinationfile, 'w') as f:
@@ -305,6 +427,10 @@ if __name__ == '__main__':
     parser.add_argument("--force", action="store_true",
                         default=False,
                         help="Force alignment, even if all sentences are already aligned.")
+    parser.add_argument("--align-timeout", type=int, default=1200,
+                        help="Wall-clock timeout (s) for aeneas per speech (default: 1200)")
+    parser.add_argument("--align-max-audio-seconds", type=int, default=2400,
+                        help="Skip alignment if media duration exceeds this (default: 2400)")
     parser.add_argument("--debug", dest="debug", action="store_true",
                         default=False,
                         help="Display debug messages")
@@ -319,4 +445,7 @@ if __name__ == '__main__':
         loglevel = logging.DEBUG
     logging.basicConfig(level=loglevel)
 
-    align_audiofile(args.source, args.destination, args.lang, args.cache_dir, args.force)
+    align_audiofile(args.source, args.destination, args.lang, args.cache_dir,
+                    args.force,
+                    timeout=args.align_timeout,
+                    max_audio_seconds=args.align_max_audio_seconds)

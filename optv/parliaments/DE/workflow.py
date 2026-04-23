@@ -174,7 +174,9 @@ def execute_workflow(args):
                 merged_file = config.file(session, 'merged')
                 aligned_file = config.file(session, 'aligned', create=True)
                 try:
-                    align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir)
+                    align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir,
+                                    timeout=args.align_timeout,
+                                    max_audio_seconds=args.align_max_audio_seconds)
                     publish_as_processed(session, aligned_file)
                 except Exception as e:
                     logger.error(f"Alignment failed for session {session}: {type(e).__name__}: {e} — continuing with next session")
@@ -217,6 +219,10 @@ if __name__ == "__main__":
     parser.add_argument("--retry-count", type=int,
                         dest="retry_count", default=0,
                         help="Max number of times to retry a media download")
+    parser.add_argument("--align-timeout", type=int, default=1200,
+                        help="Wall-clock timeout (s) for aeneas per speech (default: 1200)")
+    parser.add_argument("--align-max-audio-seconds", type=int, default=2400,
+                        help="Skip alignment if media duration exceeds this (default: 2400)")
     parser.add_argument("--force", dest="force", action="store_true",
                         default=False,
                         help="Force loading of data for a meeting even if the corresponding file already exists")
