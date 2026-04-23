@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import time
 from typing import Iterable, Optional
@@ -110,6 +111,25 @@ def mediafile(speech: dict, cachedir: Path, mediatype='audio') -> Optional[Path]
     return media
 
 
+def convert_video_to_audio(video_path: Path, audio_path: Path) -> bool:
+    try:
+        result = subprocess.run(
+            ['ffmpeg', '-i', str(video_path),
+             '-vn', '-ac', '1', '-ab', '64k',
+             '-f', 'mp3', '-y', str(audio_path)],
+            capture_output=True, timeout=300)
+        if result.returncode != 0:
+            logger.error(f"ffmpeg conversion failed: {result.stderr.decode()[:500]}")
+            return False
+        return audio_path.exists()
+    except FileNotFoundError:
+        logger.error("ffmpeg not found on PATH")
+        return False
+    except subprocess.TimeoutExpired:
+        logger.error(f"ffmpeg timed out converting {video_path}")
+        return False
+
+
 def align_audio(source: list, language: str, cachedir: Path = None, force: bool = False) -> list:
     """Align list of speeches to add timing information to sentences.
 
@@ -136,11 +156,25 @@ def align_audio(source: list, language: str, cachedir: Path = None, force: bool 
             logger.debug("All sentences already aligned")
             continue
 
-        # Download media file
-        media = mediafile(speech, cachedir, mediatype='audio')
-        if media is None:
-            # No audio. Try to fallback on video.
-            media = mediafile(speech, cachedir, mediatype='video')
+        # Prefer already-cached media; aeneas reads video via ffmpeg, so a
+        # cached mp4 is a valid input and avoids a re-conversion.
+        mp3_path = cachedfile(speech, 'mp3', cachedir)
+        mp4_path = cachedfile(speech, 'mp4', cachedir)
+        if mp3_path.exists():
+            media = mp3_path
+        elif mp4_path.exists():
+            media = mp4_path
+        else:
+            # New speech: download audio, else fall back to video + convert.
+            media = mediafile(speech, cachedir, mediatype='audio')
+            if media is None:
+                video = mediafile(speech, cachedir, mediatype='video')
+                if video is not None:
+                    if convert_video_to_audio(video, mp3_path):
+                        video.unlink()
+                        media = mp3_path
+                    else:
+                        media = video
         if media is None:
             logger.debug("Can find no audio nor video.")
             continue
