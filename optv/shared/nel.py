@@ -38,8 +38,8 @@ def link_entities(source: list, persons: dict, factions: dict) -> list:
     for speech in source:
         for p in speech.get('people', []):
             label = cleanup(p['label'])
-            if persons.get(label):
-                # Found exact match
+            if persons.get(label) and not p.get('wid'):
+                # Found exact match - only fill in if no upstream wid (e.g. ParlaMint Q-IDs)
                 p['wid'] = persons[label]['id']
                 p['wtype'] = 'PERSON'
             faction = p.get('faction')
@@ -52,8 +52,8 @@ def link_entities(source: list, persons: dict, factions: dict) -> list:
                         'label': faction,
                         'wtype': 'ORG'
                     }
-                # Maybe already a dict. Update the wid in any case (maybe the entity dump changed)
-                else:
+                # Maybe already a dict. Only fill wid if missing (preserve upstream IDs)
+                elif not faction.get('wid'):
                     f = factions.get(cleanup(faction['label']), { 'id': '' })
                     faction['wid'] = f['id']
     return source
