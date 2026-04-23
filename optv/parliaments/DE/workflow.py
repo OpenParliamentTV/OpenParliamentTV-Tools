@@ -173,8 +173,11 @@ def execute_workflow(args):
                 logger.warning(f"Time-aligning {session}")
                 merged_file = config.file(session, 'merged')
                 aligned_file = config.file(session, 'aligned', create=True)
-                align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir)
-                publish_as_processed(session, aligned_file)
+                try:
+                    align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir)
+                    publish_as_processed(session, aligned_file)
+                except Exception as e:
+                    logger.error(f"Alignment failed for session {session}: {type(e).__name__}: {e} — continuing with next session")
 
     # NER aligned files
     if args.extract_entities:

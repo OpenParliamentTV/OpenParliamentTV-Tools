@@ -190,36 +190,46 @@ def align_audio(source: list, language: str, cachedir: Path = None, force: bool 
         # Do the alignment
         aeneas_options = """task_adjust_boundary_no_zero=false|task_adjust_boundary_nonspeech_min=2|task_adjust_boundary_nonspeech_string=REMOVE|task_adjust_boundary_nonspeech_remove=REMOVE|is_audio_file_detect_head_min=0.1|is_audio_file_detect_head_max=3|is_audio_file_detect_tail_min=0.1|is_audio_file_detect_tail_max=3|task_adjust_boundary_algorithm=aftercurrent|task_adjust_boundary_aftercurrent_value=0.5|is_audio_file_head_length=1"""
 
-        task = Task(config_string=f"""task_language={language}|is_text_type=parsed|os_task_file_format=json|{aeneas_options}""")
-        task.audio_file_path_absolute = str(media.absolute())
-        task.text_file_path_absolute = str(sentence_file.absolute())
-        # process Task
-        ExecuteTask(task).execute()
-        end_time = time.time()
+        speech_label = f"{speech['session']['number']}/{speech['speechIndex']}"
+        try:
+            task = Task(config_string=f"""task_language={language}|is_text_type=parsed|os_task_file_format=json|{aeneas_options}""")
+            task.audio_file_path_absolute = str(media.absolute())
+            task.text_file_path_absolute = str(sentence_file.absolute())
+            # process Task
+            ExecuteTask(task).execute()
+            end_time = time.time()
 
-        # Keep only REGULAR fragments (other can be HEAD/TAIL...)
-        fragments = dict(  (f.identifier, f)
-                           for f in task.sync_map_leaves()
-                           if f.is_regular )
+            # Keep only REGULAR fragments (other can be HEAD/TAIL...)
+            fragments = dict(  (f.identifier, f)
+                               for f in task.sync_map_leaves()
+                               if f.is_regular )
 
-        # Inject timing information back into the source data
-        for ident, sentence in speech_sentence_iter(speech):
-            sentence['timeStart'] = str(fragments[ident].begin)
-            sentence['timeEnd'] = str(fragments[ident].end)
+            # Inject timing information back into the source data
+            for ident, sentence in speech_sentence_iter(speech):
+                frag = fragments.get(ident)
+                if frag is None:
+                    continue
+                sentence['timeStart'] = str(frag.begin)
+                sentence['timeEnd'] = str(frag.end)
 
-        debug = speech.setdefault('debug', {})
-        debug['align-duration'] = end_time - start_time
+            debug = speech.setdefault('debug', {})
+            debug['align-duration'] = end_time - start_time
 
-        # Store 'aligned' state in 'media'
+            # Store 'aligned' state in 'media'
 
-        # Are there any aligned sentences in the speech?
-        sentence_list = [ (ident, sentence)
-                          for ident, sentence in speech_sentence_iter(speech)
-                          if sentence.get('timeStart') is not None ]
-        speech['media']['aligned'] = (len(sentence_list) > 0)
-
-        # Cleanup generated files (keep cached media)
-        sentence_file.unlink()
+            # Are there any aligned sentences in the speech?
+            sentence_list = [ (ident, sentence)
+                              for ident, sentence in speech_sentence_iter(speech)
+                              if sentence.get('timeStart') is not None ]
+            speech['media']['aligned'] = (len(sentence_list) > 0)
+        except Exception as e:
+            logger.error(f"Aeneas failed for speech {speech_label} ({media.name}): {type(e).__name__}: {e}")
+            debug = speech.setdefault('debug', {})
+            debug['align-error'] = f"{type(e).__name__}: {e}"
+        finally:
+            # Cleanup generated files (keep cached media)
+            if sentence_file.exists():
+                sentence_file.unlink()
 
     # We have aligned all "speech"-type bodies. Go through all speeches and
     # use "speech" timecodes to estimate "comment"-type timecodes.
