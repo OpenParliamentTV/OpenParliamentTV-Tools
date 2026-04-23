@@ -19,6 +19,10 @@ pids
 __pycache__
 _planning/
 
+# Python virtual environments
+.venv/
+.venv-*/
+
 # Media files
 *.m4v
 *.mp4

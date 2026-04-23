@@ -31,8 +31,14 @@ from optv.shared.validators import validate_stage2
 
 from .scraper.update_media import update_media_directory_period, update_media_from_raw
 from .scraper.fetch_proceedings import download_plenary_protocols
+from .scraper.fetch_parlamint import download_parlamint_period
 from .merger.merge_session import merge_session
 from .parsers.proceedings2json import parse_proceedings_directory
+from .parsers.parlamint2json import parse_parlamint_directory
+
+# Periods served by the ParlaMint-DE_beta corpus (Bundestag native TEI is
+# only available from period 18 onwards).
+PARLAMINT_PERIODS = {16, 17}
 
 def execute_workflow(args):
     config = Config(args.data_dir)
@@ -87,13 +93,20 @@ def execute_workflow(args):
                                       retry_count=args.retry_count)
 
         # Download new proceedings data
-        download_plenary_protocols(config.dir('proceedings'),
-                                   fullscan=False,
-                                   period=args.period)
+        if args.period in PARLAMINT_PERIODS:
+            download_parlamint_period(args.period,
+                                      config.dir('proceedings'),
+                                      force=args.force)
+        else:
+            download_plenary_protocols(config.dir('proceedings'),
+                                       fullscan=False,
+                                       period=args.period)
 
     # In any case, parse proceedings that need to
-    parse_proceedings_directory(config.dir('proceedings'),
-                                args)
+    if args.period in PARLAMINT_PERIODS:
+        parse_parlamint_directory(config.dir('proceedings'), args)
+    else:
+        parse_proceedings_directory(config.dir('proceedings'), args)
     # And also media
     update_media_from_raw(config.dir('media'))
 

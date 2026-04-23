@@ -38,6 +38,8 @@ def merge_item(mediaitem, proceedingitems):
     output['debug']['proceedingIndex'] = first_proceeding['speechIndex']
     output['debug']['proceedingIndexes'] = [ p['speechIndex'] for p in proceedingitems ]
     output['debug']['mediaIndex'] = mediaitem['speechIndex']
+    if first_proceeding.get('debug', {}).get('proceedings-source'):
+        output['debug']['proceedings-source'] = first_proceeding['debug']['proceedings-source']
 
     # Merge people in case of multiple proceedings. We use a dict for
     # de-duplication (instead of a set) so that we preserve order.  We
@@ -47,14 +49,15 @@ def merge_item(mediaitem, proceedingitems):
     # We do a copy of person info because we will possibly update its
     # context info (when checking main-speaker conflicts), so the same
     # "proceeding" person will have multiple contexts.
+    media_people = mediaitem.get('people') or []
     people_dict = dict( (remove_accents(person['label']), deepcopy(person))
                         for p in proceedingitems
-                        for person in mediaitem['people'] + p['people'] )
+                        for person in media_people + p.get('people', []) )
 
     # Copy back attributes from media if necessary - they may have
     # been overwritten (in the general case)
-    if mediaitem['people']:
-        media_person = mediaitem['people'][0]
+    if media_people:
+        media_person = media_people[0]
         person = people_dict[remove_accents(media_person['label'])]
         if media_person.get('role'):
             person['role'] = media_person['role']
@@ -72,7 +75,9 @@ def merge_item(mediaitem, proceedingitems):
     # person. And if the second person also has main-speaker info, it
     # means that this info comes from proceedings, in which case we
     # fix it to main-proceedings-speaker
-    if output['people']:
+    # (Skip this check when media had no speaker info: the "first person
+    # is main-speaker" invariant only holds when media confirmed the speaker.)
+    if output['people'] and media_people:
         first_person = output['people'][0]
         if first_person['context'] != 'main-speaker':
             logger.error(f"Error in {mediaitem['session']['number']}: first person ({first_person['label']}) should alway be main-speaker")
@@ -227,6 +232,8 @@ def merge_data(proceedings, media, options) -> list:
         for group in [ list(group)
                        for media_index, group in itertools.groupby(path, lambda i: i['media_index']) ]
     ]
+    # merge_item returns [] as a sentinel for "skip this item" (data inconsistency logged)
+    speeches = [s for s in speeches if isinstance(s, dict)]
 
     # Add linkedMediaIndexes info - it indicates the cases where the
     # same proceeding has been linked with multiple media items.

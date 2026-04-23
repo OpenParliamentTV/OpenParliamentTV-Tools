@@ -235,6 +235,14 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
                 # According to https://github.com/OpenParliamentTV/OpenParliamentTV-Parsers/issues/1
                 # we should strip the Sitzung prefix from the session_info
                 item['agendaItem']['officialTitle'] = fix_title(re.sub(r'^\d+\.\sSitzung,\s', '', metadata.get('session_info')))
+                # EP 16-17 RSS feeds use an empty "TOP " token for session boundary clips
+                # instead of EP 19+'s "TOP Sitzungseröffnung" / "TOP Sitzungsende". The
+                # event name lives only in the subtitle, so both opening and closing
+                # clips collapse to officialTitle="TOP " and collide under one bucket.
+                # Promote the subtitle when it carries the explicit boundary name.
+                if (item['agendaItem']['officialTitle'].strip() == "TOP"
+                        and item['agendaItem']['title'] in ("Sitzungseröffnung", "Sitzungsende")):
+                    item['agendaItem']['officialTitle'] = item['agendaItem']['title']
             # FIXME: we have other fields: title_date, title_time that we could use for validation
 
         # Fix AgendaItemTitle if necessary
