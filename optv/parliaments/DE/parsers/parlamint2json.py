@@ -8,6 +8,8 @@
 # every speaker via a central listPerson registry, so people[].wid is
 # populated directly by the parser (NEL is a no-op for these speeches).
 
+from __future__ import annotations
+
 import logging
 logger = logging.getLogger(__name__)
 

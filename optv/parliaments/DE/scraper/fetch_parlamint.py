@@ -6,6 +6,8 @@
 # proceedings in its native TEI format. Source corpus is published at
 # https://github.com/PolMine/ParlaMint-DE_beta under CC-BY 4.0.
 
+from __future__ import annotations
+
 import logging
 logger = logging.getLogger(__name__)
 
