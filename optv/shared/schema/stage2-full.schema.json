@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://openparliament.tv/schema/stage2/1.0/full",
   "title": "OPTV Stage 2 - Full",
-  "description": "Canonical Stage 2 shape. Supersets the minimal schema and describes every field observed in OpenParliamentTV-Data-DE as of 2026-04-15. See ../../../_planning/stage2-discrepancy.md for field-by-field rationale.",
+  "description": "Canonical Stage 2 shape. Supersets the minimal schema and describes every field the OpenParliamentTV pipeline emits.",
   "type": "object",
   "required": ["meta", "data"],
   "additionalProperties": true,

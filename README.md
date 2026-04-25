@@ -1,39 +1,81 @@
 # OpenParliamentTV-Tools
 
-### Goal
+The data import pipeline for OpenParliamentTV. Fetches parliamentary proceedings and media feeds, parses them into a unified per-session JSON file, enriches with named-entity linking, sentence-level audio alignment, and named-entity recognition, then validates and publishes the result for the platform to ingest.
 
-Parse parliamentary proceedings / protocols as well as media library RSS feeds in various formats and transform a standardized format.
+For the wider system context — repositories, data flow, the Stage 2 format — see the [Architecture repo](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture). The pipeline stages map to [PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md); the file format produced by the pipeline is specified in [STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md).
 
-### Notes:
-* Unit per file: 1 session (including agenda items & speeches)
-* Data Fields & Mapping:
-https://docs.google.com/spreadsheets/d/1NglOO9Ss6797RmgY0bBJAlqfdc-LnV5rIJSC4ui30ps/edit?usp=sharing
-* Directory Naming Convention:
-https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/SHORTCODES.md
+Currently implemented: the German Bundestag (`optv/parliaments/DE/`).
 
-### Resources:
+## Quick start
 
-* Parla-CLARIN Github Repo:
-https://github.com/clarin-eric/parla-clarin/
-* Parla-CLARIN TEI XML Schema:
-https://clarin-eric.github.io/parla-clarin/
-*  Parliamentary corpora in the CLARIN infrastructure:
-https://www.clarin.eu/resource-families/parliamentary-corpora#additional-materials
+```bash
+python3 -m pip install -r requirements.txt
 
-#### Specific for German Bundestag Data
+# fetch + process the current period's data into <data_dir>
+./optv/parliaments/DE/update <data_dir>
 
-* Proceedings & Media RSS Feed Examples: https://github.com/OpenParliamentTV/OpenParliamentTV-Parsers/tree/main/parliaments/DE/data/examples
+# or run the workflow manually with finer control:
+./optv/parliaments/DE/workflow.py --period=21 <data_dir> \
+    --download-original --merge-speeches \
+    --link-entities --align-sentences --extract-entities
+```
 
-* Example of GermaParl TEI XML (not Parla-CLARIN):
-https://github.com/PolMine/GermaParlTEI
-* Open Discourse Project (Parsers etc. for German Bundestag Data):
-	* https://github.com/open-discourse/open-discourse/blob/develop/python/src/README.md
-* Old German Bundestag Parsers & Code Snippets:
-	* https://github.com/OpenHypervideo/VideoTranscriptGenerator/blob/master/_server/scrapeMediaIDs.php
-	* https://github.com/OpenHypervideo/VideoTranscriptGenerator/blob/master/_server/functions.php
-* "Bundestag" Github Organisation (various scripts & tools):
-https://github.com/bundestag
-* Official Bundestag Open Data Resources:
-https://www.bundestag.de/services/opendata
-* Official Bundestag Video Podcast XML Feed (often this fires 503 errors; need to mirror data!):
-http://webtv.bundestag.de/player/macros/bttv/podcast/video/plenar.xml?period=19&meetingNumber=11
+`<data_dir>` is the per-parliament data directory, expected to be a sibling clone of [OpenParliamentTV-Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE). Each `--*` flag is opt-in and idempotent; `--force` re-runs an already-completed stage. A lockfile (`<data_dir>/optv.lock`) blocks concurrent runs.
+
+External dependencies: `aeneas` needs `ffmpeg` and `espeak`; the NER stage needs a spaCy model (`de_core_news_md`) and an `entityfishing` API endpoint passed via `--ner-api-endpoint`.
+
+## Layout
+
+```
+optv/
+├── parliaments/
+│   └── DE/                  # German Bundestag — only currently implemented parliament
+│       ├── manifest.yaml    # per-parliament metadata read by Conductor (stages, periods, …)
+│       ├── workflow.py      # main orchestration entry point
+│       ├── common.py        # Config class, SessionStatus, file naming
+│       ├── scraper/         # fetch proceedings (TEI XML) and media (RSS)
+│       ├── parsers/         # XML/RSS → intermediate JSON
+│       ├── merger/          # join media + proceedings into Stage 2
+│       ├── update           # shell wrapper: --period=21 --retry-count=20
+│       └── Makefile         # download + merge targets driven by file mtimes
+└── shared/                  # cross-parliament infrastructure
+    ├── align.py             # forced sentence alignment (aeneas)
+    ├── nel.py               # named-entity linking (Wikidata)
+    ├── ner.py               # named-entity recognition (spaCy + entity-fishing)
+    ├── schema/              # Stage 2 JSON schemas + reference doc
+    ├── validators/          # structural + semantic validators, CLI
+    └── docs/EXAMPLES/       # example Stage 2 documents
+```
+
+`manifest.yaml` is the per-parliament metadata file. The Conductor reads it to know which stages a parliament supports, which entity dump to use, and the retry defaults — see [optv/parliaments/DE/manifest.yaml](optv/parliaments/DE/manifest.yaml) for the canonical example.
+
+## Pipeline stages
+
+Each stage produces a side-by-side cache file per session (e.g. `21001-merged.json`, `21001-aligned.json`, `21001-ner.json`) and runs only when its input is newer than its output.
+
+| Stage | Module / script | Input | Output |
+|-------|-----------------|-------|--------|
+| Fetch | [`scraper/fetch_proceedings.py`](optv/parliaments/DE/scraper/fetch_proceedings.py), [`scraper/fetch_media.py`](optv/parliaments/DE/scraper/fetch_media.py) | parliament APIs | `original/{proceedings,media}/` |
+| Parse | [`parsers/proceedings2json.py`](optv/parliaments/DE/parsers/proceedings2json.py), [`parsers/media2json.py`](optv/parliaments/DE/parsers/media2json.py) | TEI XML, RSS | intermediate JSON |
+| Merge | [`merger/merge_session.py`](optv/parliaments/DE/merger/merge_session.py) | proceedings + media JSON | `cache/merged/*-merged.json` |
+| NEL | [`optv/shared/nel.py`](optv/shared/nel.py) | merged JSON + entity dump | `people[].wid`, faction normalisation |
+| Align | [`optv/shared/align.py`](optv/shared/align.py) | merged JSON + audio | `cache/aligned/*-aligned.json` (sentence timings) |
+| NER | [`optv/shared/ner.py`](optv/shared/ner.py) | aligned JSON + entity-fishing API | `cache/ner/*-ner.json` (sentence entities) |
+| Publish | `publish_as_processed()` in [`workflow.py`](optv/parliaments/DE/workflow.py) | latest cache file | `processed/*-session.json` |
+
+For the conceptual stage breakdown (parliament-agnostic), see [Architecture/PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md).
+
+## Validation
+
+Stage 2 schemas and conventions: [optv/shared/schema/README.md](optv/shared/schema/README.md). Standalone CLI:
+
+```bash
+python -m optv.shared.validators.cli --dir <data_dir>/processed --schema full
+python -m optv.shared.validators.cli --file session.json --no-semantic
+```
+
+The publish step also runs validation and logs findings; warnings do not block.
+
+## Adding a new parliament
+
+See [docs/ADDING-A-PARLIAMENT.md](docs/ADDING-A-PARLIAMENT.md).

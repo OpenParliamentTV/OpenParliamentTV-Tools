@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://openparliament.tv/schema/stage2/1.0/minimal",
   "title": "OPTV Stage 2 - Minimal",
-  "description": "Minimum fields required for OPTV platform import. Every field listed here is present in 100% of the 1,034 files in OpenParliamentTV-Data-DE as of 2026-04-15. See ../../../_planning/stage2-discrepancy.md for derivation.",
+  "description": "Minimum fields a Stage 2 session file must contain to be importable by the OpenParliamentTV platform.",
   "type": "object",
   "required": ["meta", "data"],
   "additionalProperties": true,

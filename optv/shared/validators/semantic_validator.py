@@ -1,7 +1,7 @@
 """Cross-field and cross-item semantic rules for OPTV Stage 2.
 
-Rules are derived from _planning/stage2-discrepancy.md §Semantic-validator rules.
-Each rule emits findings with severity "error" or "warning" and a stable rule id.
+Each rule emits a finding with severity "error" or "warning" and a stable
+rule id. See ../schema/README.md for the rule list and the rationale.
 """
 
 import re
