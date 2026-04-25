@@ -1,0 +1,7 @@
+name: "Deutscher Bundestag"
+language: deu
+periods: [17, 18, 19, 20, 21]
+supported_stages: [download, parse, merge, nel, align, ner]
+entity_dump_url: "https://de.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+default_retry_count: 20
+default_retry_delay_max: 10

@@ -132,6 +132,32 @@ def execute_workflow(args):
                 # that we will lose nothing.
                 publish_as_processed(session, merged_file)
 
+    if args.update_nel_entities:
+        import urllib.request
+        url = (getattr(args, "nel_entity_url", "") or "").strip()
+        if not url:
+            try:
+                from optv.parliaments import load_manifest
+                url = load_manifest(Path(__file__).parent.name).get("entity_dump_url", "")
+            except (FileNotFoundError, ImportError) as e:
+                logger.warning(f"Cannot read manifest entity_dump_url: {type(e).__name__}: {e}")
+                url = ""
+        if not url:
+            logger.warning("No NEL entity URL configured (no --nel-entity-url, no entity_dump_url in manifest) - skipping")
+        else:
+            metadata_dir = args.data_dir / "metadata"
+            metadata_dir.mkdir(parents=True, exist_ok=True)
+            target = metadata_dir / "entities.json"
+            logger.info(f"Downloading NEL entities from {url}")
+            try:
+                with urllib.request.urlopen(url, timeout=120) as resp:
+                    data = resp.read()
+                target.write_bytes(data)
+                persons, factions = get_nel_data(metadata_dir)
+                logger.info(f"NEL entities updated: {len(data)} bytes, {len(persons)} persons, {len(factions)} factions")
+            except Exception as e:
+                logger.warning(f"Could not download NEL entities from {url}: {type(e).__name__}: {e}")
+
     # Do entity linking for people and factions in merged files
     if args.link_entities:
         nel_data_dir = config.dir('nel_data')
@@ -259,6 +285,8 @@ if __name__ == "__main__":
     parser.add_argument("--update-nel-entities", action=argparse.BooleanOptionalAction,
                         default=False,
                         help="Download NEL entities from OPTV server")
+    parser.add_argument("--nel-entity-url", type=str, default="",
+                        help="Override NEL entity dump URL (defaults to entity_dump_url from manifest.yaml)")
     parser.add_argument("--link-entities", action=argparse.BooleanOptionalAction,
                         default=False,
                         help="Link People/Faction entities")
