@@ -1,6 +1,6 @@
-# OpenParliamentTV-Tools
+# Open Parliament TV - Tools
 
-The data import pipeline for OpenParliamentTV. Fetches parliamentary proceedings and media feeds, parses them into a unified per-session JSON file, enriches with named-entity linking, sentence-level audio alignment, and named-entity recognition, then validates and publishes the result for the platform to ingest.
+The data import pipeline for Open Parliament TV. Fetches parliamentary proceedings and media feeds, parses them into a unified per-session JSON file, enriches with named-entity linking, sentence-level audio alignment, and named-entity recognition, then validates and publishes the result for the platform to ingest.
 
 For the wider system context — repositories, data flow, the Stage 2 format — see the [Architecture repo](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture). The pipeline stages map to [PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md); the file format produced by the pipeline is specified in [STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md).
 
