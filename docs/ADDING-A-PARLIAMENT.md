@@ -62,7 +62,7 @@ default_retry_delay_max: 10
 
 `supported_stages` lets parliaments opt out of stages that don't apply (e.g. a parliament with pre-aligned source data can omit `align`).
 
-`locale.*` are required when `align` or `ner` is in `supported_stages`. The model name is given in full (no `lang + suffix` composition) because spaCy's naming isn't uniform across languages — e.g. Swedish ships only `sv_core_news_lg`, no `_md`. The parliament's `workflow.py` reads these via `optv.parliaments.get_locale()` and injects them onto `args` before invoking shared stages.
+`locale.*` are required when `align` or `ner` is in `supported_stages`. The model name is given in full (no `lang + suffix` composition) because spaCy's naming isn't uniform across languages — not every language ships every size tier. The parliament's `workflow.py` reads these via `optv.parliaments.get_locale()` and injects them onto `args` before invoking shared stages.
 
 ## 5. Implement Stage 1 (parliament-specific)
 
