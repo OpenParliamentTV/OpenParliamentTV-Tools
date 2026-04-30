@@ -49,6 +49,10 @@ Per-parliament metadata that [OpenParliamentTV-Conductor](https://github.com/Ope
 ```yaml
 name: "Deutscher Bundestag"
 language: deu                   # ISO 639-3
+locale:                         # consumed by optv.shared.{align,ner}
+  spacy_model: de_core_news_md          # full pip model id
+  aeneas_language: deu                  # ISO 639-3 for aeneas/espeak
+  entityfishing_language: de            # 2-letter for entityfishing
 periods: [17, 18, 19, 20, 21]   # legislative terms covered
 supported_stages: [download, parse, merge, nel, align, ner]
 entity_dump_url: "https://de.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
@@ -57,6 +61,8 @@ default_retry_delay_max: 10
 ```
 
 `supported_stages` lets parliaments opt out of stages that don't apply (e.g. a parliament with pre-aligned source data can omit `align`).
+
+`locale.*` are required when `align` or `ner` is in `supported_stages`. The model name is given in full (no `lang + suffix` composition) because spaCy's naming isn't uniform across languages — e.g. Swedish ships only `sv_core_news_lg`, no `_md`. The parliament's `workflow.py` reads these via `optv.parliaments.get_locale()` and injects them onto `args` before invoking shared stages.
 
 ## 5. Implement Stage 1 (parliament-specific)
 
@@ -103,7 +109,7 @@ The shared stages (NEL, alignment, NER) are imported from `optv.shared.*` and do
 - **Wikidata entity dump** — JSON file mapping known speaker names + electoral periods to Wikidata QIDs. URL goes in `manifest.yaml` as `entity_dump_url`. The NEL stage reads from this.
 - **Entity-fishing API endpoint** — required by the NER stage. Pass via `--ner-api-endpoint` or set in `manifest.yaml`. Public instances exist; for production, run your own.
 - **`ffmpeg` and `espeak`** — required by the alignment stage (aeneas dependency).
-- **A spaCy model for the parliament's language** — `de_core_news_md` for German. Install via `python -m spacy download <model>`.
+- **A spaCy model for the parliament's language** — declared in `manifest.locale.spacy_model` (single source of truth). Install via `python -m spacy download <model>`.
 
 ## 9. Verify end-to-end
 
