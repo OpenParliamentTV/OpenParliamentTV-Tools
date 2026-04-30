@@ -22,7 +22,7 @@ python3 -m pip install -r requirements.txt
 
 `<data_dir>` is the per-parliament data directory, expected to be a sibling clone of [OpenParliamentTV-Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE). Each `--*` flag is opt-in and idempotent; `--force` re-runs an already-completed stage. A lockfile (`<data_dir>/optv.lock`) blocks concurrent runs.
 
-External dependencies: `aeneas` needs `ffmpeg` and `espeak`; the NER stage needs a spaCy model (`de_core_news_md`) and an `entityfishing` API endpoint passed via `--ner-api-endpoint`.
+External dependencies: `aeneas` needs `ffmpeg` and `espeak`; the NER stage needs a spaCy model (declared per-parliament in `manifest.yaml` as `locale.spacy_model` — `de_core_news_md` for DE) and an `entityfishing` API endpoint passed via `--ner-api-endpoint`.
 
 ## Layout
 
