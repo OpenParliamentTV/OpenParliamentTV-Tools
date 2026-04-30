@@ -418,8 +418,9 @@ if __name__ == '__main__':
                         help="Source file (merged format)")
     parser.add_argument("destination", metavar="destination", type=str, nargs='?',
                         help="Destination file")
-    parser.add_argument("--lang", type=str, default="deu",
-                        help="Language")
+    parser.add_argument("--lang", type=str, required=True,
+                        help="ISO 639-3 language code for aeneas/espeak (e.g. 'deu', 'swe'). "
+                             "Usually sourced from manifest.locale.aeneas_language.")
     parser.add_argument("--cache-dir", type=str, default=None,
                         help="Cache directory")
     parser.add_argument("--force", action="store_true",

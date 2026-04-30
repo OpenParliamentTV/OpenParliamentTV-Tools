@@ -1,5 +1,9 @@
 name: "Deutscher Bundestag"
 language: deu
+locale:
+  spacy_model: de_core_news_md
+  aeneas_language: deu
+  entityfishing_language: de
 periods: [17, 18, 19, 20, 21]
 supported_stages: [download, parse, merge, nel, align, ner]
 entity_dump_url: "https://de.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"

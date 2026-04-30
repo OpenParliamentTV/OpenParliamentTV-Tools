@@ -7,7 +7,15 @@ rule id. See ../schema/README.md for the rule list and the rationale.
 import re
 from datetime import datetime
 
-KNOWN_PARLIAMENT_CODES = {"DE"}  # extend as more parliaments are onboarded
+KNOWN_PARLIAMENT_CODES = {"DE"}  # fallback when optv.parliaments isn't importable
+
+
+def _known_parliament_codes() -> set[str]:
+    try:
+        from optv.parliaments import list_parliaments
+        return {p.upper() for p in list_parliaments()}
+    except Exception:
+        return KNOWN_PARLIAMENT_CODES
 
 # Presidents/VPs speak in their role, not as a faction member — faction is not
 # expected. Restrict the "missing faction" warning to these speaker contexts.
@@ -50,9 +58,10 @@ def validate_semantic(doc):
 
 def _rule_parliament_code(doc):
     out = []
+    known = _known_parliament_codes()
     for i, sp in enumerate(doc.get("data") or []):
         code = sp.get("parliament")
-        if code and code not in KNOWN_PARLIAMENT_CODES:
+        if code and code not in known:
             out.append(_warn(
                 "semantic.parliament.unknown",
                 f"data/{i}/parliament",

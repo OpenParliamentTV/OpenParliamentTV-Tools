@@ -19,6 +19,14 @@ def list_parliaments() -> list[str]:
 
 @lru_cache(maxsize=None)
 def load_manifest(parliament_id: str) -> dict[str, Any]:
+    """Load the parliament's manifest.yaml.
+
+    Recognised top-level keys: ``name``, ``language``, ``locale``, ``periods``,
+    ``supported_stages``, ``entity_dump_url``, ``default_retry_count``,
+    ``default_retry_delay_max``. ``locale`` is a sub-mapping with
+    ``spacy_model``, ``aeneas_language``, ``entityfishing_language`` (consumed
+    by ``optv.shared.ner`` / ``optv.shared.align``).
+    """
     import yaml
 
     path = manifest_path(parliament_id)
@@ -26,3 +34,31 @@ def load_manifest(parliament_id: str) -> dict[str, Any]:
         raise FileNotFoundError(f"No manifest for parliament {parliament_id!r} at {path}")
     with path.open() as f:
         return yaml.safe_load(f)
+
+
+_LOCALE_REQUIRED_KEYS = ("spacy_model", "aeneas_language", "entityfishing_language")
+
+
+def get_locale(parliament_id: str) -> dict[str, str]:
+    """Return the manifest's ``locale`` block.
+
+    Raises ``KeyError`` with a message pointing at ``manifest.yaml`` if the
+    block is missing or any required key (``spacy_model``, ``aeneas_language``,
+    ``entityfishing_language``) is absent. Callers should invoke this lazily
+    (only when they actually need NER/alignment locale config).
+    """
+    manifest = load_manifest(parliament_id)
+    locale = manifest.get("locale")
+    path = manifest_path(parliament_id)
+    if not isinstance(locale, dict):
+        raise KeyError(
+            f"Manifest {path} has no 'locale' block. Add one with keys: "
+            f"{', '.join(_LOCALE_REQUIRED_KEYS)}."
+        )
+    missing = [k for k in _LOCALE_REQUIRED_KEYS if not locale.get(k)]
+    if missing:
+        raise KeyError(
+            f"Manifest {path} 'locale' block is missing required key(s): "
+            f"{', '.join(missing)}."
+        )
+    return locale

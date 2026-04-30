@@ -16,16 +16,35 @@ import time
 
 
 def extract_entities(source: list, args) -> list:
-    """Extract entities from source file
+    """Extract entities from source file.
 
-    It uses the args.lang parameter to specify the language
+    Reads ``args.spacy_model`` (full pip model id, e.g. ``de_core_news_md``)
+    and ``args.entityfishing_language`` (2-letter code, e.g. ``de``). Falls
+    back to deriving them from ``args.lang`` for legacy callers, with a
+    deprecation warning.
     """
-    # nlp = spacy.blank(args.lang)
     if not args.ner_api_endpoint:
         return source
-    nlp = spacy.load(f"{args.lang}_core_news_md")
+    spacy_model = getattr(args, "spacy_model", None)
+    ef_lang = getattr(args, "entityfishing_language", None)
+    if not spacy_model or not ef_lang:
+        legacy_lang = getattr(args, "lang", None)
+        if not legacy_lang:
+            raise ValueError(
+                "ner.extract_entities requires args.spacy_model and "
+                "args.entityfishing_language (set them in the parliament's "
+                "manifest.yaml under 'locale')."
+            )
+        logger.warning(
+            "ner.extract_entities: deriving spacy_model/entityfishing_language "
+            "from legacy --lang=%r; set them via manifest.locale instead.",
+            legacy_lang,
+        )
+        spacy_model = spacy_model or f"{legacy_lang}_core_news_md"
+        ef_lang = ef_lang or legacy_lang
+    nlp = spacy.load(spacy_model)
     if 'entityfishing' in nlp.factory_names:
-        nlp.add_pipe("entityfishing", config={ 'language': args.lang,
+        nlp.add_pipe("entityfishing", config={ 'language': ef_lang,
                                                'api_ef_base': args.ner_api_endpoint })
     else:
         logger.error("Cannot find entityfishing spaCy factory. Cannot do NER.")
@@ -78,8 +97,15 @@ if __name__ == '__main__':
                         help="Source JSON file")
     parser.add_argument("output", type=str, nargs='?', default="-",
                         help="Output file")
-    parser.add_argument("--lang", type=str, default="de",
-                        help="Language")
+    parser.add_argument("--spacy-model", type=str, default=None,
+                        help="Full spaCy model id (e.g. 'de_core_news_md', 'sv_core_news_lg'). "
+                             "Required for NER. Usually sourced from manifest.locale.spacy_model.")
+    parser.add_argument("--entityfishing-language", type=str, default=None,
+                        help="2-letter language code for entityfishing (e.g. 'de', 'sv'). "
+                             "Required for NER. Usually sourced from manifest.locale.entityfishing_language.")
+    parser.add_argument("--lang", type=str, default=None,
+                        help="DEPRECATED: legacy single language flag. Prefer --spacy-model "
+                             "and --entityfishing-language (or manifest.locale).")
     parser.add_argument("--ner-api-endpoint", type=str, default="",
                         help="API endpoint URL for entityfishing server")
     parser.add_argument("--debug", dest="debug", action="store_true",

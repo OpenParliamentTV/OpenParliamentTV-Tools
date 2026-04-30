@@ -308,6 +308,15 @@ if __name__ == "__main__":
                         format='%(asctime)s %(levelname)-8s %(name)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
+    # Inject locale config from manifest so optv.shared.{align,ner} can read
+    # parliament-specific spaCy/aeneas/entityfishing settings off `args`.
+    from optv.parliaments import get_locale
+    locale = get_locale(Path(__file__).parent.name)
+    if not getattr(args, "spacy_model", None):
+        args.spacy_model = locale["spacy_model"]
+    if not getattr(args, "entityfishing_language", None):
+        args.entityfishing_language = locale["entityfishing_language"]
+
     args.data_dir = Path(args.data_dir)
 
     if args.single_instance:
