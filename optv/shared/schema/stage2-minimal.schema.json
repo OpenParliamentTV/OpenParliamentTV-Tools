@@ -76,7 +76,9 @@
             "additionalProperties": true,
             "properties": {
               "videoFileURI": {"type": "string", "minLength": 1},
-              "sourcePage": {"type": "string", "minLength": 1}
+              "sourcePage": {"type": "string", "minLength": 1},
+              "videoStreamURI": {"type": ["string", "null"]},
+              "videoArchiveURI": {"type": ["string", "null"]}
             }
           },
           "people": {

@@ -714,7 +714,7 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
             yield {
                 **session_metadata,
                 "speechIndex": speech_index,
-                "originTextID": first_speech_id,
+                "originID": first_speech_id,
                 "agendaItem": {"officialTitle": section_title},
                 "debug": {"proceedings-source": PROCEEDINGS_SOURCE},
                 "people": people_list,

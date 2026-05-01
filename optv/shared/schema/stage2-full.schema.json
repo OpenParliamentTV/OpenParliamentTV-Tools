@@ -58,7 +58,8 @@
         "faction": {"$ref": "#/definitions/faction"},
         "firstname": {"type": "string"},
         "lastname": {"type": "string"},
-        "type": {"type": "string"}
+        "type": {"type": "string"},
+        "originPersonID": {"type": "string"}
       }
     },
     "nerEntity": {
@@ -131,6 +132,8 @@
         "license": {"type": "string"},
         "originMediaID": {"type": "string"},
         "aligned": {"type": "boolean"},
+        "videoStreamURI": {"type": ["string", "null"]},
+        "videoArchiveURI": {"type": ["string", "null"]},
         "additionalInformation": {"type": ["object", "array", "string", "null"]},
         "thumbnailURI": {"type": "string"},
         "thumbnailCreator": {"type": "string"},
@@ -143,7 +146,15 @@
       "properties": {
         "label": {"type": "string"},
         "sourceURI": {"type": "string"},
-        "type": {"type": "string"}
+        "type": {"type": "string"},
+        "abstract": {"type": "string"},
+        "wikidataID": {"type": "string"},
+        "labelAlternative": {"type": "array", "items": {"type": "string"}},
+        "thumbnailURI": {"type": "string"},
+        "thumbnailCreator": {"type": "string"},
+        "thumbnailLicense": {"type": "string"},
+        "embedURI": {"type": "string"},
+        "additionalInformation": {"type": ["object", "array", "string", "null"]}
       }
     },
     "agendaItem": {
@@ -153,6 +164,8 @@
       "properties": {
         "officialTitle": {"type": "string"},
         "title": {"type": "string"},
+        "id": {"type": "string"},
+        "type": {"type": "string"},
         "speechIndex": {
           "type": "integer",
           "description": "DEPRECATED - legacy period-17 nested index. New writers must use top-level data[].speechIndex."
@@ -194,7 +207,8 @@
         "dateStart": {"$ref": "#/definitions/datetime"},
         "dateEnd": {"$ref": "#/definitions/datetime"},
         "speechIndex": {"type": "integer", "minimum": 1},
-        "originTextID": {"type": "string"},
+        "originID": {"type": "string"},
+        "isReply": {"type": "boolean"},
         "documents": {
           "type": "array",
           "items": {"$ref": "#/definitions/document"}
