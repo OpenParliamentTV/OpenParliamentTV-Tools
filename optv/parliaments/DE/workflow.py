@@ -14,7 +14,7 @@ import sys
 # Allow relative imports (for .common, .scraper, etc.) and absolute
 # imports (for optv.shared.*) when invoked as a script.
 # From https://stackoverflow.com/a/65780624/2870028
-if __package__ is None:
+if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
     sys.path.insert(0, str(module_dir.parent))
     sys.path.insert(0, str(module_dir.parent.parent.parent))
