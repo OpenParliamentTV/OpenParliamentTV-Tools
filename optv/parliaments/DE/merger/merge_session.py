@@ -17,6 +17,15 @@ import re
 import sys
 import unicodedata
 
+# Allow `python -m optv.parliaments.DE.merger.merge_session` and direct
+# script invocation. The shared module lives under optv.shared.
+if __package__ is None or __package__ == "":
+    _module_dir = Path(__file__).resolve().parent
+    sys.path.insert(0, str(_module_dir.parents[3]))   # repo root → optv.shared.*
+    __package__ = _module_dir.name
+
+from optv.shared.agenda_types import classify_de_native
+
 def remove_accents(input_str):
     nfkd_form = unicodedata.normalize('NFKD', input_str)
     return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
@@ -28,7 +37,7 @@ def merge_item(mediaitem, proceedingitems):
 
     first_proceeding = proceedingitems[0]
 
-    output['originTextID'] = first_proceeding['originTextID']
+    output['originID'] = first_proceeding['originID']
 
     # Copy officialDateStart/End from proceedings
     output['session']['dateStart'] = first_proceeding['session']['dateStart']
@@ -105,6 +114,25 @@ def merge_item(mediaitem, proceedingitems):
     output['documents'] = [ doc
                             for p in proceedingitems
                             for doc in p['documents'] ]
+
+    # Agenda-type classification.
+    # - Period 17 (ParlaMint): the parser already set type/nativeType from the
+    #   structured `ana` attribute on the proceeding's agendaItem — preserve it.
+    # - Period 18+ (Bundestag native): the parser had no proper title (only
+    #   `top-id` like "Tagesordnungspunkt 5"), so classify here against the
+    #   media-derived title that's now sitting on `output.agendaItem.title`.
+    output_agenda = output.setdefault('agendaItem', {})
+    proc_agenda = first_proceeding.get('agendaItem') or {}
+    if proc_agenda.get('nativeType') and not output_agenda.get('nativeType'):
+        output_agenda['nativeType'] = proc_agenda['nativeType']
+    if proc_agenda.get('type') and not output_agenda.get('type'):
+        output_agenda['type'] = proc_agenda['type']
+    if not output_agenda.get('type'):
+        title = output_agenda.get('title') or output_agenda.get('officialTitle') or ''
+        nt, ct = classify_de_native(title)
+        output_agenda['type'] = ct
+        if nt:
+            output_agenda['nativeType'] = nt
 
     output['debug']['confidence'] = confidence
     return output

@@ -23,13 +23,16 @@ import sys
 
 from spacy.lang.de import German
 
-# Allow relative imports if invoked as a script
-if __package__ is None:
+# Allow relative imports (.common) and absolute imports (optv.shared.*) when
+# invoked as a script.
+if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
+    sys.path.insert(0, str(module_dir.parent))               # for .common
+    sys.path.insert(0, str(module_dir.parents[3]))           # for optv.shared.*
     __package__ = module_dir.name
 
 from .common import fix_fullname
+from optv.shared.agenda_types import classify_parlamint_de, is_de_closing_chair_text
 
 # Match proceedings2json: rule-based sentencizer, loaded once per process.
 _nlp = German()
@@ -466,6 +469,7 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
         section_title = short_titles[section_idx] or head_title
 
         section_id = _xml_id(section) or f"section{section.get('n', '')}"
+        section_native_type, section_core_type = classify_parlamint_de(section.get("ana"))
 
         # Group <u> elements into rede-equivalent groups before yielding.
         # In Bundestag video, one clip typically covers the chair introduction
@@ -711,11 +715,24 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
             people_list = list(all_people.values())
             people_list.sort(key=lambda p: 0 if p["context"] == "main-speaker" else 1)
 
+            agenda_item = {"officialTitle": section_title, "type": section_core_type}
+            if section_native_type:
+                agenda_item["nativeType"] = section_native_type
+
+            # Closing detection: ParlaMint has no `ana` token for closing.
+            # A chair-only rede_group whose text says "Die Sitzung ist
+            # geschlossen" / "schließe die Sitzung" / etc. is the session
+            # close — override the inherited section type for this speech.
+            if not has_main_speaker:
+                chair_text = " ".join(b.get("text") or "" for b in all_text_body)
+                if is_de_closing_chair_text(chair_text):
+                    agenda_item["type"] = "closing"
+                    agenda_item["nativeType"] = "DE-closing"
             yield {
                 **session_metadata,
                 "speechIndex": speech_index,
                 "originID": first_speech_id,
-                "agendaItem": {"officialTitle": section_title},
+                "agendaItem": agenda_item,
                 "debug": {"proceedings-source": PROCEEDINGS_SOURCE},
                 "people": people_list,
                 "textContents": [{

@@ -19,11 +19,12 @@ import re
 from spacy.lang.de import German
 import sys
 
-# Allow relative imports if invoked as a script
-# From https://stackoverflow.com/a/65780624/2870028
-if __package__ is None:
+# Allow relative imports (.common) and absolute imports (optv.shared.*) when
+# invoked as a script.
+if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
+    sys.path.insert(0, str(module_dir.parent))               # for .common
+    sys.path.insert(0, str(module_dir.parents[3]))           # for optv.shared.*
     __package__ = module_dir.name
 
 from .common import fix_faction, fix_fullname, parse_fullname
@@ -469,8 +470,10 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
                 "originID": speech_id,
                 'agendaItem': {
                     "officialTitle": title,
-                    # The human-readable title is not present in proceedings, it will be in media
-                    # "title": title,
+                    # The proper title is not present in proceedings (here `title` is
+                    # only the sequential `top-id` like "Tagesordnungspunkt 5"). The
+                    # human-readable title — and the agenda type classification —
+                    # are added by the merger from media metadata.
                 },
                 "debug": {
                 },

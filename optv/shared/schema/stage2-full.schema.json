@@ -165,7 +165,14 @@
         "officialTitle": {"type": "string"},
         "title": {"type": "string"},
         "id": {"type": "string"},
-        "type": {"type": "string"},
+        "type": {
+          "type": "string",
+          "description": "Cross-parliament core type. Recommended values: regular | qa | questioning_of_the_government | current_affairs | government_declaration | budget | election | voting | oath | briefing | report | recommendation | opening | condolence | rules_of_procedure | other. Free-form for forward compatibility."
+        },
+        "nativeType": {
+          "type": "string",
+          "description": "Parliament-specific identifier preserved verbatim. For DE we adopt the ParlaMint-DE vocabulary (e.g. DE-question_time, DE-current_affairs). For DE-RP we use DE-RP-* analogues. For SE the raw `kammaraktivitet` value."
+        },
         "speechIndex": {
           "type": "integer",
           "description": "DEPRECATED - legacy period-17 nested index. New writers must use top-level data[].speechIndex."
