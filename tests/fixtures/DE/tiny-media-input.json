@@ -1,0 +1,25 @@
+{
+  "root": {
+    "feed": {
+      "subtitle": "Deutscher Bundestag",
+      "author_detail": {"email": "mail@bundestag.de"},
+      "links": [
+        {"rel": "self", "href": "http://webtv.bundestag.de/podcast.xml?period=21&meetingNumber=999"}
+      ]
+    }
+  },
+  "entries": [
+    {
+      "title": "Redebeitrag von Max Beispiel (SPD) am 01.01.2025 um 10:05 Uhr (999. Sitzung, TOP 1)",
+      "subtitle": "Tagesordnungspunkt 1",
+      "links": [
+        {"rel": "enclosure", "href": "https://example.invalid/test/video.mp4"}
+      ],
+      "itunes_duration": "00:05:00",
+      "published_parsed": [2025, 1, 1, 9, 5, 0, 0, 0, 0],
+      "published": "Wed, 01 Jan 2025 09:05:00 +0100",
+      "link": "https://example.invalid/test/page/9999001",
+      "author": "Deutscher Bundestag"
+    }
+  ]
+}

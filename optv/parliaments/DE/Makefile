@@ -53,3 +53,6 @@ clean:
 	$(RM) $(MEDIADIR)/[0-9]*.json
 	$(RM) $(PROCEEDINGSDIR)/*.json
 	$(RM) $(MERGEDDIR)/*.json
+
+test:
+	cd $(BASEDIR)../../.. && .venv/bin/pytest -q tests

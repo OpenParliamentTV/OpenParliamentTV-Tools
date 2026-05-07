@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # aeneas needs ffmpeg + espeak headers to build its native extension.
+      # The test suite does not exercise aeneas, but it is in requirements.txt.
+      - name: Install system dependencies for aeneas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              ffmpeg espeak espeak-data libespeak1 libespeak-dev
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest
+        run: pytest -q tests
