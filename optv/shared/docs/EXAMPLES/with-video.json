@@ -24,7 +24,9 @@
       },
       "agendaItem": {
         "title": "Sitzungseröffnung",
-        "officialTitle": "Sitzungseröffnung"
+        "officialTitle": "Sitzungseröffnung",
+        "type": "opening",
+        "nativeType": "DE-opening_speech"
       },
       "dateStart": "2025-05-06T09:00:00+02:00",
       "dateEnd": "2025-05-06T09:04:58+02:00",
@@ -62,7 +64,7 @@
         }
       ],
       "speechIndex": 1,
-      "originTextID": "begin-intro",
+      "originID": "begin-intro",
       "textContents": [
         {
           "type": "proceedings",
@@ -388,7 +390,9 @@
       },
       "agendaItem": {
         "title": "Wahl des Bundeskanzlers",
-        "officialTitle": "Tagesordnungspunkt 1"
+        "officialTitle": "Tagesordnungspunkt 1",
+        "type": "election",
+        "nativeType": "DE-election"
       },
       "dateStart": "2025-05-06T09:04:58+02:00",
       "dateEnd": "2025-05-06T10:06:47+02:00",
@@ -426,7 +430,7 @@
         }
       ],
       "speechIndex": 2,
-      "originTextID": "begin-intro-post-intro",
+      "originID": "begin-intro-post-intro",
       "textContents": [
         {
           "type": "proceedings",

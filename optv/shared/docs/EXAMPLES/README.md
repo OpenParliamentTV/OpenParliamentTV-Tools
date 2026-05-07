@@ -13,3 +13,15 @@ Each file was produced by taking the original session and:
 2. (full-featured only) trimming each speech's `sentences` array to the first 3 entries
 
 The `meta` envelope is untouched, so every field the schemas care about is exercised.
+
+## `agendaItem.type` and `agendaItem.nativeType`
+
+Every example carries both fields on each agenda item to demonstrate the
+two-tier classification. `type` is the cross-parliament core enum from
+[`optv/shared/agenda_types.py`](../../agenda_types.py) (`opening`,
+`election`, `qa`, `current_affairs`, `voting`, `closing`, `regular`, …);
+`nativeType` is the parliament-specific identifier preserved verbatim
+(DE: ParlaMint-DE vocabulary like `DE-opening_speech`, `DE-election`;
+DE-RP: `DE-RP-*`; SE: raw `kammaraktivitet`). Consumers that filter on
+agenda type should prefer `type`; consumers that need the original
+parliament's terminology should read `nativeType`.

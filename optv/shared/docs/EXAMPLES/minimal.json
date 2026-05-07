@@ -19,6 +19,8 @@
       "agendaItem": {
         "title": "Eröffnung der Sitzung",
         "officialTitle": "Tagesordnungspunkt 1",
+        "type": "opening",
+        "nativeType": "DE-opening_speech",
         "speechIndex": 1
       },
       "dateStart": "2009-10-27T10:00:05",
@@ -61,6 +63,8 @@
       "agendaItem": {
         "title": "Wahl des Präsidenten",
         "officialTitle": "Tagesordnungspunkt 2",
+        "type": "election",
+        "nativeType": "DE-election",
         "speechIndex": 2
       },
       "dateStart": "2009-10-27T10:29:39",

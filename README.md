@@ -76,6 +76,16 @@ python -m optv.shared.validators.cli --file session.json --no-semantic
 
 The publish step also runs validation and logs findings; warnings do not block.
 
+## Tests
+
+```bash
+.venv/bin/pytest -q tests
+# or
+make -C optv/parliaments/DE test
+```
+
+Flat layout under [tests/](tests/), no config files. Covers pure helpers, the merger contract that catches `originID`/`originTextID`-class regressions, the agenda-type vocabulary, and an end-to-end smoke run on tiny synthetic fixtures. Stages requiring external services (aeneas alignment, NER, NEL endpoint) are not in the suite. CI runs the same command on every push and PR via [.github/workflows/tests.yml](.github/workflows/tests.yml).
+
 ## Adding a new parliament
 
 See [docs/ADDING-A-PARLIAMENT.md](docs/ADDING-A-PARLIAMENT.md).
