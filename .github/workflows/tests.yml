@@ -15,28 +15,30 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      # aeneas needs ffmpeg + espeak headers to build its native extension.
-      # The test suite does not exercise aeneas, but it is in requirements.txt.
-      - name: Install system dependencies for aeneas
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-              ffmpeg espeak espeak-data libespeak1 libespeak-dev
-
-      # aeneas's setup.py imports numpy at build-time but doesn't declare it
-      # in pyproject.toml's build-system.requires, so pip's isolated build env
-      # doesn't see the numpy from the outer venv. Install aeneas with
-      # --no-build-isolation against an outer venv that already has numpy.
-      # SETUPTOOLS_USE_DISTUTILS=stdlib works around aeneas's reliance on
-      # distutils.msvccompiler, which setuptools 72+ removed.
+      # The test suite does not exercise aeneas (sentence alignment) or
+      # spacyfishing (NER) — those stages need external services anyway.
+      # Skipping them cuts CI from ~3 min to ~30 s by avoiding numpy + C
+      # extension builds. Production (Conductor's Dockerfile) installs the
+      # full requirements.txt; this filter only affects CI.
       - name: Install Python dependencies
-        env:
-          SETUPTOOLS_USE_DISTUTILS: stdlib
         run: |
           python -m pip install --upgrade pip
-          pip install "setuptools<72" "numpy<2" wheel
-          pip install --no-build-isolation aeneas==1.7.3.0
-          pip install -r requirements.txt
+          grep -v -E '^(aeneas|spacyfishing)\b' requirements.txt | pip install -r /dev/stdin
+
+      # Byte-compile every .py file under optv/. Catches SyntaxError /
+      # IndentationError everywhere.
+      - name: Compile-check all Python sources
+        run: python -m compileall -q -f optv
+
+      # Smoke-import the modules whose heavy deps were skipped above. Their
+      # imports are already lazy (aeneas inside _aeneas_worker, spacyfishing
+      # only via spaCy's plugin discovery), so this catches NameError,
+      # missing-import typos, and bad type annotations without installing
+      # ~150 MB of build chain.
+      - name: Smoke-import align.py and ner.py
+        run: |
+          python -c "import optv.shared.align"
+          python -c "import optv.shared.ner"
 
       - name: Run pytest
         run: pytest -q tests
