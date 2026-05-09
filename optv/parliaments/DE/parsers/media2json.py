@@ -24,7 +24,13 @@ except ModuleNotFoundError:
     # Module not found. Tweak the sys.path
     base_dir = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(base_dir))
-    from parsers.common import fix_faction, fix_fullname, fix_role
+    from parsers.common import fix_faction, fix_fullname, fix_role, fixup_execute
+
+# Ensure optv.shared.* resolves under both `python -m ...` and direct script invocation.
+_repo_root = str(Path(__file__).resolve().parents[4])
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
 
 # Constants used for basic integrity checking: If these values are not
 # present in the source data, then something must have changed and the
@@ -249,6 +255,11 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
         if not item['agendaItem']['title']:
             title = fix_title(item['agendaItem']['officialTitle'])
             item['agendaItem']['title'] = title
+
+        ag = item['agendaItem']
+        title_for_class = ag.get('title') or ag.get('officialTitle') or ''
+        nt, ct = classify_de_native(title_for_class)
+        annotate_agenda_item(ag, nt, ct)
 
         output.append(item)
 

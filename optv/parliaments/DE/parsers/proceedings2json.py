@@ -28,6 +28,7 @@ if __package__ is None or __package__ == "":
     __package__ = module_dir.name
 
 from .common import fix_faction, fix_fullname, parse_fullname
+from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
 
 PROCEEDINGS_LICENSE = "Public Domain"
 PROCEEDINGS_LANGUAGE = "DE-de"
@@ -464,17 +465,21 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
             speech_id = speech[0]['speech_id']
             last_redeid = speech_id
 
+            agenda = {"officialTitle": title}
+            # Proceedings titles in DE 18-21 are usually bare `Tagesordnungspunkt N`,
+            # so this call is mostly defensive — it only sets a type for substantive
+            # titles (Aktuelle Stunde, Befragung, Wahl, etc.). Media-derived
+            # classification wins downstream because the merger does
+            # `output = deepcopy(mediaitem)` and annotate_agenda_item preserves
+            # non-empty values.
+            nt, ct = classify_de_native(title)
+            annotate_agenda_item(agenda, nt, ct)
+
             yield {
                 **session_metadata,
                 "speechIndex": speechIndex,
                 "originID": speech_id,
-                'agendaItem': {
-                    "officialTitle": title,
-                    # The proper title is not present in proceedings (here `title` is
-                    # only the sequential `top-id` like "Tagesordnungspunkt 5"). The
-                    # human-readable title — and the agenda type classification —
-                    # are added by the merger from media metadata.
-                },
+                'agendaItem': agenda,
                 "debug": {
                 },
                 'people': speakers,

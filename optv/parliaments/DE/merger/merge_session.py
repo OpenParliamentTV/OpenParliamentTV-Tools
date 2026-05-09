@@ -24,7 +24,7 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(_module_dir.parents[3]))   # repo root → optv.shared.*
     __package__ = _module_dir.name
 
-from optv.shared.agenda_types import classify_de_native
+from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
 
 def remove_accents(input_str):
     nfkd_form = unicodedata.normalize('NFKD', input_str)
@@ -115,24 +115,24 @@ def merge_item(mediaitem, proceedingitems):
                             for p in proceedingitems
                             for doc in p['documents'] ]
 
-    # Agenda-type classification.
-    # - Period 17 (ParlaMint): the parser already set type/nativeType from the
-    #   structured `ana` attribute on the proceeding's agendaItem — preserve it.
-    # - Period 18+ (Bundestag native): the parser had no proper title (only
-    #   `top-id` like "Tagesordnungspunkt 5"), so classify here against the
-    #   media-derived title that's now sitting on `output.agendaItem.title`.
+    # Agenda-type classification, three layers (annotate_agenda_item preserves
+    # non-empty values, so each later step only fills gaps):
+    #  1. media parser already ran classify_de_native on output.agendaItem
+    #     (sticks via deepcopy(mediaitem) above)
+    #  2. proceedings parser also ran classify_de_native — inherit from it
+    #     when media didn't set a value (also covers period 17 / ParlaMint
+    #     where the parser sets type/nativeType from the structured `ana`
+    #     attribute)
+    #  3. final fallback: re-classify on the merged title
     output_agenda = output.setdefault('agendaItem', {})
     proc_agenda = first_proceeding.get('agendaItem') or {}
-    if proc_agenda.get('nativeType') and not output_agenda.get('nativeType'):
-        output_agenda['nativeType'] = proc_agenda['nativeType']
-    if proc_agenda.get('type') and not output_agenda.get('type'):
-        output_agenda['type'] = proc_agenda['type']
-    if not output_agenda.get('type'):
-        title = output_agenda.get('title') or output_agenda.get('officialTitle') or ''
-        nt, ct = classify_de_native(title)
-        output_agenda['type'] = ct
-        if nt:
-            output_agenda['nativeType'] = nt
+    if proc_agenda.get('type'):
+        annotate_agenda_item(output_agenda,
+                             proc_agenda.get('nativeType'),
+                             proc_agenda['type'])
+    title = output_agenda.get('title') or output_agenda.get('officialTitle') or ''
+    nt, ct = classify_de_native(title)
+    annotate_agenda_item(output_agenda, nt, ct)
 
     output['debug']['confidence'] = confidence
     return output

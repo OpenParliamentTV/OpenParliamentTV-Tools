@@ -10,6 +10,7 @@ from optv.shared.agenda_types import (
     CORE_OPENING,
     CORE_QA,
     CORE_REGULAR,
+    annotate_agenda_item,
     classify_de_native,
     classify_de_rp,
     classify_parlamint_de,
@@ -75,3 +76,27 @@ def test_classify_se_falls_through():
     native, core = classify_se("ärendedebatt")
     assert native == "ärendedebatt"
     assert core == CORE_REGULAR
+
+
+def test_annotate_agenda_item_preserves_existing():
+    # A parser-set value (e.g. parlamint) wins over a later generic re-classification.
+    ag = {"officialTitle": "X", "title": "X", "type": CORE_QA, "nativeType": "DE-question_time"}
+    annotate_agenda_item(ag, "DE-current_affairs", CORE_CURRENT_AFFAIRS)
+    assert ag["type"] == CORE_QA
+    assert ag["nativeType"] == "DE-question_time"
+
+
+def test_annotate_agenda_item_fills_blanks():
+    ag = {"officialTitle": "Aktuelle Stunde", "title": "Aktuelle Stunde"}
+    nt, ct = classify_de_native(ag["title"])
+    annotate_agenda_item(ag, nt, ct)
+    assert ag["type"] == CORE_CURRENT_AFFAIRS
+    assert ag["nativeType"] == "DE-current_affairs"
+
+
+def test_annotate_agenda_item_handles_none_native():
+    # Tagesordnungspunkt N → no native type, but core still resolves to "regular".
+    ag = {"officialTitle": "Tagesordnungspunkt 5", "title": "Tagesordnungspunkt 5"}
+    annotate_agenda_item(ag, None, CORE_REGULAR)
+    assert ag["type"] == CORE_REGULAR
+    assert "nativeType" not in ag
