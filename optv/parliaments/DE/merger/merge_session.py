@@ -26,6 +26,13 @@ if __package__ is None or __package__ == "":
 
 from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
 
+# Q&A agenda types where video cuts and proceedings <rede> boundaries are
+# known to misalign — see _planning/whisper_qc/decision.md §"Decision queue".
+QA_TYPES = frozenset({'qa', 'questioning_of_the_government'})
+# Bimodal len(textContents) distribution at the gate-pass tail: 1–3 legitimate,
+# 60+ broken (Bettermann fingerprint). Any threshold in [4, 60] is equivalent.
+TEXT_CONTENTS_CAP = 5
+
 def remove_accents(input_str):
     nfkd_form = unicodedata.normalize('NFKD', input_str)
     return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
@@ -134,7 +141,17 @@ def merge_item(mediaitem, proceedingitems):
     nt, ct = classify_de_native(title)
     annotate_agenda_item(output_agenda, nt, ct)
 
+    confidence_reason = None
+    if (output_agenda.get('type') or '') in QA_TYPES:
+        confidence = min(confidence, 0.5)
+        confidence_reason = 'qa-agenda-type'
+    if len(output['textContents']) > TEXT_CONTENTS_CAP:
+        confidence = min(confidence, 0.5)
+        confidence_reason = confidence_reason or 'len-cap'
+
     output['debug']['confidence'] = confidence
+    if confidence_reason:
+        output['debug']['confidence_reason'] = confidence_reason
     return output
 
 def speaker_cleanup(item, default_value):
