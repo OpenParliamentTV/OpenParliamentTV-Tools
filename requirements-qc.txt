@@ -1,0 +1,12 @@
+# Quality-control tooling — opt-in, not part of the production pipeline.
+# Install with:  pip install -r requirements-qc.txt
+#
+# torch is needed by Resemblyzer (the speaker-change detector) but not by
+# faster-whisper. On Linux/Windows you may want the CPU build to avoid
+# pulling CUDA wheels:
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch
+# On macOS the default wheel is CPU/MPS — no special index needed.
+
+faster-whisper
+resemblyzer
+torch
