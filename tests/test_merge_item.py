@@ -169,3 +169,116 @@ def test_merge_item_does_not_mutate_inputs():
     merge_item(media, [proc])
     assert media == media_snapshot
     assert proc == proc_snapshot
+
+
+# ---------------------------------------------------------------------------
+# Gate-fail rules — see _planning/whisper_qc/decision.md
+# ---------------------------------------------------------------------------
+
+def _make_textcontent(speech_id="ID29999900"):
+    return {
+        "type": "proceedings",
+        "sourceURI": "https://example.invalid/proceedings.xml",
+        "creator": "Deutscher Bundestag",
+        "license": "Public Domain",
+        "language": "DE-de",
+        "originTextID": speech_id,
+        "textBody": [
+            {"speech_id": speech_id, "type": "speech",
+             "speaker": "Max Beispiel", "speakerstatus": "main-speaker",
+             "text": "Dies ist ein Test.",
+             "sentences": [{"text": "Dies ist ein Test."}]},
+        ],
+    }
+
+
+def test_merge_item_qa_type_drops_confidence_to_half():
+    """Befragung der Bundesregierung / Fragestunde merges are catastrophically
+    wrong (Whisper-verified). Rule fires when agendaItem.type is set by the
+    parser (period 17 ParlaMint) or the merger fallback classifier."""
+    media = make_media_item()
+    media["agendaItem"]["title"] = "Befragung der Bundesregierung (BMVg und BMG)"
+    merged = merge_item(media, [make_proceeding_item()])
+    assert merged["agendaItem"]["type"] == "questioning_of_the_government"
+    assert merged["debug"]["confidence"] == 0.5
+    assert merged["debug"]["confidence_reason"] == "qa-agenda-type"
+
+
+def test_merge_item_qa_type_fragestunde_drops_confidence():
+    media = make_media_item()
+    media["agendaItem"]["title"] = "Fragestunde"
+    merged = merge_item(media, [make_proceeding_item()])
+    assert merged["agendaItem"]["type"] == "qa"
+    assert merged["debug"]["confidence"] == 0.5
+    assert merged["debug"]["confidence_reason"] == "qa-agenda-type"
+
+
+def test_merge_item_qa_type_from_parlamint_classification():
+    """DE-17: parser sets type from ParlaMint `ana` token; rule must fire on
+    that path too (not only on the title-fallback classifier)."""
+    media = make_media_item()
+    media["agendaItem"].pop("title", None)
+    proc = make_proceeding_item()
+    proc["agendaItem"]["type"] = "qa"
+    proc["agendaItem"]["nativeType"] = "DE-question_time"
+    merged = merge_item(media, [proc])
+    assert merged["debug"]["confidence"] == 0.5
+    assert merged["debug"]["confidence_reason"] == "qa-agenda-type"
+
+
+def test_merge_item_non_qa_type_keeps_confidence():
+    """Regular debate types must not trigger the QA rule."""
+    media = make_media_item()
+    media["agendaItem"]["title"] = "Aktuelle Stunde zu wichtigen Themen"
+    merged = merge_item(media, [make_proceeding_item()])
+    assert merged["agendaItem"]["type"] == "current_affairs"
+    assert merged["debug"]["confidence"] == 1
+    assert "confidence_reason" not in merged["debug"]
+
+
+def test_merge_item_length_cap_drops_confidence_above_threshold():
+    """Bettermann-fingerprint cascade: many proceedings merged onto one media."""
+    media = make_media_item()
+    proc = make_proceeding_item()
+    proc["textContents"] = [_make_textcontent(f"ID2999990{i}") for i in range(6)]
+    merged = merge_item(media, [proc])
+    assert len(merged["textContents"]) == 6
+    assert merged["debug"]["confidence"] == 0.5
+    assert merged["debug"]["confidence_reason"] == "len-cap"
+
+
+def test_merge_item_length_cap_threshold_boundary():
+    """Threshold is `> 5`: exactly 5 textContents must NOT trigger the cap."""
+    media = make_media_item()
+    proc = make_proceeding_item()
+    proc["textContents"] = [_make_textcontent(f"ID2999990{i}") for i in range(5)]
+    merged = merge_item(media, [proc])
+    assert len(merged["textContents"]) == 5
+    assert merged["debug"]["confidence"] == 1
+    assert "confidence_reason" not in merged["debug"]
+
+
+def test_merge_item_qa_type_takes_precedence_in_reason():
+    """When both rules fire, confidence_reason records the QA rule (reported
+    first). The numeric confidence is the same either way."""
+    media = make_media_item()
+    media["agendaItem"]["title"] = "Befragung der Bundesregierung"
+    proc = make_proceeding_item()
+    proc["textContents"] = [_make_textcontent(f"ID2999990{i}") for i in range(6)]
+    merged = merge_item(media, [proc])
+    assert merged["debug"]["confidence"] == 0.5
+    assert merged["debug"]["confidence_reason"] == "qa-agenda-type"
+
+
+def test_merge_item_speaker_mismatch_combines_with_new_rules():
+    """Existing speaker-mismatch *= .5 cap and new rules must compose: final
+    confidence still 0.5, never lower."""
+    media = make_media_item()
+    media["agendaItem"]["title"] = "Befragung der Bundesregierung"
+    proc = make_proceeding_item()
+    proc["people"].insert(0, {
+        "type": "memberOfParliament", "label": "Erika Mustermann",
+        "context": "main-speaker",
+    })
+    merged = merge_item(media, [proc])
+    assert merged["debug"]["confidence"] == 0.5
