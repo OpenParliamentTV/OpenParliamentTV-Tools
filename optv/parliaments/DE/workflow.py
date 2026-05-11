@@ -119,7 +119,7 @@ def execute_workflow(args):
             if args.limit_session and not re.match(args.limit_session, session):
                 continue
             # Always redo the merge in case any source was updated
-            if config.is_newer(session, 'media', 'merged') or config.is_newer(session, 'proceedings', 'merged'):
+            if config.is_newer(session, 'media', 'merged') or config.is_newer(session, 'proceedings', 'merged') or args.force:
                 merged_file = merge_session(session, config, args)
                 status = config.status(session)
                 # We want to directly publish this file if it did not exist
