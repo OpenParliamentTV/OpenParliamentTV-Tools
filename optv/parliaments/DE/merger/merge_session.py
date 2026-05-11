@@ -26,9 +26,15 @@ if __package__ is None or __package__ == "":
 
 from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
 
-# Q&A agenda types where video cuts and proceedings <rede> boundaries are
-# known to misalign — see _planning/whisper_qc/decision.md §"Decision queue".
+# Q&A agenda types — Bundestag cuts one video per ministerial Q&A block while
+# proceedings have many <rede> per block. Text inflates onto one media clip.
+# See _planning/whisper_qc/decision.md §"Decision queue".
 QA_TYPES = frozenset({'qa', 'questioning_of_the_government'})
+# Chair-only inter-TOP transition turns ("Ich schließe …, ich rufe TOP N
+# auf, …"). Tagged by parlamint2json on DE-17 ParlaMint XML. The proceedings
+# text is framing (bill enumeration etc.); not substantive speech matching
+# any single media clip. See DE-17-F02 in whisper_qc/DE-17/findings.md.
+CHAIR_TRANSITION_TYPES = frozenset({'procedural'})
 # Bimodal len(textContents) distribution at the gate-pass tail: 1–3 legitimate,
 # 60+ broken (Bettermann fingerprint). Any threshold in [4, 60] is equivalent.
 TEXT_CONTENTS_CAP = 5
@@ -142,9 +148,13 @@ def merge_item(mediaitem, proceedingitems):
     annotate_agenda_item(output_agenda, nt, ct)
 
     confidence_reason = None
-    if (output_agenda.get('type') or '') in QA_TYPES:
+    agenda_type = output_agenda.get('type') or ''
+    if agenda_type in QA_TYPES:
         confidence = min(confidence, 0.5)
         confidence_reason = 'qa-agenda-type'
+    elif agenda_type in CHAIR_TRANSITION_TYPES:
+        confidence = min(confidence, 0.5)
+        confidence_reason = 'chair-transition'
     if len(output['textContents']) > TEXT_CONTENTS_CAP:
         confidence = min(confidence, 0.5)
         confidence_reason = confidence_reason or 'len-cap'

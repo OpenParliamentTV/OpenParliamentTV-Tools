@@ -167,7 +167,7 @@
         "id": {"type": "string"},
         "type": {
           "type": "string",
-          "description": "Cross-parliament core type. Recommended values: regular | qa | questioning_of_the_government | current_affairs | government_declaration | budget | election | voting | oath | briefing | report | recommendation | opening | closing | condolence | rules_of_procedure | other. Free-form for forward compatibility."
+          "description": "Cross-parliament core type. Recommended values: regular | qa | questioning_of_the_government | current_affairs | government_declaration | budget | election | voting | oath | briefing | report | recommendation | opening | closing | condolence | rules_of_procedure | procedural | other. Free-form for forward compatibility."
         },
         "nativeType": {
           "type": "string",

@@ -338,6 +338,34 @@ _TOP_ANNOUNCE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Match a chair announcement that the following speeches are written submissions
+# ("zu Protokoll genommen") rather than delivered orally. Used to filter out
+# Protokoll-rede MP <u>s that have no corresponding audio — see
+# _planning/whisper_qc/decision.md and DE-17/findings.md.
+_PROTOKOLL_ANNOUNCE_RE = re.compile(
+    r"\bRede(?:n)?\b.*?\bzu\s+Protokoll\b"
+    r"|\bzu\s+Protokoll\s+(?:gegeben|genommen|gehen|nehmen)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _chair_announces_protokoll(u) -> bool:
+    """True if a chair <u>'s last <seg> announces that subsequent MP speeches
+    are recorded in writing only (zu Protokoll). When True, the following
+    non-chair <u>s in document order are Protokoll-rede submissions and have
+    no corresponding audio — the parser excludes them from the output.
+
+    Detection is on the LAST <seg> only because chair handovers often pack
+    multiple actions ("Überweisung…, Reden zu Protokoll, ich rufe TOP X auf")
+    into one <u>, and the Protokoll instruction is the trailing one when it
+    applies to the next batch of <u>s.
+    """
+    segs = u.findall("tei:seg", NSMAP)
+    if not segs:
+        return False
+    last_text = (segs[-1].text or "")
+    return bool(_PROTOKOLL_ANNOUNCE_RE.search(last_text))
+
 
 def _extract_top_title(text: str) -> str | None:
     """Return a media-style short title ('Tagesordnungspunkt N' / 'Zusatzpunkt N' / 'Einzelplan N')
@@ -456,6 +484,23 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
     sections = root.findall(".//tei:div[@type='debateSection']", NSMAP)
     # Pre-pass: extract media-style short titles ('Tagesordnungspunkt N', ...) from chair announcements.
     short_titles = _compute_section_titles(sections)
+
+    # Pre-pass: identify Protokoll-rede MP <u> elements across the whole
+    # document. A chair <u> whose last <seg> says "Reden zu Protokoll" marks
+    # subsequent non-chair <u>s as written-only submissions until the next
+    # chair <u> without that marker. These submissions have no audio and are
+    # excluded from the parser's output (OPTV is a video platform).
+    # Keyed by xml:id (stable across lxml lookups, unlike Python id()).
+    protokoll_u_ids: set = set()
+    in_protokoll = False
+    for section in sections:
+        for u in section.findall("tei:u", NSMAP):
+            if _is_chair_u(u):
+                in_protokoll = _chair_announces_protokoll(u)
+            elif in_protokoll:
+                uid = _xml_id(u)
+                if uid:
+                    protokoll_u_ids.add(uid)
 
     for section_idx, section in enumerate(sections):
         head = section.find("tei:head", NSMAP)
@@ -597,6 +642,11 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
                     last_speaker_note = (child.text or "").strip()
                     continue
                 if tag == "u":
+                    # Skip Protokoll-rede MP <u>s identified in the pre-pass:
+                    # written-only submissions with no audio (OPTV is a video
+                    # platform).
+                    if _xml_id(child) in protokoll_u_ids:
+                        continue
                     who = (child.get("who") or "").lstrip("#")
                     if not who:
                         logger.warning(f"<u> without @who in {filename}")
@@ -723,11 +773,19 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
             # A chair-only rede_group whose text says "Die Sitzung ist
             # geschlossen" / "schließe die Sitzung" / etc. is the session
             # close — override the inherited section type for this speech.
+            # TOP-transition detection: a chair-only rede that contains
+            # "Ich rufe TOP N auf" is the chair announcing the next agenda
+            # item (DE-17-F02 in the audit). The proceedings text is framing,
+            # not substantive speech matching one media clip — mark as
+            # `procedural` so the merger gate-fails it.
             if not has_main_speaker:
                 chair_text = " ".join(b.get("text") or "" for b in all_text_body)
                 if is_de_closing_chair_text(chair_text):
                     agenda_item["type"] = "closing"
                     agenda_item["nativeType"] = "DE-closing"
+                elif _TOP_ANNOUNCE_RE.search(chair_text):
+                    agenda_item["type"] = "procedural"
+                    agenda_item["nativeType"] = "DE-chair_transition"
             yield {
                 **session_metadata,
                 "speechIndex": speech_index,

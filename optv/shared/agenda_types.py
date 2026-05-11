@@ -42,13 +42,19 @@ CORE_OPENING = "opening"
 CORE_CLOSING = "closing"
 CORE_CONDOLENCE = "condolence"
 CORE_RULES_OF_PROCEDURE = "rules_of_procedure"
+# Chair-only inter-TOP transition turn ("Ich schließe die Aussprache,
+# ich rufe Tagesordnungspunkt N auf, ..."). Not substantive speech; used by
+# the merger to gate-fail framing turns whose proceedings text does not
+# match the audio of any single media clip.
+CORE_PROCEDURAL = "procedural"
 CORE_OTHER = "other"
 
 CORE_TYPES = frozenset({
     CORE_REGULAR, CORE_QA, CORE_GOVERNMENT_QUESTIONING, CORE_CURRENT_AFFAIRS,
     CORE_GOVERNMENT_DECLARATION, CORE_BUDGET, CORE_ELECTION, CORE_VOTING,
     CORE_OATH, CORE_BRIEFING, CORE_REPORT, CORE_RECOMMENDATION, CORE_OPENING,
-    CORE_CLOSING, CORE_CONDOLENCE, CORE_RULES_OF_PROCEDURE, CORE_OTHER,
+    CORE_CLOSING, CORE_CONDOLENCE, CORE_RULES_OF_PROCEDURE, CORE_PROCEDURAL,
+    CORE_OTHER,
 })
 
 
@@ -144,9 +150,15 @@ _DE_NATIVE_PATTERNS: list[tuple[re.Pattern, str, str]] = [
     # Closing first — "Sitzungsende" must beat the looser "Sitzungs-" / regular fallthrough.
     (re.compile(r"\b(Sitzungs(ende|schluss)|Schluss\s+der\s+Sitzung|Ende\s+der\s+Sitzung)\b", re.I),
      "DE-closing", CORE_CLOSING),
-    (re.compile(r"\bBefragung\s+der\s+Bundesregierung\b", re.I),
+    (re.compile(r"\bBefragung\s+der\s+(?:Bundesregierung|BReg)\b", re.I),
      "DE-questioning_of_the_government", CORE_GOVERNMENT_QUESTIONING),
     (re.compile(r"\bFragestunde\b", re.I),
+     "DE-question_time", CORE_QA),
+    # ParlaMint per-question slots inside a Fragestunde, e.g.
+    # "BMVg Frage 01", "BMU Frage 03", "BMELV Frage 02". Ministry codes start
+    # with BM (Bundesministerium) and may have lower-case letters at the end
+    # ("BMVg" = Verteidigung).
+    (re.compile(r"\bBM[A-Za-z]{1,6}\s+Frage\s+\d+\b", re.I),
      "DE-question_time", CORE_QA),
     (re.compile(r"\bAktuelle\s+Stunde\b", re.I),
      "DE-current_affairs", CORE_CURRENT_AFFAIRS),

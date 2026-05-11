@@ -282,3 +282,25 @@ def test_merge_item_speaker_mismatch_combines_with_new_rules():
     })
     merged = merge_item(media, [proc])
     assert merged["debug"]["confidence"] == 0.5
+
+
+def test_merge_item_chair_transition_type_drops_confidence():
+    """DE-17 ParlaMint: chair-only TOP-transition redes are tagged `procedural`
+    by the parser. The merger must gate-fail them with reason chair-transition."""
+    media = make_media_item()
+    proc = make_proceeding_item()
+    proc["agendaItem"]["type"] = "procedural"
+    proc["agendaItem"]["nativeType"] = "DE-chair_transition"
+    merged = merge_item(media, [proc])
+    assert merged["agendaItem"]["type"] == "procedural"
+    assert merged["debug"]["confidence"] == 0.5
+    assert merged["debug"]["confidence_reason"] == "chair-transition"
+
+
+def test_merge_item_qa_type_distinct_reason_from_chair_transition():
+    """Reasons must distinguish QA from chair-transition for audit clarity."""
+    media = make_media_item()
+    proc = make_proceeding_item()
+    proc["agendaItem"]["type"] = "qa"
+    merged = merge_item(media, [proc])
+    assert merged["debug"]["confidence_reason"] == "qa-agenda-type"

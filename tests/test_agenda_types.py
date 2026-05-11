@@ -24,7 +24,21 @@ from optv.shared.agenda_types import (
     ("Schluss der Sitzung", "DE-closing", CORE_CLOSING),
     ("Befragung der Bundesregierung", "DE-questioning_of_the_government",
      CORE_GOVERNMENT_QUESTIONING),
+    # ParlaMint abbreviation variant
+    ("Befragung der BReg", "DE-questioning_of_the_government",
+     CORE_GOVERNMENT_QUESTIONING),
+    ("Befragung der BReg | Tagesordnungspunkt 1",
+     "DE-questioning_of_the_government", CORE_GOVERNMENT_QUESTIONING),
     ("Fragestunde", "DE-question_time", CORE_QA),
+    # ParlaMint per-question slots (count toward question time)
+    ("BMVg Frage 01", "DE-question_time", CORE_QA),
+    ("BMVg Frage 01 | Tagesordnungspunkt 2", "DE-question_time", CORE_QA),
+    ("BMU Frage 03", "DE-question_time", CORE_QA),
+    ("BMELV Frage 02", "DE-question_time", CORE_QA),
+    ("BMVBS Frage 27 | Tagesordnungspunkt 2", "DE-question_time", CORE_QA),
+    # Negative cases: should NOT match the per-question pattern
+    ("BMVg Bericht zur Lage", None, CORE_REGULAR),
+    ("Frage zur Sache", None, CORE_REGULAR),
     ("Aktuelle Stunde", "DE-current_affairs", CORE_CURRENT_AFFAIRS),
     ("Regierungserklärung", "DE-government_declaration", CORE_GOVERNMENT_DECLARATION),
     ("Eröffnung der Sitzung", "DE-opening_speech", CORE_OPENING),
@@ -76,6 +90,35 @@ def test_classify_se_falls_through():
     native, core = classify_se("ärendedebatt")
     assert native == "ärendedebatt"
     assert core == CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# Protokoll-rede announcement detection (parlamint2json) — see
+# _planning/whisper_qc/decision.md and DE-17/findings.md
+# ---------------------------------------------------------------------------
+
+import re
+from optv.parliaments.DE.parsers.parlamint2json import _PROTOKOLL_ANNOUNCE_RE
+
+
+@pytest.mark.parametrize("text,expected", [
+    # Variations observed in DE-17 ParlaMint XML
+    ("Die Reden sollen zu Protokoll genommen werden.", True),
+    ("Auch diese Reden sollen zu Protokoll genommen werden.", True),
+    ("Die Reden gehen zu Protokoll.", True),
+    ("Die Reden gehen zu Protokoll.6", True),
+    ("Hierzu ist vereinbart, die Reden zu Protokoll zu nehmen.", True),
+    ("Wie in der Tagesordnung ausgewiesen, werden die Reden zu Protokoll genommen.", True),
+    ("Die Reden von Susanne Mittag und Sylvia Lehmann werden zu Protokoll gegeben.", True),
+    # Negative cases — must NOT match
+    ("Ich rufe die Tagesordnungspunkte 21 a und 21 b auf:", False),
+    ("Die Sitzung ist geschlossen.", False),
+    ("Ich schließe die Aussprache.", False),
+    # Tricky: speaker mentions Protokoll in their own speech (not a chair announcement)
+    ("Ich habe meine Rede ja zu Protokoll gegeben", True),  # would match — but only fires on chair <u>s in practice
+])
+def test_protokoll_announce_regex(text, expected):
+    assert bool(_PROTOKOLL_ANNOUNCE_RE.search(text)) is expected
 
 
 def test_annotate_agenda_item_preserves_existing():
