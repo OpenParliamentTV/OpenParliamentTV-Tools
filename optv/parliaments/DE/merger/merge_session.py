@@ -342,6 +342,51 @@ def merge_data(proceedings, media, options) -> list:
                                       for mid in proceeding2media[pid]))
         speech['debug']['linkedMediaIndexes'] = linkedMediaIndexes
 
+    # Backfill ParlaMint-derived person attributes (wid, wtype, type, firstname,
+    # lastname, faction.wid/wtype) for people-mentions that the merger picked
+    # up from media-side bare labels but didn't reconcile against a wid'd
+    # proceeding person in the same matched-proceedings slice. Use a session-
+    # wide name index so a chair/minister whose Q-ID lives in another
+    # proceeding still gets linked here. Closes a ~2 % wid gap that NEL
+    # would otherwise have to fill; for DE-17 (ParlaMint XML carries Q-IDs
+    # natively) this brings merger output to ~99.9 % wid coverage. See
+    # _planning/whisper_qc/decision.md (2026-05-13).
+    persons_by_label: dict = {}
+    for p in proceedings.get('data', []):
+        for person in p.get('people', []):
+            label = person.get('label')
+            if label and person.get('wid') and label not in persons_by_label:
+                persons_by_label[label] = person
+    if persons_by_label:
+        _scalar_fields = ('wid', 'wtype', 'type', 'firstname', 'lastname')
+        for speech in speeches:
+            for person in speech.get('people', []):
+                label = person.get('label')
+                if not label or person.get('wid'):
+                    continue
+                src = persons_by_label.get(label)
+                if src is None:
+                    continue
+                for f in _scalar_fields:
+                    if src.get(f) and not person.get(f):
+                        person[f] = src[f]
+                # Faction: only enrich an existing dict. Never invent one.
+                # Bundestag media titles encode "(role/faction)"; for ministerial
+                # / government-capacity speeches the title is e.g. "(PSts/)" with
+                # an *empty* faction slot — a deliberate signal that the speaker
+                # is acting as Parliamentary State Secretary, not as a party MP.
+                # Backfilling the standing CDU/CSU affiliation from proceedings
+                # here would override that signal and mis-attribute the speech.
+                src_fac = src.get('faction')
+                cur_fac = person.get('faction')
+                if (isinstance(src_fac, dict) and src_fac.get('wid')
+                        and isinstance(cur_fac, dict)):
+                    for f in ('wid', 'wtype'):
+                        if src_fac.get(f) and not cur_fac.get(f):
+                            cur_fac[f] = src_fac[f]
+                    if src_fac.get('label') and not cur_fac.get('label'):
+                        cur_fac['label'] = src_fac['label']
+
     # Let's fix dateStart/dateEnd: the official info is in proceedings
     # (sitzung-start/ende-uhrzeit), but the UTC offset is only defined
     # in media timestamps.
