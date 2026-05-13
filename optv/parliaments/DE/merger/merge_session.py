@@ -50,7 +50,12 @@ def merge_item(mediaitem, proceedingitems):
 
     first_proceeding = proceedingitems[0]
 
-    output['originID'] = first_proceeding['originID']
+    # Backward compatibility: until 2026-05-01 (parser commit f9d9ea1) the
+    # speech id at the top level was emitted as `originTextID`, sharing the
+    # name of the textContents-level field. Cached parser JSONs that predate
+    # that rename are still valid input; accept either spelling on read.
+    # New writes always emit `originID`.
+    output['originID'] = first_proceeding.get('originID') or first_proceeding['originTextID']
 
     # Copy officialDateStart/End from proceedings
     output['session']['dateStart'] = first_proceeding['session']['dateStart']
