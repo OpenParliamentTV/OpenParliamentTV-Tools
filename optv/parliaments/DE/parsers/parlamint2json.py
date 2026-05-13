@@ -384,6 +384,24 @@ def _extract_top_title(text: str) -> str | None:
     return f"Einzelplan {number}"
 
 
+def _find_top_announce_split(text_body: list) -> int | None:
+    """Return the index of the first 'speech'-type textBody item whose text
+    contains an 'Ich rufe TOP N auf' announcement.
+
+    Used to split a chair-transition <u> (which packs both the close of the
+    previous TOP and the announcement of the next TOP) into two emitted
+    speeches so that Needleman-Wunsch alignment in the merger has one
+    proceedings entry per chair media clip. See _planning/whisper_qc/DE-17/
+    findings.md and DE-17-F02 follow-up.
+    """
+    for i, b in enumerate(text_body):
+        if b.get("type") != "speech":
+            continue
+        if _TOP_ANNOUNCE_RE.search(b.get("text") or ""):
+            return i
+    return None
+
+
 def _compute_section_titles(sections) -> list:
     """Pre-pass: for each debateSection, derive a short 'Tagesordnungspunkt N' style title
     from the chair's spoken announcement. Returns a list (same length as sections) with either
@@ -778,6 +796,7 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
             # item (DE-17-F02 in the audit). The proceedings text is framing,
             # not substantive speech matching one media clip — mark as
             # `procedural` so the merger gate-fails it.
+            chair_intro_split_idx: int | None = None
             if not has_main_speaker:
                 chair_text = " ".join(b.get("text") or "" for b in all_text_body)
                 if is_de_closing_chair_text(chair_text):
@@ -786,6 +805,77 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
                 elif _TOP_ANNOUNCE_RE.search(chair_text):
                     agenda_item["type"] = "procedural"
                     agenda_item["nativeType"] = "DE-chair_transition"
+                    # Bundestag publishes a separate short chair clip for each
+                    # new TOP ("Ich rufe TOP N auf …") that ParlaMint folds into
+                    # the previous TOP's closing chair <u>. Without splitting,
+                    # NW alignment in the merger has 3 media (close-prev,
+                    # open-new, first-MP) competing for 2 proceedings entries
+                    # and ends up sharing the first-MP utterance across two
+                    # media slots → first MP of every TOP gate-fails with
+                    # linkedMediaIndexes=[N, N+1]. Splitting at the announce
+                    # boundary restores 3-to-3 alignment. Both halves stay
+                    # procedural-typed so the chair-transition rule gate-fails
+                    # them at the merger; only the recovered first-MP speech
+                    # newly passes the gate. See _planning/whisper_qc/DE-17/.
+                    idx = _find_top_announce_split(all_text_body)
+                    if idx is not None and 0 < idx < len(all_text_body):
+                        chair_intro_split_idx = idx
+
+            if chair_intro_split_idx is not None:
+                close_body = all_text_body[:chair_intro_split_idx]
+                open_body = all_text_body[chair_intro_split_idx:]
+                new_top_title = _extract_top_title(open_body[0].get("text") or "")
+
+                yield {
+                    **session_metadata,
+                    "speechIndex": speech_index,
+                    "originID": first_speech_id,
+                    "agendaItem": agenda_item,
+                    "debug": {"proceedings-source": PROCEEDINGS_SOURCE},
+                    "people": people_list,
+                    "textContents": [{
+                        "type": "proceedings",
+                        "sourceURI": sourceUri,
+                        "creator": PROCEEDINGS_CREATOR,
+                        "license": PROCEEDINGS_LICENSE,
+                        "language": PROCEEDINGS_LANGUAGE,
+                        "originTextID": first_speech_id,
+                        "textBody": close_body,
+                    }],
+                    "documents": [],
+                }
+                speech_index += 1
+
+                open_origin_id = f"{first_speech_id}+open"
+                open_agenda = {
+                    "officialTitle": new_top_title or section_title,
+                    "type": "procedural",
+                    "nativeType": "DE-chair_transition",
+                }
+                yield {
+                    **session_metadata,
+                    "speechIndex": speech_index,
+                    "originID": open_origin_id,
+                    "agendaItem": open_agenda,
+                    "debug": {
+                        "proceedings-source": PROCEEDINGS_SOURCE,
+                        "chair_intro_split": True,
+                    },
+                    "people": people_list,
+                    "textContents": [{
+                        "type": "proceedings",
+                        "sourceURI": sourceUri,
+                        "creator": PROCEEDINGS_CREATOR,
+                        "license": PROCEEDINGS_LICENSE,
+                        "language": PROCEEDINGS_LANGUAGE,
+                        "originTextID": open_origin_id,
+                        "textBody": open_body,
+                    }],
+                    "documents": [],
+                }
+                speech_index += 1
+                continue
+
             yield {
                 **session_metadata,
                 "speechIndex": speech_index,

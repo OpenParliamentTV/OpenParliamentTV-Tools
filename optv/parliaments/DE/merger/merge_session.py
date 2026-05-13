@@ -285,6 +285,34 @@ def merge_data(proceedings, media, options) -> list:
     """
     path = needleman_wunsch_align(proceedings['data'], media['data'], options)
 
+    # Drop synth chair-intro open-halves (originID '...+open', emitted by
+    # parlamint2json's chair-transition split) when alignment binds them to the
+    # same media as a non-procedural (MP) proceeding. That binding indicates
+    # the Bundestag only published 2 media clips at this TOP boundary instead
+    # of 3 (no separate chair-intro clip), so the parser's pre-emptive split
+    # was over-eager: the synth would smear chair-intro text onto the first-MP
+    # slot. Dropping the synth from the MP side restores the clean pre-fix
+    # state; the chair side keeps both halves (still procedural → gate-failed)
+    # so no chair text is lost. See _planning/whisper_qc/DE-17/.
+    procs_by_media: dict = {}
+    for entry in path:
+        procs_by_media.setdefault(entry['media_index'], []).append(entry)
+    drop_ids = set()
+    for entries in procs_by_media.values():
+        if len(entries) < 2:
+            continue
+        has_non_procedural = any(
+            (e['proceeding'].get('agendaItem') or {}).get('type') != 'procedural'
+            for e in entries
+        )
+        if not has_non_procedural:
+            continue
+        for e in entries:
+            if str(e['proceeding'].get('originID') or '').endswith('+open'):
+                drop_ids.add(id(e))
+    if drop_ids:
+        path = [e for e in path if id(e) not in drop_ids]
+
     # Group by media. There can be multiple proceedings
     speeches = [
         merge_item(group[0]['media'],
