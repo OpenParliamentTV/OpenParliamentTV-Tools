@@ -43,6 +43,98 @@ def remove_accents(input_str):
     nfkd_form = unicodedata.normalize('NFKD', input_str)
     return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
+
+def _split_first_last(label: str) -> tuple[str, str]:
+    """Split a "First [Middle ...] Last" label at the last space.
+    Returns ('', '') if the label has no space."""
+    if not label:
+        return '', ''
+    parts = label.rsplit(' ', 1)
+    if len(parts) != 2:
+        return '', ''
+    return parts[0], parts[1]
+
+
+def _firstname_is_separator_variant(short_fn: str, long_fn: str) -> bool:
+    """True when `short_fn` is a separator-boundary (space or hyphen) prefix
+    or suffix of `long_fn`. Inputs are pre-normalized (accent-stripped,
+    lowercased) firstname strings."""
+    if not short_fn or not long_fn or len(short_fn) >= len(long_fn):
+        return False
+    return (long_fn.startswith(short_fn + ' ')
+            or long_fn.startswith(short_fn + '-')
+            or long_fn.endswith(' ' + short_fn)
+            or long_fn.endswith('-' + short_fn))
+
+
+def canonicalize_person_labels(people_lists, session_id: str = '') -> None:
+    """Reconcile same-person label variants across media + proceedings.
+
+    Mutates each entry of `people_lists` (a list of person-dict lists, e.g.
+    `[media_people, proc1_people, proc2_people, ...]`) in place: when two
+    distinct labels share the same lastname (accent-stripped, lowercased)
+    and one firstname is a separator-boundary prefix/suffix of the other —
+    e.g. "Hermann Ott" vs "Hermann E. Ott", "Sven Kindler" vs
+    "Sven-Christian Kindler", "Jürgen Zöllner" vs "E. Jürgen Zöllner" —
+    rewrite the longer-firstname label to the shorter form so the downstream
+    `people_dict` de-dup collapses them into one entry, avoiding the
+    speaker-mismatch confidence *= 0.5 path.
+
+    Source of the long forms in DE-17: ParlaMint persName entries with
+    multiple <forename> children that the parser concatenates verbatim.
+    Sources in DE 18-21: occasional Bundestag PDF entries that include a
+    middle name where the media RSS uses the short form (Wadephul,
+    Neuhäuser observed).
+
+    Failure mode (theoretical): two genuinely distinct MPs share a lastname
+    and one's firstname is a separator-boundary substring of the other's
+    (only known pair across DE-17 + DE 18-21: Hans-Peter Friedrich Q66144
+    vs Peter Friedrich Q123872 — never co-appear in any single speech in
+    1300+ sessions). Every rewrite is logged at WARN so a future collision
+    is auditable.
+    """
+    by_lastname: dict[str, dict[str, str]] = {}
+    for plist in people_lists:
+        for person in plist:
+            label = person.get('label')
+            if not label:
+                continue
+            fn, ln = _split_first_last(label)
+            if not ln:
+                continue
+            ln_key = remove_accents(ln).lower()
+            fn_key = remove_accents(fn).lower()
+            by_lastname.setdefault(ln_key, {})[label] = fn_key
+
+    rename: dict[str, str] = {}
+    for label_map in by_lastname.values():
+        if len(label_map) < 2:
+            continue
+        # Shortest-firstname label is the canonical candidate; only rewrite
+        # others to it if they're separator-boundary variants.
+        items = sorted(label_map.items(), key=lambda kv: len(kv[1]))
+        canonical_label, canonical_fn = items[0]
+        for label, fn in items[1:]:
+            if _firstname_is_separator_variant(canonical_fn, fn):
+                rename[label] = canonical_label
+
+    if not rename:
+        return
+
+    session_suffix = f" (session {session_id})" if session_id else ""
+    for long_label, short_label in rename.items():
+        logger.warning(
+            f"merge_session: canonicalizing person label "
+            f"{long_label!r} -> {short_label!r}{session_suffix}"
+        )
+
+    for plist in people_lists:
+        for person in plist:
+            label = person.get('label')
+            if label in rename:
+                person['label'] = rename[label]
+
+
 def merge_item(mediaitem, proceedingitems):
     # We have both items - copy proceedings data into media item
     # Make a copy of the media data
@@ -77,6 +169,19 @@ def merge_item(mediaitem, proceedingitems):
     # context info (when checking main-speaker conflicts), so the same
     # "proceeding" person will have multiple contexts.
     media_people = mediaitem.get('people') or []
+
+    # Reconcile same-person label variants across media + proceedings
+    # (e.g. "Hermann Ott" vs "Hermann E. Ott") before de-dup, so the
+    # downstream people_dict collapses them instead of treating them as
+    # two main-speakers and dropping confidence to 0.5. See helper docstring
+    # for the predicate, scope, and known collision audit. In-place mutation
+    # on the proceedings refs is intentional — the canonical labels then also
+    # feed the session-wide wid-backfill at the bottom of merge_data().
+    canonicalize_person_labels(
+        [media_people] + [p.get('people') or [] for p in proceedingitems],
+        session_id=str((mediaitem.get('session') or {}).get('number', '')),
+    )
+
     people_dict = dict( (remove_accents(person['label']), deepcopy(person))
                         for p in proceedingitems
                         for person in media_people + p.get('people', []) )
