@@ -55,16 +55,55 @@ def _split_first_last(label: str) -> tuple[str, str]:
     return parts[0], parts[1]
 
 
+# Name particles (lowercased, period-stripped). When the delta between
+# long_fn and short_fn consists of — or includes — any of these, the long
+# form carries a meaningful name component (German/Dutch/French/Iberian
+# nobility or compound surname particles) and the "shorter wins" rule
+# would silently drop part of the proper name. Observed false-positive
+# class in DE 18-21: Hans-Georg von der Marwitz, Jan van Aken, Konstantin
+# von Notz, Thomas de Maizière, Ursula von der Leyen, Kees de Vries,
+# Matern von Marschall. Block these.
+_NAME_PARTICLES = frozenset({
+    # German
+    'von', 'vom', 'der', 'den', 'zu', 'zur', 'zum',
+    # Dutch
+    'van',
+    # French / Iberian / Italian
+    'de', 'du', 'des', 'da', 'do', 'dos', 'das', 'di', 'della', 'la', 'le',
+})
+
+
+def _delta_tokens(short_fn: str, long_fn: str) -> list[str] | None:
+    """Return the list of tokens that exist in `long_fn` but not in
+    `short_fn` when `short_fn` is a separator-boundary (space or hyphen)
+    prefix or suffix of `long_fn`. Returns None if the predicate doesn't
+    match. Tokens are lowercased and period-stripped for particle lookup."""
+    if not short_fn or not long_fn or len(short_fn) >= len(long_fn):
+        return None
+    delta = None
+    for sep in (' ', '-'):
+        if long_fn.startswith(short_fn + sep):
+            delta = long_fn[len(short_fn) + 1:]
+            break
+        if long_fn.endswith(sep + short_fn):
+            delta = long_fn[:-(len(short_fn) + 1)]
+            break
+    if delta is None:
+        return None
+    return [t.strip('.').lower() for t in re.split(r'[\s\-]+', delta) if t]
+
+
 def _firstname_is_separator_variant(short_fn: str, long_fn: str) -> bool:
     """True when `short_fn` is a separator-boundary (space or hyphen) prefix
-    or suffix of `long_fn`. Inputs are pre-normalized (accent-stripped,
-    lowercased) firstname strings."""
-    if not short_fn or not long_fn or len(short_fn) >= len(long_fn):
+    or suffix of `long_fn` AND the delta tokens are all non-particle —
+    i.e. middle initials ("E."), middle names ("David"), or honorary
+    prefixes ("h.c.") rather than name particles ("von der", "van", "de").
+    Inputs are pre-normalized (accent-stripped, lowercased) firstname
+    strings."""
+    tokens = _delta_tokens(short_fn, long_fn)
+    if tokens is None:
         return False
-    return (long_fn.startswith(short_fn + ' ')
-            or long_fn.startswith(short_fn + '-')
-            or long_fn.endswith(' ' + short_fn)
-            or long_fn.endswith('-' + short_fn))
+    return not any(t in _NAME_PARTICLES for t in tokens)
 
 
 def canonicalize_person_labels(people_lists, session_id: str = '') -> None:
