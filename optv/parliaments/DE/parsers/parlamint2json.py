@@ -946,12 +946,13 @@ def parse_parlamint_directory(directory: Path, args) -> None:
     (so Bundestag-native `<sessionid>-proceedings.xml` are ignored).
     """
     directory = Path(directory)
-    force = bool(getattr(args, "force", False))
     for source in sorted(directory.glob("*-data.xml")):
         output_file = get_parsed_proceedings_filename(source, directory)
-        if (not force
-                and output_file.exists()
-                and output_file.stat().st_mtime >= source.stat().st_mtime):
+        # mtime-driven, matching parse_proceedings_directory: re-parse only
+        # when the source XML is genuinely newer than the parsed output. The
+        # global --force flag is intentionally not consulted here — parsing is
+        # an implicit always-run step, not a command-selected stage.
+        if output_file.exists() and output_file.stat().st_mtime >= source.stat().st_mtime:
             continue
         # Cheap sanity check: is this actually a ParlaMint session file?
         try:
