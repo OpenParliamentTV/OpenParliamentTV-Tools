@@ -4,6 +4,8 @@
 
 # It takes as input a proceeding file/dir and a media file/dir and outputs a third one with speeches merged.
 
+from __future__ import annotations
+
 import logging
 logger = logging.getLogger('merge_session' if __name__ == '__main__' else __name__)
 

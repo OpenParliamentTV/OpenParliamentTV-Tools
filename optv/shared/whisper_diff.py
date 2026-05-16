@@ -14,6 +14,8 @@ Three subcommands:
 Standalone — does not modify the production workflow.
 """
 
+from __future__ import annotations
+
 import argparse
 import difflib
 import json
