@@ -67,18 +67,32 @@ def get_nel_data(nel_data_dir: Path = None):
     if nel_data_file and nel_data_file.is_file():
         with open(nel_data_file) as f:
             nel_data = json.load(f)
-        # Convert to a dict for basic lookup
+        # Convert to a dict for basic lookup.
+        # Persons are loaded in two passes: `memberOfParliament` first, then
+        # `person`. The `person` subType covers non-MP speakers (Bundespräsident,
+        # state ministers, guest heads of state) but is also used by the platform
+        # for people detected by NER in fulltext, so `memberOfParliament` entries
+        # must win any cleaned-label collision -- a `person` entry only fills a
+        # key no MP already claims.
         for ent in nel_data['data']:
-            if ent['subType'] == 'memberOfParliament':
-                store = persons
-            elif ent['subType'] == 'faction':
-                store = factions
-            else:
-                # Ignore other subTypes (party)
+            if ent['subType'] != 'memberOfParliament':
                 continue
-            store[cleanup(ent['label'])] = ent
+            persons[cleanup(ent['label'])] = ent
             for alt in ent['labelAlternative']:
-                store[cleanup(alt)] = ent
+                persons[cleanup(alt)] = ent
+        for ent in nel_data['data']:
+            if ent['subType'] != 'person':
+                continue
+            for label in [ent['label'], *ent['labelAlternative']]:
+                key = cleanup(label)
+                if key not in persons:
+                    persons[key] = ent
+        for ent in nel_data['data']:
+            if ent['subType'] != 'faction':
+                continue
+            factions[cleanup(ent['label'])] = ent
+            for alt in ent['labelAlternative']:
+                factions[cleanup(alt)] = ent
     else:
         logger.error(f"Cannot read entities from {nel_data_file}")
     return persons, factions

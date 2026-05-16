@@ -50,6 +50,80 @@ def save_if_changed(data: dict, output_file: Path) -> bool:
 
     return updated_content
 
+
+def data_has_timing(data: list) -> bool:
+    """True if any speech carries time-alignment output."""
+    return any(s.get('debug', {}).get('align-duration') for s in data)
+
+
+def data_has_ner(data: list) -> bool:
+    """True if any speech carries named-entity-recognition output."""
+    return any(s.get('debug', {}).get('ner-duration') for s in data)
+
+
+def is_demotion(new_data: list, published_data: list) -> bool:
+    """True if publishing new_data over published_data would drop alignment
+    or NER enrichment the published file already has.
+
+    Keeps processed/ monotonic: a bare merged file (or any less-processed file
+    produced from a stale cache) must never overwrite a richer published
+    session.
+    """
+    if data_has_timing(published_data) and not data_has_timing(new_data):
+        return True
+    if data_has_ner(published_data) and not data_has_ner(new_data):
+        return True
+    return False
+
+
+def _speech_key(speech: dict):
+    """Stable per-speech identity for cross-stage matching.
+
+    originID is dropped at top level in some outputs, so originTextID is the
+    reliable key; speechIndex is the fallback.
+    """
+    return speech.get('originTextID') or speech.get('speechIndex')
+
+
+def carry_forward_wids(new_data: list, published_data: list) -> int:
+    """Copy already-published person/faction wids into new_data wherever it
+    lacks them, matching speeches by originTextID and people by label.
+
+    Makes entity links append-only across a publish: a publish can add wids
+    but never remove one processed/ already has, even when fed by an
+    out-of-date cache. Mutates new_data; returns the number of wids carried.
+    """
+    published_by_key = {}
+    for speech in published_data:
+        key = _speech_key(speech)
+        if key is not None:
+            published_by_key[key] = speech
+    carried = 0
+    for speech in new_data:
+        prev = published_by_key.get(_speech_key(speech))
+        if not prev:
+            continue
+        prev_people = {p['label']: p
+                       for p in (prev.get('people') or [])
+                       if p.get('label') and p.get('wid')}
+        for person in (speech.get('people') or []):
+            ref = prev_people.get(person.get('label'))
+            if not ref:
+                continue
+            if not person.get('wid') and ref.get('wid'):
+                person['wid'] = ref['wid']
+                if ref.get('wtype'):
+                    person['wtype'] = ref['wtype']
+                carried += 1
+            faction, ref_faction = person.get('faction'), ref.get('faction')
+            if (isinstance(faction, dict) and isinstance(ref_faction, dict)
+                    and not faction.get('wid') and ref_faction.get('wid')):
+                faction['wid'] = ref_faction['wid']
+                if ref_faction.get('wtype'):
+                    faction['wtype'] = ref_faction['wtype']
+    return carried
+
+
 class Config:
     def __init__(self, data_dir: Path,
                  cache_dir: Path = None):

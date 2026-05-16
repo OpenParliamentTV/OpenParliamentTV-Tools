@@ -1,6 +1,8 @@
 """Pure helpers from optv/shared/nel.py."""
 
-from optv.shared.nel import cleanup, link_entities
+import json
+
+from optv.shared.nel import cleanup, get_nel_data, link_entities
 
 
 def test_cleanup_normalises_whitespace_punctuation_accents():
@@ -55,3 +57,49 @@ def test_link_entities_no_match_writes_empty_wid_for_string_faction():
     assert out[0]["people"][0]["faction"] == {
         "label": "Unknown-Party", "wid": "", "wtype": "ORG",
     }
+
+
+def _write_entities(tmp_path, entities):
+    (tmp_path / "entities.json").write_text(
+        json.dumps({"meta": {}, "data": entities}), encoding="utf-8")
+    return tmp_path
+
+
+def _ent(qid, label, subType, alts=None):
+    return {
+        "id": qid, "label": label, "labelAlternative": alts or [],
+        "type": "person", "subType": subType,
+    }
+
+
+def test_get_nel_data_loads_member_of_parliament_and_faction(tmp_path):
+    _write_entities(tmp_path, [
+        _ent("Q42", "Max Beispiel", "memberOfParliament"),
+        {"id": "Q49768", "label": "SPD", "labelAlternative": ["SPD-Fraktion"],
+         "type": "organisation", "subType": "faction"},
+        _ent("Q1", "Some Party", "party"),
+    ])
+    persons, factions = get_nel_data(tmp_path)
+    assert persons["max beispiel"]["id"] == "Q42"
+    assert factions["spd"]["id"] == "Q49768"
+    assert factions["spd fraktion"]["id"] == "Q49768"
+    assert "some party" not in persons  # `party` subType still ignored
+
+
+def test_get_nel_data_loads_person_subtype_as_fallback(tmp_path):
+    """Non-MP speakers (Bundespräsident, ministers) link via subType `person`."""
+    _write_entities(tmp_path, [
+        _ent("Q76658", "Frank-Walter Steinmeier", "person"),
+    ])
+    persons, _ = get_nel_data(tmp_path)
+    assert persons["frank walter steinmeier"]["id"] == "Q76658"
+
+
+def test_get_nel_data_member_of_parliament_wins_label_collision(tmp_path):
+    """A `person` entry must never override an MP claiming the same label."""
+    _write_entities(tmp_path, [
+        _ent("Q_MP", "Thomas Schmidt", "memberOfParliament"),
+        _ent("Q_OTHER", "Thomas Schmidt", "person"),
+    ])
+    persons, _ = get_nel_data(tmp_path)
+    assert persons["thomas schmidt"]["id"] == "Q_MP"

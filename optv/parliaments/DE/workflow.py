@@ -3,12 +3,12 @@
 # Update media files, proceeding files and merge them
 import argparse
 import atexit
+from datetime import datetime
 import json
 import logging
 import os
 from pathlib import Path
 import re
-import shutil
 import sys
 
 # Allow relative imports (for .common, .scraper, etc.) and absolute
@@ -20,7 +20,8 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = module_dir.name
 
-from .common import Config, SessionStatus, data_signature
+from .common import (Config, SessionStatus, data_signature,
+                      is_demotion, carry_forward_wids)
 
 logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basename(sys.argv[0]))
 
@@ -64,24 +65,85 @@ def execute_workflow(args):
             )
 
     def publish_as_processed(session: str, filepath: Path) -> Path:
-        """Finalizing step - copy produced_files into processed
-        This will be called after each step that produced a correct (even
-        if incomplete) session file (merge, align, ner)
+        """Finalizing step - publish a produced file into processed/.
+
+        Called after each step that produced a correct (even if incomplete)
+        session file (merge, align, ner, nel).
+
+        Non-destructive by design: refuses to demote a richer published
+        session (dropping alignment/NER) and carries already-published entity
+        links forward, so a publish can only ever add wids, never remove them.
+        This keeps processed/ monotonic even when the pipeline is fed by an
+        out-of-date cache (e.g. one produced on another machine).
         """
         processed_file = config.file(session, 'processed', create=True)
-        # Check that content is actually different. If not, do not save.
-        # It happens when process such as nel/align is run again
         published_data = { 'data': [] }
         if processed_file.exists():
             published_data = json.loads(processed_file.read_text())
-        new_data = json.loads(filepath.read_text())
-        # Compare actual data, ignoring metadata (with processing info)
-        if data_signature(published_data['data']) != data_signature(new_data['data']):
-            # Data is updated, copy new version
+        new_doc = json.loads(filepath.read_text())
+
+        # Never replace a richer published session with a poorer one.
+        if is_demotion(new_doc['data'], published_data['data']):
+            logger.warning(f"Not publishing {session} from {filepath.name}: "
+                           f"would drop alignment/NER already in processed/")
+            return processed_file
+
+        # Entity links are append-only across a publish.
+        carried = carry_forward_wids(new_doc['data'], published_data['data'])
+        if carried:
+            logger.warning(f"Carried {carried} already-published wid(s) forward "
+                           f"while publishing {session} from {filepath.name}")
+
+        # Check that content is actually different. If not, do not save.
+        # It happens when a process such as nel/align is run again.
+        # Compare actual data, ignoring metadata (with processing info).
+        if data_signature(published_data['data']) != data_signature(new_doc['data']):
             logger.warning(f"Publishing {session} from {filepath.name}")
-            run_stage2_validation(session, new_data)
-            shutil.copyfile(filepath, processed_file)
+            run_stage2_validation(session, new_doc)
+            with open(processed_file, 'w') as f:
+                json.dump(new_doc, f, indent=2, ensure_ascii=False)
         return processed_file
+
+    def nel_source(session: str) -> Path:
+        """Richest existing file to run NEL on, so re-linking never demotes.
+
+        nel only mutates people[], so linking an aligned/NER'd file preserves
+        all timing and entity data -- unlike linking the bare merged cache,
+        which would demote processed/ on a forced re-run. Prefers the NER then
+        aligned cache; the published file is at least as rich as the merged
+        cache, so it is preferred over merged for an already-published session.
+        """
+        for stage in ('ner', 'aligned'):
+            stage_file = config.file(session, stage)
+            if stage_file.exists():
+                return stage_file
+        processed_file = config.file(session, 'processed')
+        if processed_file.exists():
+            return processed_file
+        return config.file(session, 'merged')
+
+    def nel_is_stale(session: str) -> bool:
+        """True if entities.json changed since the NEL source was last linked.
+
+        Lets an entity-registry refresh re-propagate on the next ordinary run
+        without --force. Checks the file NEL actually rewrites, so a re-link
+        advances its `nel` timestamp and the session is not flagged again.
+        """
+        nel_file = config.dir('nel_data') / 'entities.json'
+        if not nel_file.exists():
+            return False
+        src = nel_source(session)
+        if not src.exists():
+            return True
+        try:
+            doc = json.loads(src.read_text())
+            nel_ts = doc.get('meta', {}).get('processing', {}).get('nel')
+            if not nel_ts:
+                return True
+            linked_at = datetime.fromisoformat(nel_ts).timestamp()
+        except (json.JSONDecodeError, OSError, ValueError):
+            return True
+        return nel_file.stat().st_mtime > linked_at
 
     if args.download_original:
         logger.info(f"Downloading media and proceeding data for period {args.period}")
@@ -172,14 +234,22 @@ def execute_workflow(args):
                 if args.limit_session and not re.match(args.limit_session, session):
                     continue
                 status = config.status(session)
-                if SessionStatus.linked in status and not args.force:
+                # Skip only when already linked AND entities.json has not
+                # changed since -- otherwise an entity-registry refresh would
+                # never reach already-processed sessions without --force.
+                if (SessionStatus.linked in status
+                        and not args.force
+                        and not nel_is_stale(session)):
                     continue
-                merged_file = config.file(session, 'merged')
-                logger.warning(f"Linking entities from {merged_file.name}")
-                link_entities_from_file(merged_file,
-                                        merged_file,
+                # Link the richest available file in place, so re-linking a
+                # mature session preserves its alignment/NER instead of
+                # demoting processed/ to a bare merge.
+                source_file = nel_source(session)
+                logger.debug(f"Linking entities from {source_file.name}")
+                link_entities_from_file(source_file,
+                                        source_file,
                                         persons, factions)
-                publish_as_processed(session, merged_file)
+                publish_as_processed(session, source_file)
 
     # Time-align merged files - only when specified and only for processed files
     if args.align_sentences:
