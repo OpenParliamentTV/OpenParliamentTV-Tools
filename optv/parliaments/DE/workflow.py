@@ -245,7 +245,7 @@ def execute_workflow(args):
                 # mature session preserves its alignment/NER instead of
                 # demoting processed/ to a bare merge.
                 source_file = nel_source(session)
-                logger.debug(f"Linking entities from {source_file.name}")
+                logger.warning(f"Linking entities for {session} from {source_file.name}")
                 link_entities_from_file(source_file,
                                         source_file,
                                         persons, factions)
