@@ -316,6 +316,24 @@ def test_merge_item_chair_transition_overrides_media_regular_type():
     assert merged["debug"]["confidence_reason"] == "chair-transition"
 
 
+def test_merge_item_expands_noble_title_abbreviation():
+    """Media RSS abbreviates German noble titles ('Frhr.'); ParlaMint/
+    Bundestag proceedings spell them out ('Freiherr'). Same person — must
+    collapse to one entry carrying the proceedings wid, with no spurious
+    main-speaker mismatch (the DE-17 17093 Guttenberg case)."""
+    media = make_media_item()
+    media["people"][0]["label"] = "Karl-Theodor Frhr. zu Guttenberg"
+    proc = make_proceeding_item()
+    proc["people"][0]["label"] = "Karl-Theodor Freiherr zu Guttenberg"
+    proc["people"][0]["wid"] = "Q76924"
+    merged = merge_item(media, [proc])
+    guttenbergs = [p for p in merged["people"] if "Guttenberg" in p["label"]]
+    assert len(guttenbergs) == 1
+    assert guttenbergs[0]["label"] == "Karl-Theodor Freiherr zu Guttenberg"
+    assert guttenbergs[0]["wid"] == "Q76924"
+    assert merged["debug"]["confidence"] == 1  # no main-speaker mismatch
+
+
 def test_merge_item_qa_type_distinct_reason_from_chair_transition():
     """Reasons must distinguish QA from chair-transition for audit clarity."""
     media = make_media_item()

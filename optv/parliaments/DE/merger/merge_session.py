@@ -75,6 +75,26 @@ _NAME_PARTICLES = frozenset({
 })
 
 
+# German noble titles: the media RSS abbreviates them, the
+# ParlaMint/Bundestag proceedings spell them out — same person, two labels,
+# which the people de-dup would otherwise split. Surveying DE 17-21 person
+# labels, only "Frhr." actually occurs (68×; "Graf" etc. appear only in
+# full form). Plain literal substitution — the token is distinctive enough
+# not to collide with anything else. Add entries here if a survey turns up
+# more (e.g. 'Frfr.': 'Freifrau', 'Gf.': 'Graf').
+_NAME_ABBREV_EXPANSIONS = {
+    'Frhr.': 'Freiherr',
+}
+
+
+def _expand_name_abbreviations(label: str) -> str:
+    """Expand abbreviated German noble titles in a person label."""
+    for abbrev, full in _NAME_ABBREV_EXPANSIONS.items():
+        if abbrev in label:
+            label = label.replace(abbrev, full)
+    return label
+
+
 def _delta_tokens(short_fn: str, long_fn: str) -> list[str] | None:
     """Return the list of tokens that exist in `long_fn` but not in
     `short_fn` when `short_fn` is a separator-boundary (space or hyphen)
@@ -134,6 +154,26 @@ def canonicalize_person_labels(people_lists, session_id: str = '') -> None:
     1300+ sessions). Every rewrite is logged at WARN so a future collision
     is auditable.
     """
+    # Expand abbreviated noble titles ("Frhr." -> "Freiherr") first, so a
+    # person whose media label abbreviates and whose proceedings label
+    # spells it out collapses to one entry in the downstream people_dict
+    # de-dup. Otherwise the merger sees two main-speakers, drops confidence
+    # to 0.5, and the media-side mention keeps no wid — e.g. Karl-Theodor
+    # (Frhr.|Freiherr) zu Guttenberg in session 17093.
+    session_suffix = f" (session {session_id})" if session_id else ""
+    for plist in people_lists:
+        for person in plist:
+            label = person.get('label')
+            if not label:
+                continue
+            expanded = _expand_name_abbreviations(label)
+            if expanded != label:
+                logger.info(
+                    f"merge_session: expanding person label "
+                    f"{label!r} -> {expanded!r}{session_suffix}"
+                )
+                person['label'] = expanded
+
     by_lastname: dict[str, dict[str, str]] = {}
     for plist in people_lists:
         for person in plist:
@@ -162,7 +202,6 @@ def canonicalize_person_labels(people_lists, session_id: str = '') -> None:
     if not rename:
         return
 
-    session_suffix = f" (session {session_id})" if session_id else ""
     for long_label, short_label in rename.items():
         logger.warning(
             f"merge_session: canonicalizing person label "
