@@ -330,8 +330,14 @@ def _chair_u_text(u) -> str:
 
 # Match the chair's "Ich rufe [die|den|das] (Tagesordnungspunkt(e)|Zusatzpunkt(e)|Einzelplan) N[ a]" announcement.
 # These short labels are what media2json's fix_title produces on the media side.
+# The leading alternation also accepts the verb-first inversion the chair
+# uses just as often ("Jetzt/Nun rufe ich Tagesordnungspunkt N auf") — without
+# it ~76 DE-17 chair-transition turns were mis-typed `regular` and shipped as
+# gate-passing cps mis-merges (e.g. 17108 #76). The inversion alternative is
+# non-capturing, so groups (1)=keyword / (2)=number are unchanged.
 _TOP_ANNOUNCE_RE = re.compile(
-    r"Ich\s+rufe\s+(?:nun\s+|jetzt\s+)?"
+    r"(?:Ich\s+rufe|(?:Jetzt|Nun|Dann|Sodann|Damit)\s+rufe\s+ich)\s+"
+    r"(?:nun\s+|jetzt\s+)?"
     r"(?:die\s+|den\s+|das\s+)?"
     r"(Tagesordnungspunkte?|Zusatzpunkte?|Einzelplan)"
     r"\s+(\d+)",
