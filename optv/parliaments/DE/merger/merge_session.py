@@ -298,6 +298,18 @@ def merge_item(mediaitem, proceedingitems):
     nt, ct = classify_de_native(title)
     annotate_agenda_item(output_agenda, nt, ct)
 
+    # The ParlaMint parser types chair-transition turns ("(Jetzt) rufe ich
+    # Tagesordnungspunkt N auf") as `procedural` from the chair <u> content
+    # itself — an authoritative structural signal. But the media clip carries
+    # the *next topic* as its title, which classify_de_native reads as
+    # `regular`; the gap-fill annotate_agenda_item above lets that media
+    # `regular` win and silently silences the chair-transition gate. Force the
+    # proceedings classification to win. DE-16/17 only: DE-chair_transition is
+    # emitted solely by parlamint2json (never by proceedings2json / 18-21).
+    if proc_agenda.get('nativeType') == 'DE-chair_transition':
+        output_agenda['type'] = 'procedural'
+        output_agenda['nativeType'] = 'DE-chair_transition'
+
     confidence_reason = None
     agenda_type = output_agenda.get('type') or ''
     if agenda_type in QA_TYPES:

@@ -297,6 +297,25 @@ def test_merge_item_chair_transition_type_drops_confidence():
     assert merged["debug"]["confidence_reason"] == "chair-transition"
 
 
+def test_merge_item_chair_transition_overrides_media_regular_type():
+    """Real-world case: the media clip is titled with the *next* agenda topic,
+    so media2json classifies it `regular`. The chair-transition `procedural`
+    from the ParlaMint parser must still win and gate-fail the speech —
+    annotate_agenda_item's gap-fill alone would let the media `regular` stand
+    (the defect behind DE-17 #76)."""
+    media = make_media_item()
+    media["agendaItem"]["type"] = "regular"          # as media2json emits it
+    media["agendaItem"]["title"] = "Grundrechte der Beschäftigten von Kirchen"
+    proc = make_proceeding_item()
+    proc["agendaItem"]["type"] = "procedural"
+    proc["agendaItem"]["nativeType"] = "DE-chair_transition"
+    merged = merge_item(media, [proc])
+    assert merged["agendaItem"]["type"] == "procedural"
+    assert merged["agendaItem"]["nativeType"] == "DE-chair_transition"
+    assert merged["debug"]["confidence"] == 0.5
+    assert merged["debug"]["confidence_reason"] == "chair-transition"
+
+
 def test_merge_item_qa_type_distinct_reason_from_chair_transition():
     """Reasons must distinguish QA from chair-transition for audit clarity."""
     media = make_media_item()
