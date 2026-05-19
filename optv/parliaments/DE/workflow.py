@@ -3,7 +3,6 @@
 # Update media files, proceeding files and merge them
 import argparse
 import atexit
-from datetime import datetime
 import json
 import logging
 import os
@@ -122,29 +121,6 @@ def execute_workflow(args):
             return processed_file
         return config.file(session, 'merged')
 
-    def nel_is_stale(session: str) -> bool:
-        """True if entities.json changed since the NEL source was last linked.
-
-        Lets an entity-registry refresh re-propagate on the next ordinary run
-        without --force. Checks the file NEL actually rewrites, so a re-link
-        advances its `nel` timestamp and the session is not flagged again.
-        """
-        nel_file = config.dir('nel_data') / 'entities.json'
-        if not nel_file.exists():
-            return False
-        src = nel_source(session)
-        if not src.exists():
-            return True
-        try:
-            doc = json.loads(src.read_text())
-            nel_ts = doc.get('meta', {}).get('processing', {}).get('nel')
-            if not nel_ts:
-                return True
-            linked_at = datetime.fromisoformat(nel_ts).timestamp()
-        except (json.JSONDecodeError, OSError, ValueError):
-            return True
-        return nel_file.stat().st_mtime > linked_at
-
     if args.download_original:
         logger.info(f"Downloading media and proceeding data for period {args.period}")
         # Download/parse new media data
@@ -234,12 +210,13 @@ def execute_workflow(args):
                 if args.limit_session and not re.match(args.limit_session, session):
                     continue
                 status = config.status(session)
-                # Skip only when already linked AND entities.json has not
-                # changed since -- otherwise an entity-registry refresh would
-                # never reach already-processed sessions without --force.
-                if (SessionStatus.linked in status
-                        and not args.force
-                        and not nel_is_stale(session)):
+                # Skip already-linked sessions; an entity-registry refresh
+                # needs --force to re-propagate. Auto-detecting changes via
+                # entities.json mtime is unreliable -- the legacy `optv pull`
+                # re-curls the file every cron cycle, which would otherwise
+                # cause every session to be re-linked + re-published every
+                # run, producing timestamp-only commit churn downstream.
+                if SessionStatus.linked in status and not args.force:
                     continue
                 # Link the richest available file in place, so re-linking a
                 # mature session preserves its alignment/NER instead of

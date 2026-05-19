@@ -106,6 +106,23 @@ def link_entities_from_file(source_file: Path,
 
     data = link_entities(source['data'], persons, factions)
 
+    # Skip the rewrite if the existing output is already up-to-date.
+    # Otherwise every NEL run bumps meta.processing.nel on every session
+    # file even when no entities changed, producing 5-minute-cadence
+    # timestamp-only commits on the downstream Data repo and merge
+    # conflicts between the legacy cron and the Conductor.
+    if output_file.exists():
+        try:
+            with open(output_file) as f:
+                existing = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            existing = None
+        if (existing is not None
+                and existing.get('data') == data
+                and 'nel' in existing.get('meta', {}).get('processing', {})):
+            logger.debug(f"No NEL changes for {output_file.name}, skipping write")
+            return
+
     output = { "meta": { **source['meta'],
                          'processing': {
                              **source['meta'].get('processing', {}),
