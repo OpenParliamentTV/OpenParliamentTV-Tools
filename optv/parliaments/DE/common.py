@@ -85,6 +85,55 @@ def _speech_key(speech: dict):
     return speech.get('originTextID') or speech.get('speechIndex')
 
 
+# Per-speech enrichment fields that are append-only across a publish.
+# When the new data lacks a field the published version already has, we
+# carry the published value forward instead of dropping it -- catches the
+# stale-cache regression where a worker on older Tools would otherwise
+# strip fields (agendaItem.type, debug.confidence, ...) a worker on
+# newer Tools had already produced.
+#
+# Stored as (parent_key, field_name) pairs because every enrichment we
+# carry today sits one level under the speech dict. Promote to dot-paths
+# only if a future field actually needs deeper nesting.
+_ENRICHMENT_FIELDS = (
+    ('agendaItem', 'type'),
+    ('agendaItem', 'nativeType'),
+    ('debug', 'confidence'),
+    ('debug', 'confidence_reason'),
+)
+
+
+def carry_forward_enrichments(new_data: list, published_data: list) -> int:
+    """Fill per-speech enrichment fields from published_data into new_data
+    wherever new_data lacks them, matching speeches by originTextID.
+
+    Same append-only philosophy as carry_forward_wids: a publish can add or
+    update an enrichment value, but never silently strip one already
+    present in processed/. Newer code's value always wins when present;
+    only missing fields are filled. Mutates new_data; returns the number
+    of field-values carried.
+    """
+    published_by_key = {}
+    for speech in published_data:
+        key = _speech_key(speech)
+        if key is not None:
+            published_by_key[key] = speech
+    carried = 0
+    for speech in new_data:
+        prev = published_by_key.get(_speech_key(speech))
+        if not prev:
+            continue
+        for parent, field in _ENRICHMENT_FIELDS:
+            prev_parent = prev.get(parent)
+            new_parent = speech.get(parent)
+            if not isinstance(prev_parent, dict) or not isinstance(new_parent, dict):
+                continue
+            if field in prev_parent and field not in new_parent:
+                new_parent[field] = prev_parent[field]
+                carried += 1
+    return carried
+
+
 def carry_forward_wids(new_data: list, published_data: list) -> int:
     """Copy already-published person/faction wids into new_data wherever it
     lacks them, matching speeches by originTextID and people by label.

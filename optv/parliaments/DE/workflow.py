@@ -20,7 +20,8 @@ if __package__ is None or __package__ == "":
     __package__ = module_dir.name
 
 from .common import (Config, SessionStatus, data_signature,
-                      is_demotion, carry_forward_wids)
+                      is_demotion, carry_forward_wids,
+                      carry_forward_enrichments)
 
 logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basename(sys.argv[0]))
 
@@ -87,11 +88,17 @@ def execute_workflow(args):
                            f"would drop alignment/NER already in processed/")
             return processed_file
 
-        # Entity links are append-only across a publish.
+        # Entity links and per-speech enrichments are append-only across a
+        # publish -- a worker on stale Tools can't silently strip a wid or
+        # an agendaItem.type that a newer worker had already produced.
         carried = carry_forward_wids(new_doc['data'], published_data['data'])
         if carried:
             logger.warning(f"Carried {carried} already-published wid(s) forward "
                            f"while publishing {session} from {filepath.name}")
+        enriched = carry_forward_enrichments(new_doc['data'], published_data['data'])
+        if enriched:
+            logger.warning(f"Carried {enriched} already-published enrichment field(s) "
+                           f"forward while publishing {session} from {filepath.name}")
 
         # Check that content is actually different. If not, do not save.
         # It happens when a process such as nel/align is run again.
