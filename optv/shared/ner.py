@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 import requests.exceptions
 import spacy
-import spacyfishing  # noqa: F401  registers the 'entityfishing' spaCy factory
 import sys
 import time
 
@@ -43,6 +42,7 @@ def extract_entities(source: list, args) -> list:
         )
         spacy_model = spacy_model or f"{legacy_lang}_core_news_md"
         ef_lang = ef_lang or legacy_lang
+    import spacyfishing  # noqa: F401  registers the 'entityfishing' spaCy factory
     nlp = spacy.load(spacy_model)
     if 'entityfishing' in nlp.factory_names:
         nlp.add_pipe("entityfishing", config={ 'language': ef_lang,
