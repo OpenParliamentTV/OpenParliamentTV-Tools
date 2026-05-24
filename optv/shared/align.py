@@ -18,11 +18,22 @@ import subprocess
 import sys
 import time
 from typing import Iterable, Optional
+import urllib.request
 from urllib.request import urlretrieve
 
 # We want to check that we have 1GB minimum available cache size
 MIN_CACHE_SPACE = 1024 * 1024 * 1024
 DEFAULT_CACHEDIR = '/tmp/cache'
+
+# Install a browser User-Agent opener so urlretrieve works through Cloudflare
+# (Congreso.es returns 403 to the default urllib UA).
+_opener = urllib.request.build_opener()
+_opener.addheaders = [(
+    "User-Agent",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+)]
+urllib.request.install_opener(_opener)
 
 def speech_sentence_iter(speech: dict) -> Iterable:
     """Iterate over all sentences in a speech, adding a unique identifier.

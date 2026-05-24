@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import requests.exceptions
 import spacy
+import spacyfishing  # noqa: F401  registers the 'entityfishing' spaCy factory
 import sys
 import time
 

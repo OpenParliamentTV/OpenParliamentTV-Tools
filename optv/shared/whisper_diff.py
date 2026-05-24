@@ -240,7 +240,8 @@ def cmd_transcribe(args) -> int:
         logger.info(f"speech {idx}: transcribing {ap.name}...")
         t0 = time.time()
         tr = whisper_qc.transcribe_speech(ap, language=args.language,
-                                          model_size=args.model)
+                                          model_size=args.model,
+                                          timeout=args.timeout)
         if tr is None:
             results[idx] = {"speechIndex": idx, "ok": False,
                             "audio_file": ap.name}
@@ -581,6 +582,8 @@ def build_parser() -> argparse.ArgumentParser:
                       help="single speechIndex; default: all")
     p_tr.add_argument("--language", default="de")
     p_tr.add_argument("--model", default=whisper_qc.DEFAULT_MODEL)
+    p_tr.add_argument("--timeout", type=int, default=whisper_qc.DEFAULT_TIMEOUT,
+                      help="per-speech wall-clock timeout in seconds")
     p_tr.add_argument("--with-speaker-check", action="store_true",
                       help="also run Resemblyzer speaker change detection")
     p_tr.add_argument("--force", action="store_true",

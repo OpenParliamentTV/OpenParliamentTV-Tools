@@ -17,7 +17,11 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "large-v3"
-DEFAULT_TIMEOUT = 1800
+# Parliamentary speeches routinely run 30–120 min; default per-call timeout
+# must accommodate the longest plausible single intervention (102-min
+# investiture opening observed in DE/ES corpora). Override per-call via
+# transcribe_speech(timeout=...) or the CLI's --timeout flag.
+DEFAULT_TIMEOUT = 14400
 SPEAKER_CHANGE_THRESHOLD = 0.65
 SPEAKER_WINDOW_S = 1.5
 SPEAKER_HOP_S = 0.75

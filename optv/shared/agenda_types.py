@@ -252,6 +252,42 @@ def classify_se(kammaraktivitet: Optional[str]) -> tuple[Optional[str], str]:
 
 
 # ---------------------------------------------------------------------------
+# ES — Congreso de los Diputados (OBJETOINICIATIVA + FASE)
+# ---------------------------------------------------------------------------
+
+# Ordered (regex, native, core). Matched case-insensitively against the
+# combined "OBJETOINICIATIVA | FASE" string; first hit wins, so more specific
+# patterns (pregunta, presupuesto) precede the broad bill/regular catch-alls.
+_ES_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r'juramento o promesa', re.I), "ES-juramento", CORE_OATH),
+    (re.compile(r'candidato a la presidencia del gobierno', re.I), "ES-investidura", CORE_ELECTION),
+    (re.compile(r'reforma del reglamento', re.I), "ES-reglamento", CORE_RULES_OF_PROCEDURE),
+    (re.compile(r'objetivos de estabilidad presupuestaria|techo de gasto|presupuestos generales del estado', re.I), "ES-presupuesto", CORE_BUDGET),
+    (re.compile(r'declaraci[oó]n institucional', re.I), "ES-declaracion_institucional", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r'moci[oó]n consecuencia de interpelaci[oó]n', re.I), "ES-mocion", CORE_REGULAR),
+    (re.compile(r'interpelaci[oó]n', re.I), "ES-interpelacion", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r'pregunta', re.I), "ES-pregunta", CORE_QA),
+    (re.compile(r'solicitud de comparecencia|comparecencia', re.I), "ES-comparecencia", CORE_BRIEFING),
+    (re.compile(r'proyecto de ley|proposici[oó]n de ley|proposici[oó]n de reforma|convalidaci[oó]n|real decreto-ley', re.I), "ES-ley", CORE_REGULAR),
+]
+
+
+def classify_es(objeto: Optional[str], fase: Optional[str] = None,
+                tipo: Optional[str] = None) -> tuple[Optional[str], str]:
+    """Classify a Congreso agenda from OBJETOINICIATIVA / FASE / TIPOINTERVENCION."""
+    if tipo and tipo.strip().lower() == "votación":
+        return "ES-votacion", CORE_VOTING
+    haystack = f"{objeto or ''} | {fase or ''}"
+    for pat, native, core in _ES_PATTERNS:
+        if pat.search(haystack):
+            return native, core
+    # FASE fallback: a Q&A turn whose objeto didn't match above.
+    if fase and "pregunta" in fase.strip().lower():
+        return "ES-pregunta", CORE_QA
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
 # Convenience: write classification onto an agendaItem dict
 # ---------------------------------------------------------------------------
 
