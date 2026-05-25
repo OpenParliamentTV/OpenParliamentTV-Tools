@@ -31,8 +31,8 @@ Copy `optv/parliaments/DE/` as a template:
 optv/parliaments/<CODE>/
 ├── __init__.py
 ├── manifest.yaml
-├── workflow.py          # entry point
-├── common.py            # Config class, paths, file naming
+├── workflow.py          # thin entry point — defines hooks, calls optv.shared.workflow
+├── common.py            # Config class, paths, file naming (re-exports shared SessionStatus + publish helpers)
 ├── scraper/             # fetch raw proceedings + media
 ├── parsers/             # parliament's native format → intermediate JSON
 ├── merger/              # join proceedings + media → Stage 2
@@ -62,7 +62,7 @@ default_retry_delay_max: 10
 
 `supported_stages` lets parliaments opt out of stages that don't apply (e.g. a parliament with pre-aligned source data can omit `align`).
 
-`locale.*` are required when `align` or `ner` is in `supported_stages`. The model name is given in full (no `lang + suffix` composition) because spaCy's naming isn't uniform across languages — not every language ships every size tier. The parliament's `workflow.py` reads these via `optv.parliaments.get_locale()` and injects them onto `args` before invoking shared stages.
+`locale.*` are required when `align` or `ner` is in `supported_stages`. The model name is given in full (no `lang + suffix` composition) because spaCy's naming isn't uniform across languages — not every language ships every size tier. The parliament's `workflow.py` calls `optv.shared.workflow.inject_locale(args, parliament_id)` (which reads `optv.parliaments.get_locale()`) before invoking shared stages.
 
 ## 5. Implement Stage 1 (parliament-specific)
 
@@ -94,7 +94,62 @@ Stage outputs go into `cache/`; `processed/` holds what the platform actually co
 
 ## 7. Wire the workflow
 
-`workflow.py` is the main entry point. Each `--*` flag enables one stage:
+`workflow.py` is the entry point but it is intentionally thin: stage orchestration (merge → NEL → align → NER → publish), the common argparser, lockfile handling, locale injection and the publish helper all live in [`optv/shared/workflow.py`](../optv/shared/workflow.py). The per-parliament file only contains the genuinely parliament-specific adapters and any extra CLI flags.
+
+Define four hook functions and pass them as a `WorkflowHooks` instance to `run_workflow`:
+
+```python
+from optv.shared.align import align_audiofile
+from optv.shared.workflow import (
+    WorkflowHooks, run_workflow, build_common_argparser,
+    acquire_lockfile, setup_logging, inject_locale,
+)
+from .common import Config
+# parliament-specific imports
+from .scraper.fetch_proceedings import download_proceedings
+from .parsers.proceedings2json import parse_proceedings_directory
+from .parsers.media2json import parse_media_directory
+from .merger.merge_session import merge_session
+
+PARLIAMENT_ID = Path(__file__).parent.name
+
+
+def _download(config, args): ...      # body of --download-original
+def _parse(config, args): ...         # called after download (always)
+def _merge(config, session, args):    # return path to merged cache file
+    return merge_session(session, config, args)
+def _align(config, session, args):    # return path to aligned cache file
+    merged_file = config.file(session, 'merged')
+    aligned_file = config.file(session, 'aligned', create=True)
+    align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir,
+                    timeout=args.align_timeout,
+                    max_audio_seconds=args.align_max_audio_seconds)
+    return aligned_file
+
+
+HOOKS = WorkflowHooks(
+    parliament_id=PARLIAMENT_ID,
+    download_originals=_download,
+    parse_originals=_parse,
+    merge_session_to_file=_merge,
+    align_session_to_file=_align,
+)
+
+
+def main():
+    parser = build_common_argparser(description="...")
+    parser.add_argument("--lang", type=str, default="...")   # parliament-specific
+    args = parser.parse_args()
+    setup_logging(args.debug)
+    inject_locale(args, PARLIAMENT_ID)
+    args.data_dir = Path(args.data_dir)
+    args.cache_dir = Path(args.cache_dir) if args.cache_dir else args.data_dir / "cache"
+    with acquire_lockfile(args):
+        config = Config(args.data_dir, cache_dir=args.cache_dir)
+        run_workflow(config, args, HOOKS)
+```
+
+Then invoking the workflow is unchanged from a user perspective — each `--*` flag enables one stage:
 
 ```bash
 ./optv/parliaments/<CODE>/workflow.py --period=N <data_dir> \
@@ -102,7 +157,13 @@ Stage outputs go into `cache/`; `processed/` holds what the platform actually co
     --link-entities --align-sentences --extract-entities
 ```
 
-The shared stages (NEL, alignment, NER) are imported from `optv.shared.*` and don't need re-implementing — see how the DE workflow calls them. The publish step copies the latest valid cache file to `<data_dir>/processed/` and runs schema + semantic validation.
+Notes for filling in the hooks:
+
+- **`_download` and `_parse`** are parliament-specific because every source publishes differently. `_parse` runs unconditionally after `_download`; gate any expensive work on mtime checks inside the hook.
+- **`_merge`** is the per-session merger call. The shared runner handles the `is_newer` check, the demotion guard, and the publish — your hook just produces the merged cache file and returns its path.
+- **`_align`** receives `(config, session, args)` and returns the aligned cache file path. For per-speech audio (DE's shape) call `align_audiofile`; for per-debate audio that needs slicing first, pre-slice into per-speech MP3s at the paths `align_audio` expects, then call it in-memory and write the result.
+- **`session_in_scope=(args, session) -> bool`** is optional; the default is `session.startswith(str(args.period))`. Override only if your session keys don't have that shape (e.g. a parliament whose session strings use a separator that requires more precise prefix matching).
+- **NEL, NER, the publish step, `--update-nel-entities`, the lockfile, validation** — all already shared; you do not re-implement any of them. The publish helper carries already-published wids and per-speech enrichments forward, so a stale worker cannot silently strip data a newer worker had produced.
 
 ## 8. External assets
 

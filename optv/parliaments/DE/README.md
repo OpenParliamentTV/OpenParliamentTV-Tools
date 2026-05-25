@@ -7,8 +7,8 @@ Parliament-specific Stage 1 implementation for the German Bundestag. For pipelin
 - [`scraper/`](scraper/) — Fetch proceedings (TEI XML) and media (RSS feeds) from the Bundestag's open-data sources.
 - [`parsers/`](parsers/) — Convert TEI XML and media RSS into intermediate per-session JSON.
 - [`merger/`](merger/) — Join media + proceedings into Stage 2 JSON. Uses Needleman-Wunsch alignment to match speeches across the two streams.
-- [`workflow.py`](workflow.py) — Main entry point. Each `--*` flag enables one stage; flags are idempotent; `--force` re-runs.
-- [`common.py`](common.py) — `Config` class (paths, file naming, mtime checks) and `SessionStatus` enum.
+- [`workflow.py`](workflow.py) — Main entry point. A thin wrapper that defines DE-specific download/parse/merge/align adapters (`WorkflowHooks`) and calls the shared orchestrator in [`optv/shared/workflow.py`](../../shared/workflow.py). Each `--*` flag enables one stage; flags are idempotent; `--force` re-runs.
+- [`common.py`](common.py) — `Config` class (paths, file naming, mtime checks). Re-exports `SessionStatus` and the publish helpers (`data_signature`, `is_demotion`, `carry_forward_wids`, `carry_forward_enrichments`) from [`optv/shared/`](../../shared/).
 - [`manifest.yaml`](manifest.yaml) — Per-parliament metadata read by Conductor (supported stages, periods, entity dump URL, retry defaults).
 - [`update`](update) — Shell wrapper baking in `--period=21 --retry-count=20` for routine runs.
 - [`Makefile`](Makefile) — `make download` / `make all` for fine-grained, mtime-driven invocations.

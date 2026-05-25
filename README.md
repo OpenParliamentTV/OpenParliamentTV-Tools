@@ -31,21 +31,27 @@ optv/
 ├── parliaments/
 │   └── DE/                  # German Bundestag — only currently implemented parliament
 │       ├── manifest.yaml    # per-parliament metadata read by Conductor (stages, periods, …)
-│       ├── workflow.py      # main orchestration entry point
-│       ├── common.py        # Config class, SessionStatus, file naming
+│       ├── workflow.py      # thin entry point — defines hooks, calls optv.shared.workflow
+│       ├── common.py        # Config class (paths + file naming); re-exports shared helpers
 │       ├── scraper/         # fetch proceedings (TEI XML) and media (RSS)
 │       ├── parsers/         # XML/RSS → intermediate JSON
 │       ├── merger/          # join media + proceedings into Stage 2
 │       ├── update           # shell wrapper: --period=21 --retry-count=20
 │       └── Makefile         # download + merge targets driven by file mtimes
 └── shared/                  # cross-parliament infrastructure
+    ├── workflow.py          # stage orchestrator + WorkflowHooks + shared argparser
+    ├── publish.py           # non-destructive publish helpers (demotion guard, carry-forward)
+    ├── session_status.py    # SessionStatus enum
     ├── align.py             # forced sentence alignment (aeneas)
     ├── nel.py               # named-entity linking (Wikidata)
     ├── ner.py               # named-entity recognition (spaCy + entity-fishing)
+    ├── agenda_types.py      # cross-parliament agenda-type vocabulary
     ├── schema/              # Stage 2 JSON schemas + reference doc
     ├── validators/          # structural + semantic validators, CLI
     └── docs/EXAMPLES/       # example Stage 2 documents
 ```
+
+`workflow.py` is intentionally thin: orchestration (merge → NEL → align → NER → publish), the common argparser, lockfile handling and the publish helper all live in [`optv/shared/workflow.py`](optv/shared/workflow.py). The per-parliament file only contains the four adapters that legitimately differ — download, parse, merge call shape, align call shape — plus parliament-specific CLI flags.
 
 `manifest.yaml` is the per-parliament metadata file. The Conductor reads it to know which stages a parliament supports, which entity dump to use, and the retry defaults — see [optv/parliaments/DE/manifest.yaml](optv/parliaments/DE/manifest.yaml) for the canonical example.
 
@@ -61,7 +67,7 @@ Each stage produces a side-by-side cache file per session (e.g. `21001-merged.js
 | NEL | [`optv/shared/nel.py`](optv/shared/nel.py) | merged JSON + entity dump | `people[].wid`, faction normalisation |
 | Align | [`optv/shared/align.py`](optv/shared/align.py) | merged JSON + audio | `cache/aligned/*-aligned.json` (sentence timings) |
 | NER | [`optv/shared/ner.py`](optv/shared/ner.py) | aligned JSON + entity-fishing API | `cache/ner/*-ner.json` (sentence entities) |
-| Publish | `publish_as_processed()` in [`workflow.py`](optv/parliaments/DE/workflow.py) | latest cache file | `processed/*-session.json` |
+| Publish | `_publish_as_processed()` in [`optv/shared/workflow.py`](optv/shared/workflow.py) (uses helpers from [`optv/shared/publish.py`](optv/shared/publish.py)) | latest cache file | `processed/*-session.json` |
 
 For the conceptual stage breakdown (parliament-agnostic), see [Architecture/PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md).
 
