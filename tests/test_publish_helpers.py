@@ -1,6 +1,6 @@
-"""Non-destructive publish helpers from optv/parliaments/DE/common.py."""
+"""Non-destructive publish helpers from optv/shared/publish.py."""
 
-from optv.parliaments.DE.common import (
+from optv.shared.publish import (
     data_has_timing, data_has_ner, is_demotion, carry_forward_wids,
     carry_forward_enrichments,
 )

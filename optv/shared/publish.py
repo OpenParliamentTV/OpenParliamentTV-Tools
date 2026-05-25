@@ -1,0 +1,175 @@
+"""Non-destructive publish helpers shared across parliament workflows.
+
+These keep ``processed/<session>-session.json`` monotonic when stages run
+on different machines, in different order, or with a stale Tools checkout:
+
+* ``is_demotion`` refuses to overwrite a richer published file with a thinner one.
+* ``carry_forward_wids`` and ``carry_forward_enrichments`` fill missing
+  per-speech enrichment fields from the published copy -- a publish can
+  only ever add wids / agendaItem types / debug.confidence values, never
+  silently strip ones already produced by a newer worker.
+* ``data_signature`` + ``save_if_changed`` skip writes whose ``data``
+  payload is byte-equal to what is already on disk (mtime hygiene).
+"""
+
+import json
+import logging
+from hashlib import blake2b
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+
+def data_signature(data: list) -> str:
+    """Return a signature (as a string) for the given data.
+    """
+    h = blake2b(json.dumps(data).encode('utf-8'))
+    return h.hexdigest()
+
+
+def save_if_changed(data: dict, output_file: Path) -> bool:
+    """Save the data into file if it is different.
+
+    ignoring the 'meta' properties (which contain processing info).
+
+    Returns True if the data was actually saved.
+    """
+    # Consider it as different by default.
+    updated_content = True
+    if output_file.exists():
+        old_data = json.loads(output_file.read_text())
+        # Compare old_data with data, without taking meta info
+        # (processing info) into account.
+        old_digest = data_signature(old_data['data'])
+        new_digest = data_signature(data['data'])
+        if old_digest == new_digest:
+            # Same content - do not save
+            updated_content = False
+
+    if updated_content:
+        with open(output_file, 'w') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    return updated_content
+
+
+def data_has_timing(data: list) -> bool:
+    """True if any speech carries time-alignment output."""
+    return any(s.get('debug', {}).get('align-duration') for s in data)
+
+
+def data_has_ner(data: list) -> bool:
+    """True if any speech carries named-entity-recognition output."""
+    return any(s.get('debug', {}).get('ner-duration') for s in data)
+
+
+def is_demotion(new_data: list, published_data: list) -> bool:
+    """True if publishing new_data over published_data would drop alignment
+    or NER enrichment the published file already has.
+
+    Keeps processed/ monotonic: a bare merged file (or any less-processed file
+    produced from a stale cache) must never overwrite a richer published
+    session.
+    """
+    if data_has_timing(published_data) and not data_has_timing(new_data):
+        return True
+    if data_has_ner(published_data) and not data_has_ner(new_data):
+        return True
+    return False
+
+
+def _speech_key(speech: dict):
+    """Stable per-speech identity for cross-stage matching.
+
+    originID is dropped at top level in some outputs, so originTextID is the
+    reliable key; speechIndex is the fallback.
+    """
+    return speech.get('originTextID') or speech.get('speechIndex')
+
+
+# Per-speech enrichment fields that are append-only across a publish.
+# When the new data lacks a field the published version already has, we
+# carry the published value forward instead of dropping it -- catches the
+# stale-cache regression where a worker on older Tools would otherwise
+# strip fields (agendaItem.type, debug.confidence, ...) a worker on
+# newer Tools had already produced.
+#
+# Stored as (parent_key, field_name) pairs because every enrichment we
+# carry today sits one level under the speech dict. Promote to dot-paths
+# only if a future field actually needs deeper nesting.
+_ENRICHMENT_FIELDS = (
+    ('agendaItem', 'type'),
+    ('agendaItem', 'nativeType'),
+    ('debug', 'confidence'),
+    ('debug', 'confidence_reason'),
+)
+
+
+def carry_forward_enrichments(new_data: list, published_data: list) -> int:
+    """Fill per-speech enrichment fields from published_data into new_data
+    wherever new_data lacks them, matching speeches by originTextID.
+
+    Same append-only philosophy as carry_forward_wids: a publish can add or
+    update an enrichment value, but never silently strip one already
+    present in processed/. Newer code's value always wins when present;
+    only missing fields are filled. Mutates new_data; returns the number
+    of field-values carried.
+    """
+    published_by_key = {}
+    for speech in published_data:
+        key = _speech_key(speech)
+        if key is not None:
+            published_by_key[key] = speech
+    carried = 0
+    for speech in new_data:
+        prev = published_by_key.get(_speech_key(speech))
+        if not prev:
+            continue
+        for parent, field in _ENRICHMENT_FIELDS:
+            prev_parent = prev.get(parent)
+            new_parent = speech.get(parent)
+            if not isinstance(prev_parent, dict) or not isinstance(new_parent, dict):
+                continue
+            if field in prev_parent and field not in new_parent:
+                new_parent[field] = prev_parent[field]
+                carried += 1
+    return carried
+
+
+def carry_forward_wids(new_data: list, published_data: list) -> int:
+    """Copy already-published person/faction wids into new_data wherever it
+    lacks them, matching speeches by originTextID and people by label.
+
+    Makes entity links append-only across a publish: a publish can add wids
+    but never remove one processed/ already has, even when fed by an
+    out-of-date cache. Mutates new_data; returns the number of wids carried.
+    """
+    published_by_key = {}
+    for speech in published_data:
+        key = _speech_key(speech)
+        if key is not None:
+            published_by_key[key] = speech
+    carried = 0
+    for speech in new_data:
+        prev = published_by_key.get(_speech_key(speech))
+        if not prev:
+            continue
+        prev_people = {p['label']: p
+                       for p in (prev.get('people') or [])
+                       if p.get('label') and p.get('wid')}
+        for person in (speech.get('people') or []):
+            ref = prev_people.get(person.get('label'))
+            if not ref:
+                continue
+            if not person.get('wid') and ref.get('wid'):
+                person['wid'] = ref['wid']
+                if ref.get('wtype'):
+                    person['wtype'] = ref['wtype']
+                carried += 1
+            faction, ref_faction = person.get('faction'), ref.get('faction')
+            if (isinstance(faction, dict) and isinstance(ref_faction, dict)
+                    and not faction.get('wid') and ref_faction.get('wid')):
+                faction['wid'] = ref_faction['wid']
+                if ref_faction.get('wtype'):
+                    faction['wtype'] = ref_faction['wtype']
+    return carried
