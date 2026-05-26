@@ -186,6 +186,53 @@ Notes for filling in the hooks:
 
 There is no automated test suite — validation output is the primary signal.
 
-## 10. Onboard with Conductor
+## 10. Write the parliament README
+
+Every parliament directory carries a `README.md` covering the things an operator needs to run and reason about that pipeline. It is **distinct from research/background notes** (which live in a separate uncommitted research repo) — keep this file focused on the implementation that is checked in here.
+
+Use this skeleton:
+
+```markdown
+# <Parliament Name> (<CODE>)
+
+<1–2 sentence intro: what this directory implements + a link back to
+docs/ADDING-A-PARLIAMENT.md for repo-wide context.>
+
+## Data model
+
+<The two input streams. Name the scraper module → parser module → on-disk
+location for each. State which stream is the authoritative spine
+(proceedings-spine like DE/DE-RP, media-spine like ES/SE, or timestamp-join
+like EU). Mention any parliament-specific preprocessing (e.g. EU's per-sitting
+HLS slicing in `align_prep.py`).>
+
+## Merge strategy
+
+<The merger algorithm and join key: Needleman-Wunsch on speaker+title (DE,
+DE-RP), surname-sequence walk-out (ES), integer `anforande_nummer` (SE),
+timestamp-window (EU). One paragraph, link the file path.>
+
+## Running
+
+<The `update` shell wrapper if present, then the bare `workflow.py` invocation
+with the `--period` value and the stage flags. Include parliament-specific
+flags (`--eu-date`, `--protokoll`, `--inbox-dir`, …).>
+
+## Access notes (optional)
+
+<Auth, WAF/Cloudflare bypass, manual delivery channels — only when there's
+something a new operator would trip over. Skip for plain public feeds.>
+
+## Known limitations
+
+<Bulleted, operator-facing. Each bullet states the limitation, why it exists,
+and any `debug.*` signal it surfaces. Examples: scope (one period or chamber
+only), data-quality gaps, missing live scraper, aspirational
+`entity_dump_url`, alignment quirks.>
+```
+
+Do not duplicate content that already lives elsewhere: pipeline concepts go in [Architecture/PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md), the Stage 2 format in [Architecture/STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md), the generic onboarding flow in this file, and per-parliament metadata (spaCy model, language codes, `supported_stages`, `entity_dump_url`) in `manifest.yaml`. The README links to those rather than restating them.
+
+## 11. Onboard with Conductor
 
 Once the parliament works standalone, add it to the Conductor's `config/parliaments.yaml` so it appears in the web UI. See the [Conductor README](https://github.com/OpenParliamentTV/OpenParliamentTV-Conductor) for the deployment configuration format.
