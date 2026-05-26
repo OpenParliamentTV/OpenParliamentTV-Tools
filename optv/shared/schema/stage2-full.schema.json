@@ -215,6 +215,10 @@
         "dateEnd": {"$ref": "#/definitions/datetime"},
         "speechIndex": {"type": "integer", "minimum": 1},
         "originID": {"type": "string"},
+        "originalLanguage": {
+          "type": "string",
+          "description": "ISO 639-1 code of the language the speech was spoken in. Optional. When present, mirrors the textContents[0].language field and identifies the audio channel used (media.audioFileURI should be the same-language rendition)."
+        },
         "isReply": {"type": "boolean"},
         "documents": {
           "type": "array",
