@@ -32,11 +32,42 @@ def cleanup(name):
         name = re.sub(r'\s+', ' ', name)
         return name
 
-def link_entities(source: list, persons: dict, factions: dict) -> list:
-    """Link entities from source file
+def _build_ep_id_index(persons: dict) -> dict:
+    """Build {epId: entity} from the persons map.
+
+    ``persons`` is keyed by cleaned-name strings, with duplicate values for
+    each entity (one per alternative label). We dedupe by ``id(ent)``.
     """
+    by_ep_id: dict = {}
+    seen: set = set()
+    for ent in persons.values():
+        if id(ent) in seen:
+            continue
+        seen.add(id(ent))
+        ep_id = (ent.get('additionalInformation') or {}).get('epId')
+        if ep_id:
+            by_ep_id[str(ep_id)] = ent
+    return by_ep_id
+
+
+def link_entities(source: list, persons: dict, factions: dict) -> list:
+    """Link entities from source file.
+
+    Speakers carrying a parliament-supplied person identifier in
+    ``additionalInformation.epId`` are matched directly against the entity
+    dump (the EU pipeline populates this from the EP Open Data API's person
+    refs). If no epId match is found, fall back to the historic
+    cleaned-label lookup.
+    """
+    persons_by_ep_id = _build_ep_id_index(persons)
     for speech in source:
         for p in speech.get('people', []):
+            if not p.get('wid'):
+                ep_id = (p.get('additionalInformation') or {}).get('epId')
+                ent = persons_by_ep_id.get(str(ep_id)) if ep_id else None
+                if ent and ent.get('id'):
+                    p['wid'] = ent['id']
+                    p['wtype'] = 'PERSON'
             label = cleanup(p['label'])
             if persons.get(label) and not p.get('wid'):
                 # Found exact match - only fill in if no upstream wid (e.g. ParlaMint Q-IDs)

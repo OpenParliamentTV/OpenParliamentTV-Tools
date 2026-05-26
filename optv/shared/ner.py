@@ -8,33 +8,10 @@ logger = logging.getLogger(__name__)
 import argparse
 from datetime import datetime
 import json
-from pathlib import Path
 import requests.exceptions
 import spacy
 import sys
 import time
-
-
-def _speech_language(speech: dict) -> str | None:
-    """Return the speech's ISO 639-1 language code, or None if not tagged.
-
-    Looks at the top-level ``originalLanguage`` field first (the canonical
-    location, added 2026-05 for the EU multilingual integration); falls back
-    to ``textContents[0].language`` if the top-level field is missing.
-    Single-language parliaments (DE/SE/ES) leave both fields empty and the
-    manifest defaults apply.
-    """
-    lang = (speech.get("originalLanguage") or "").strip()
-    if lang:
-        return lang
-    tcs = speech.get("textContents") or []
-    if tcs:
-        v = (tcs[0].get("language") or "").strip()
-        # Strip parliament prefix used historically (e.g. "DE-de" → "de").
-        if "-" in v:
-            v = v.split("-", 1)[-1]
-        return v or None
-    return None
 
 
 def _resolve_manifest_defaults(args) -> tuple[str, str]:
@@ -105,105 +82,16 @@ def _run_pipeline_on(nlp, group: list):
 
 
 def extract_entities(source: list, args) -> list:
-    """Extract entities from a list of speeches, routing per-speech language
-    when present.
-
-    Behaviour:
-
-    * Speeches without ``originalLanguage`` / ``textContents[0].language``
-      use ``args.spacy_model`` + ``args.entityfishing_language`` from the
-      parliament's manifest — single-language parliaments (DE/SE/ES) hit
-      this path and run a single spaCy pipeline over all speeches (the
-      historical fast path; zero behaviour change).
-    * Speeches with a per-speech language tag are partitioned by
-      (spacy_model, entityfishing_language); each group is processed with
-      its own pipeline. Unknown / low-resource languages fall back to
-      ``xx_ent_wiki_sm`` + entityfishing language ``en`` (see
-      :mod:`optv.shared.spacy_models`).
-
-    The shared model registry deliberately lives outside this module so the
-    same routing applies wherever ``extract_entities`` is called from.
-    """
+    """Extract entities from a list of speeches using the parliament's
+    manifest-supplied spaCy model + entityfishing language."""
     if not args.ner_api_endpoint:
         return source
 
-    # Resolve per-speech (spacy_model, ef_lang) targets, falling back to
-    # manifest defaults for untagged speeches.
-    from optv.shared.spacy_models import resolve_spacy_model, resolve_ef_language
-
-    has_any_per_speech_lang = any(_speech_language(sp) for sp in source)
-    if not has_any_per_speech_lang:
-        # Single-language parliament — preserve the historical fast path.
-        spacy_model, ef_lang = _resolve_manifest_defaults(args)
-        nlp = _build_pipeline(spacy_model, ef_lang, args.ner_api_endpoint)
-        if nlp is None:
-            return source
-        _run_pipeline_on(nlp, source)
+    spacy_model, ef_lang = _resolve_manifest_defaults(args)
+    nlp = _build_pipeline(spacy_model, ef_lang, args.ner_api_endpoint)
+    if nlp is None:
         return source
-
-    # Multilingual parliament (EU and friends) — partition by target pipeline.
-    manifest_spacy, manifest_ef = (
-        getattr(args, "spacy_model", None),
-        getattr(args, "entityfishing_language", None),
-    )
-    by_pipeline: dict[tuple[str, str], list] = {}
-    for sp in source:
-        lang = _speech_language(sp)
-        if not lang:
-            if manifest_spacy and manifest_ef:
-                key = (manifest_spacy, manifest_ef)
-            else:
-                # No per-speech lang AND no manifest default — fall back.
-                key = (resolve_spacy_model(None), resolve_ef_language(None))
-        else:
-            key = (resolve_spacy_model(lang), resolve_ef_language(lang))
-        by_pipeline.setdefault(key, []).append(sp)
-
-    # Track which (model, ef_lang) targets resolved to xx_ent_wiki_sm fallback
-    # because the native model isn't installed locally — we batch these together.
-    from optv.shared.spacy_models import MULTILINGUAL_MODEL
-    pending_fallback: list = []
-
-    for (spacy_model, ef_lang), group in by_pipeline.items():
-        if spacy_model == MULTILINGUAL_MODEL:
-            # Already targeting the multilingual model — defer to the fallback
-            # batch so we load it only once.
-            pending_fallback.extend(group)
-            continue
-        logger.info(
-            "NER pipeline %s + ef_lang=%s — %d speech(es)",
-            spacy_model, ef_lang, len(group),
-        )
-        nlp = _build_pipeline(spacy_model, ef_lang, args.ner_api_endpoint)
-        if nlp is None:
-            # Native model isn't installed — fall back to xx_ent_wiki_sm with
-            # entityfishing language "en". Per the manifest contract: operators
-            # opt in to native models by installing them; everything else routes
-            # through the multilingual fallback rather than being silently
-            # skipped (which would drop ~70% of EU speeches in a typical run).
-            logger.info(
-                "  %s not installed; routing %d speech(es) to %s fallback",
-                spacy_model, len(group), MULTILINGUAL_MODEL,
-            )
-            pending_fallback.extend(group)
-            continue
-        _run_pipeline_on(nlp, group)
-
-    if pending_fallback:
-        logger.info(
-            "NER pipeline %s + ef_lang=en — %d speech(es) (multilingual fallback)",
-            MULTILINGUAL_MODEL, len(pending_fallback),
-        )
-        nlp = _build_pipeline(MULTILINGUAL_MODEL, "en", args.ner_api_endpoint)
-        if nlp is None:
-            logger.error(
-                "%s couldn't be loaded — %d speech(es) will be left without NER. "
-                "Install via `python -m spacy download %s`.",
-                MULTILINGUAL_MODEL, len(pending_fallback), MULTILINGUAL_MODEL,
-            )
-        else:
-            _run_pipeline_on(nlp, pending_fallback)
-
+    _run_pipeline_on(nlp, source)
     return source
 
 def extract_entities_from_file(source_file, output_file, args):
