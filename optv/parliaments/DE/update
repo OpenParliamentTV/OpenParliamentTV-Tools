@@ -7,4 +7,5 @@ OUTPUT=${1?Missing output directory parameter (data base directory)}
 
 CALLDIR="$(dirname "$(readlink "$0")")"
 
-python3 "${CALLDIR}/workflow.py" --period=21 --retry-count=20 "$OUTPUT"
+python3 "${CALLDIR}/workflow.py" --period=21 --retry-count=20 "$OUTPUT" \
+    --download-original --merge-speeches --align-sentences --extract-entities
