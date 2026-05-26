@@ -4,7 +4,7 @@ The data import pipeline for Open Parliament TV. Fetches parliamentary proceedin
 
 For the wider system context — repositories, data flow, the Stage 2 format — see the [Architecture repo](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture). The pipeline stages map to [PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md); the file format produced by the pipeline is specified in [STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md).
 
-Currently implemented: the German Bundestag (`optv/parliaments/DE/`).
+Each implemented parliament lives under `optv/parliaments/<CODE>/` and carries its own README documenting that pipeline's data model, merge strategy, runtime flags, and known limitations. New parliaments follow [`docs/ADDING-A-PARLIAMENT.md`](docs/ADDING-A-PARLIAMENT.md).
 
 ## Quick start
 
@@ -12,6 +12,7 @@ Currently implemented: the German Bundestag (`optv/parliaments/DE/`).
 python3 -m pip install -r requirements.txt
 
 # fetch + process the current period's data into <data_dir>
+# (example shown for DE — every parliament has the same wrapper shape)
 ./optv/parliaments/DE/update <data_dir>
 
 # or run the workflow manually with finer control:
@@ -20,23 +21,23 @@ python3 -m pip install -r requirements.txt
     --link-entities --align-sentences --extract-entities
 ```
 
-`<data_dir>` is the per-parliament data directory, expected to be a sibling clone of [OpenParliamentTV-Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE). Each `--*` flag is opt-in and idempotent; `--force` re-runs an already-completed stage. A lockfile (`<data_dir>/optv.lock`) blocks concurrent runs.
+`<data_dir>` is the per-parliament data directory, expected to be a sibling clone of the parliament's data repo (for example [OpenParliamentTV-Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE) for `DE`). Each `--*` flag is opt-in and idempotent; `--force` re-runs an already-completed stage. A lockfile (`<data_dir>/optv.lock`) blocks concurrent runs.
 
-External dependencies: `aeneas` needs `ffmpeg` and `espeak`; the NER stage needs a spaCy model (declared per-parliament in `manifest.yaml` as `locale.spacy_model` — `de_core_news_md` for DE) and an `entityfishing` API endpoint passed via `--ner-api-endpoint`.
+External dependencies: `aeneas` needs `ffmpeg` and `espeak`; the NER stage needs a spaCy model (declared per-parliament in `manifest.yaml` as `locale.spacy_model`) and an `entityfishing` API endpoint passed via `--ner-api-endpoint`.
 
 ## Layout
 
 ```
 optv/
 ├── parliaments/
-│   └── DE/                  # German Bundestag — only currently implemented parliament
+│   └── <CODE>/              # one directory per implemented parliament
 │       ├── manifest.yaml    # per-parliament metadata read by Conductor (stages, periods, …)
 │       ├── workflow.py      # thin entry point — defines hooks, calls optv.shared.workflow
 │       ├── common.py        # Config class (paths + file naming); re-exports shared helpers
-│       ├── scraper/         # fetch proceedings (TEI XML) and media (RSS)
-│       ├── parsers/         # XML/RSS → intermediate JSON
+│       ├── scraper/         # fetch raw proceedings + media
+│       ├── parsers/         # native format → intermediate JSON
 │       ├── merger/          # join media + proceedings into Stage 2
-│       ├── update           # shell wrapper: --period=21 --retry-count=20
+│       ├── update           # shell wrapper with parliament-specific defaults
 │       └── Makefile         # download + merge targets driven by file mtimes
 └── shared/                  # cross-parliament infrastructure
     ├── workflow.py          # stage orchestrator + WorkflowHooks + shared argparser
@@ -57,7 +58,7 @@ optv/
 
 ## Pipeline stages
 
-Each stage produces a side-by-side cache file per session (e.g. `21001-merged.json`, `21001-aligned.json`, `21001-ner.json`) and runs only when its input is newer than its output.
+Each stage produces a side-by-side cache file per session (e.g. `21001-merged.json`, `21001-aligned.json`, `21001-ner.json`) and runs only when its input is newer than its output. Paths below link to DE as the worked example; every parliament directory carries the same shape — see its README for parliament-specific module names.
 
 | Stage | Module / script | Input | Output |
 |-------|-----------------|-------|--------|

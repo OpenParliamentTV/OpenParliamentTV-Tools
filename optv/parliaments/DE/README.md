@@ -1,32 +1,31 @@
-# German Bundestag (DE)
+# Deutscher Bundestag (DE)
 
-Parliament-specific Stage 1 implementation for the German Bundestag. For pipeline concepts and the Stage 2 format, see [Architecture/PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md) and [Architecture/STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md). For the high-level repo overview and quick start, see the [Tools README](../../../README.md).
+Parliament-specific Stage 1 pipeline for the German Bundestag — the reference implementation other parliaments follow. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md); for the wider system see [Architecture/PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md) and [Architecture/STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md).
 
-## Layout
+## Data model
 
-- [`scraper/`](scraper/) — Fetch proceedings (TEI XML) and media (RSS feeds) from the Bundestag's open-data sources.
-- [`parsers/`](parsers/) — Convert TEI XML and media RSS into intermediate per-session JSON.
-- [`merger/`](merger/) — Join media + proceedings into Stage 2 JSON. Uses Needleman-Wunsch alignment to match speeches across the two streams.
-- [`workflow.py`](workflow.py) — Main entry point. A thin wrapper that defines DE-specific download/parse/merge/align adapters (`WorkflowHooks`) and calls the shared orchestrator in [`optv/shared/workflow.py`](../../shared/workflow.py). Each `--*` flag enables one stage; flags are idempotent; `--force` re-runs.
-- [`common.py`](common.py) — `Config` class (paths, file naming, mtime checks). Re-exports `SessionStatus` and the publish helpers (`data_signature`, `is_demotion`, `carry_forward_wids`, `carry_forward_enrichments`) from [`optv/shared/`](../../shared/).
-- [`manifest.yaml`](manifest.yaml) — Per-parliament metadata read by Conductor (supported stages, periods, entity dump URL, retry defaults).
-- [`update`](update) — Shell wrapper baking in `--period=21 --retry-count=20` for routine runs.
-- [`Makefile`](Makefile) — `make download` / `make all` for fine-grained, mtime-driven invocations.
+Two streams, both fetched from public Bundestag sources, joined per session. Proceedings are the authoritative spine — every published speech keeps its transcript text.
+
+- **Proceedings stream** ([`scraper/fetch_proceedings.py`](scraper/fetch_proceedings.py) → [`parsers/proceedings2json.py`](parsers/proceedings2json.py)): the official TEI XML Plenarprotokoll. One file per session lands in `original/proceedings/`, parsed to intermediate JSON.
+- **Media stream** ([`scraper/fetch_media.py`](scraper/fetch_media.py), [`scraper/update_media.py`](scraper/update_media.py) → [`parsers/media2json.py`](parsers/media2json.py)): the Bundestag media RSS feed (one per period). Per-speech MP4 URLs and metadata land in `original/media/`.
+
+## Merge strategy
+
+[`merger/merge_session.py`](merger/merge_session.py) runs **Needleman-Wunsch alignment** on the two streams, matching transcript speech entries against media items by speaker and agenda position. Confidence is recorded in `debug.confidence`.
 
 ## Running
 
 ```bash
-./workflow.py --period=21 <data_dir>
+./optv/parliaments/DE/update <data_dir>
+# or, for finer control:
+./optv/parliaments/DE/workflow.py --period=21 <data_dir> \
+    --download-original --merge-speeches \
+    --link-entities --align-sentences --extract-entities
 ```
 
-`<data_dir>` should be a clone of [OpenParliamentTV-Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE). Stage flags: `--download-original`, `--merge-speeches`, `--link-entities`, `--align-sentences`, `--extract-entities`. A lockfile (`<data_dir>/optv.lock`) blocks concurrent runs.
+`<data_dir>` should be a clone of [OpenParliamentTV-Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE). The `update` wrapper bakes in `--period=21 --retry-count=20`. Each `--*` stage flag is opt-in and idempotent; `--force` re-runs an already-completed stage. A lockfile (`<data_dir>/optv.lock`) blocks concurrent runs. `make download` / `make all` mirror the mtime-driven flow.
 
-The Bundestag media server frequently returns 503s when building responses for older periods. `--retry-count` retries with random backoff (≤10s) between attempts; the scraper only re-downloads files that aren't already present.
+## Known limitations
 
-## Dependencies
-
-`pip install -r ../../../requirements.txt`. `aeneas` (alignment) needs `ffmpeg` + `espeak`. NER needs the `de_core_news_md` spaCy model and an `entityfishing` API endpoint.
-
-## Adding another parliament
-
-See [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) — this directory is the reference template.
+- **Media-server 503s on older periods.** The Bundestag media server frequently 503s when building responses for archived periods. `--retry-count` (default 20 via the `update` wrapper) retries with random backoff (≤10s); only missing files are re-fetched.
+- **NER/NEL externals required.** Alignment needs `ffmpeg` + `espeak`; NER needs the `de_core_news_md` spaCy model and an `entityfishing` API endpoint (`--ner-api-endpoint`).
