@@ -288,6 +288,66 @@ def classify_es(objeto: Optional[str], fase: Optional[str] = None,
 
 
 # ---------------------------------------------------------------------------
+# EU — European Parliament (CRE rubric titles)
+# ---------------------------------------------------------------------------
+
+# CRE agenda headings appear in English on the *_EN.html doc, regardless of
+# spoken-language preservation in speech bodies. Ordered (regex, native, core);
+# first match wins. Matched against the agendaItem officialTitle.
+_EU_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r'opening of the sitting', re.I), "EU-opening", CORE_OPENING),
+    (re.compile(r'resumption of the sitting', re.I), "EU-resumption", CORE_OPENING),
+    (re.compile(r'closure of the sitting', re.I), "EU-closing", CORE_CLOSING),
+    (re.compile(r'one[- ]minute speeches', re.I), "EU-one_minute_speeches", CORE_REGULAR),
+    (re.compile(r'question time', re.I), "EU-question_time", CORE_QA),
+    (re.compile(r'(?:explanations of vote|explanation of vote)', re.I), "EU-explanations_of_vote", CORE_VOTING),
+    (re.compile(r'\bvoting time\b|\bvote\b\s*$|\(vote\)', re.I), "EU-voting", CORE_VOTING),
+    (re.compile(r'corrections to votes|voting intentions', re.I), "EU-vote_corrections", CORE_VOTING),
+    (re.compile(r'formal sitting', re.I), "EU-formal_sitting", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r'address by', re.I), "EU-address", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r'statements? by (?:the|its) president', re.I), "EU-presidential_statement", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r'commission statement|council statement|statement (?:by|from) the (?:commission|council)', re.I),
+     "EU-institutional_statement", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r'order of business', re.I), "EU-order_of_business", CORE_PROCEDURAL),
+    (re.compile(r'composition of (?:parliament|committees)', re.I), "EU-composition", CORE_PROCEDURAL),
+    (re.compile(r'verification of credentials', re.I), "EU-credentials", CORE_PROCEDURAL),
+    (re.compile(r'membership of (?:committees|delegations)', re.I), "EU-membership", CORE_PROCEDURAL),
+    (re.compile(r'agenda|amendment to the agenda', re.I), "EU-agenda", CORE_PROCEDURAL),
+    (re.compile(r'transfer of appropriations|implementation of', re.I), "EU-procedural", CORE_PROCEDURAL),
+    (re.compile(r'topical debate', re.I), "EU-topical_debate", CORE_CURRENT_AFFAIRS),
+    (re.compile(r'debates? on cases of breaches of human rights', re.I), "EU-human_rights_debate", CORE_REGULAR),
+    (re.compile(r'\(debate\)\s*$|\bdebate\b', re.I), "EU-debate", CORE_REGULAR),
+    (re.compile(r'\(consultation\)\s*$', re.I), "EU-consultation", CORE_REGULAR),
+    (re.compile(r'(?:annual|special|own[- ]initiative) report', re.I), "EU-report", CORE_REPORT),
+    (re.compile(r'recommendation', re.I), "EU-recommendation", CORE_RECOMMENDATION),
+    (re.compile(r'budget', re.I), "EU-budget", CORE_BUDGET),
+    (re.compile(r'election of', re.I), "EU-election", CORE_ELECTION),
+    (re.compile(r'oath|solemn declaration', re.I), "EU-oath", CORE_OATH),
+    (re.compile(r'condolences?|in memoriam', re.I), "EU-condolence", CORE_CONDOLENCE),
+    (re.compile(r'rules of procedure', re.I), "EU-rules_of_procedure", CORE_RULES_OF_PROCEDURE),
+    (re.compile(r'negotiations ahead|first reading|second reading|third reading', re.I),
+     "EU-legislative_procedure", CORE_REGULAR),
+    (re.compile(r'announcement', re.I), "EU-announcement", CORE_PROCEDURAL),
+]
+
+
+def classify_eu_native(official_title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify an EU CRE agenda item by its English official title.
+
+    Returns ``(native_type, core_type)`` where ``native_type`` is an ``EU-*``
+    token and ``core_type`` is one of the ``CORE_*`` constants. Falls back to
+    ``(None, CORE_REGULAR)`` when no pattern matches — CRE titles are
+    free-form so the fall-through rate is non-trivial.
+    """
+    if not official_title:
+        return None, CORE_REGULAR
+    for pat, native, core in _EU_PATTERNS:
+        if pat.search(official_title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
 # Convenience: write classification onto an agendaItem dict
 # ---------------------------------------------------------------------------
 
