@@ -40,7 +40,12 @@ def _build_pipeline(spacy_model: str, ef_lang: str, api_ef_base: str):
     """Load a spaCy model and attach the entityfishing pipe. Returns the
     nlp object, or None if entityfishing isn't registered (e.g. import path
     misconfigured)."""
-    import spacyfishing  # noqa: F401  registers the 'entityfishing' spaCy factory
+    # Lazy import so test/parse-only code paths don't require spacyfishing.
+    # Gate must use ``has_factory`` rather than ``factory_names``: if a
+    # parliament's parser ran ``spacy.load(...)`` earlier in the process,
+    # ``nlp.factory_names`` is stale and won't list 'entityfishing' even
+    # though the factory is registered and ``add_pipe`` works.
+    import spacyfishing  # noqa: F401  registers the 'entityfishing' factory
     try:
         nlp = spacy.load(spacy_model)
     except (OSError, ImportError) as e:
@@ -50,7 +55,7 @@ def _build_pipeline(spacy_model: str, ef_lang: str, api_ef_base: str):
             spacy_model, e, spacy_model,
         )
         return None
-    if 'entityfishing' not in nlp.factory_names:
+    if not nlp.has_factory('entityfishing'):
         logger.error("Cannot find entityfishing spaCy factory. Cannot do NER.")
         return None
     nlp.add_pipe("entityfishing", config={'language': ef_lang,
