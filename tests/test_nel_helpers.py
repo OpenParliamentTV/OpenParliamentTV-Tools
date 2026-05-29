@@ -8,6 +8,7 @@ from optv.shared.nel import (
     link_entities,
     link_entities_from_file,
 )
+from optv.shared.workflow import _nel_is_current
 
 
 def test_cleanup_normalises_whitespace_punctuation_accents():
@@ -170,3 +171,53 @@ def test_link_entities_from_file_writes_first_run_without_prior_nel(tmp_path):
 
     result = json.loads(src.read_text(encoding="utf-8"))
     assert "nel" in result["meta"]["processing"]
+
+
+def _write_processing(path, processing):
+    path.write_text(json.dumps({"meta": {"processing": processing}, "data": []}),
+                    encoding="utf-8")
+
+
+def test_nel_is_current_false_when_nel_timestamp_missing(tmp_path):
+    """Live-broadcast regression: a re-merge that drops the `nel` key from
+    meta.processing must re-trigger NEL on the next cron tick. The old
+    SessionStatus.linked gate treated such a session as done if any one
+    speaker still had a wid carried over from the previous publish."""
+    src = tmp_path / "session.json"
+    _write_processing(src, {"merge": "2026-05-20T19:50:28", "align": "2026-05-21T11:15:54"})
+    assert _nel_is_current(src) is False
+
+
+def test_nel_is_current_true_when_nel_after_merge_and_align(tmp_path):
+    src = tmp_path / "session.json"
+    _write_processing(src, {
+        "merge": "2026-05-13T09:50:38",
+        "align": "2026-05-13T12:46:37",
+        "nel": "2026-05-16T18:07:54",
+    })
+    assert _nel_is_current(src) is True
+
+
+def test_nel_is_current_false_when_merge_newer_than_nel(tmp_path):
+    """A re-merge during a live session bumps `merge` past the last NEL run,
+    even if `nel` is still present from the first cron tick."""
+    src = tmp_path / "session.json"
+    _write_processing(src, {
+        "merge": "2026-05-20T19:50:28",
+        "nel": "2026-05-20T14:20:37",
+    })
+    assert _nel_is_current(src) is False
+
+
+def test_nel_is_current_settles_empty_session_after_one_pass(tmp_path):
+    """A session whose speakers couldn't be matched still settles after one
+    NEL pass -- link_entities_from_file writes a `nel` timestamp even when it
+    linked nothing, so the gate flips to current and stops looping."""
+    src = tmp_path / "session.json"
+    payload = {"meta": {"processing": {"merge": "2026-05-20T19:50:28"}},
+               "data": [{"people": [{"label": "Unknown Speaker"}]}]}
+    src.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    assert _nel_is_current(src) is False  # first pass needed
+
+    link_entities_from_file(src, src, {}, {})
+    assert _nel_is_current(src) is True   # second pass skipped

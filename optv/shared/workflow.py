@@ -130,6 +130,38 @@ def _nel_source(config, session: str) -> Path:
     return config.file(session, 'merged')
 
 
+def _nel_is_current(source_file: Path) -> bool:
+    """True if NEL has already processed the current state of ``source_file``.
+
+    Compares the file's own ``meta.processing.nel`` against its ``merge`` and
+    ``align`` timestamps -- NEL re-runs whenever an upstream stage has
+    advanced past its last pass. This catches new speeches added by a
+    re-merge during a live broadcast (the old SessionStatus.linked gate
+    treated the whole session as done once any one speaker had a wid, so
+    the bulk of a partially-published session never got linked). Empty or
+    fully-unmatched sessions still settle after one pass: link_entities_from_file
+    always writes a ``nel`` timestamp on first run even when nothing was
+    linked, so the gate flips to current and the loop stops.
+
+    An entity-registry refresh (new wid for a previously-unmatchable label)
+    is not auto-detected; use --force to re-propagate.
+    """
+    try:
+        with open(source_file) as f:
+            doc = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return False
+    proc = doc.get('meta', {}).get('processing', {})
+    nel_ts = proc.get('nel')
+    if not nel_ts:
+        return False
+    upstream = max(
+        (proc[k] for k in ('merge', 'align') if k in proc),
+        default=None,
+    )
+    return upstream is None or nel_ts >= upstream
+
+
 def _default_session_in_scope(args, session: str) -> bool:
     if args.limit_to_period and not session.startswith(str(args.period)):
         return False
@@ -200,16 +232,10 @@ def _run_nel_stage(config, args, in_scope, publish) -> None:
     for session in config.sessions():
         if not in_scope(args, session):
             continue
-        status = config.status(session)
-        # Skip already-linked sessions; an entity-registry refresh needs --force
-        # to re-propagate. Auto-detecting changes via entities.json mtime is
-        # unreliable -- some cron paths re-curl the file every run, which would
-        # otherwise cause every session to be re-linked + re-published every
-        # run, producing timestamp-only commit churn downstream.
-        if SessionStatus.linked in status and not args.force:
-            continue
         source_file = _nel_source(config, session)
         if not source_file.exists():
+            continue
+        if not args.force and _nel_is_current(source_file):
             continue
         logger.warning(f"Linking entities for {session} from {source_file.name}")
         link_entities_from_file(source_file, source_file, persons, factions)
