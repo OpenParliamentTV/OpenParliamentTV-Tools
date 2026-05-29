@@ -226,6 +226,51 @@ def classify_de_rp(title: Optional[str]) -> tuple[Optional[str], str]:
 
 
 # ---------------------------------------------------------------------------
+# DE-ST — Landtag Sachsen-Anhalt title regex
+# ---------------------------------------------------------------------------
+
+# DE-ST publishes a per-TOP "Tagesordnungspunkt-Art" (Wahl, Vereidigung,
+# Beratung, Erste Beratung, Zweite Beratung, Aktuelle Debatte, Fragestunde,
+# Befragung der Landesregierung, Eröffnung, Abstimmung). It is rendered as a
+# short prefix on the agenda title block, so we match it as a leading
+# fragment when present and fall back to looser whole-title matches.
+_DE_ST_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"\bBefragung\s+der\s+Landesregierung\b", re.I),
+     "DE-ST-questioning_of_the_government", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\bFragestunde\b", re.I),
+     "DE-ST-question_time", CORE_QA),
+    (re.compile(r"\bAktuelle\s+(?:Debatte|Stunde)\b", re.I),
+     "DE-ST-current_affairs", CORE_CURRENT_AFFAIRS),
+    (re.compile(r"\bRegierungserkl[äa]rung\b", re.I),
+     "DE-ST-government_declaration", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"\bWahl\b", re.I),
+     "DE-ST-election", CORE_ELECTION),
+    (re.compile(r"\b(Vereidigung|Eidesleistung|Amtseid)\b", re.I),
+     "DE-ST-oath", CORE_OATH),
+    (re.compile(r"\bEr[öo]ffnung\b", re.I),
+     "DE-ST-opening", CORE_OPENING),
+    (re.compile(r"\bAbstimmung\b", re.I),
+     "DE-ST-voting", CORE_VOTING),
+    (re.compile(r"\b(Erste|Zweite|Dritte)\s+Beratung\b", re.I),
+     "DE-ST-beratung", CORE_REGULAR),
+    (re.compile(r"\bBeratung\b", re.I),
+     "DE-ST-beratung", CORE_REGULAR),
+    (re.compile(r"\bHaushalts(gesetz|plan)\b|\bEinzelplan\b|\bFinanzplan\b", re.I),
+     "DE-ST-budget", CORE_BUDGET),
+]
+
+
+def classify_de_st(title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify Landtag Sachsen-Anhalt agenda by TOP title."""
+    if not title:
+        return None, CORE_REGULAR
+    for pat, native, core in _DE_ST_PATTERNS:
+        if pat.search(title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
 # SE — Riksdag kammaraktivitet
 # ---------------------------------------------------------------------------
 
@@ -343,6 +388,39 @@ def classify_eu_native(official_title: Optional[str]) -> tuple[Optional[str], st
         return None, CORE_REGULAR
     for pat, native, core in _EU_PATTERNS:
         if pat.search(official_title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# NO — Stortinget (free-text saktittel)
+# ---------------------------------------------------------------------------
+
+# Stortinget does not publish a structured agenda-type field; the
+# ``Saktittel`` element carries free Norwegian Bokmål prose. Patterns are
+# matched case-insensitively; first match wins.
+_NO_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r'\btrontaledebatt(?:en)?\b', re.I), "NO-trontaledebatt", CORE_REGULAR),
+    (re.compile(r'\bspørretime\b|\bspørretimespørsmål\b', re.I), "NO-sporretime", CORE_QA),
+    (re.compile(r'\bmuntlig spørretime\b', re.I), "NO-muntlig_sporretime", CORE_QA),
+    (re.compile(r'\binterpellasjon\b', re.I), "NO-interpellasjon", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r'\bstatsbudsjett(?:et)?\b|\bnasjonalbudsjett(?:et)?\b', re.I), "NO-budsjett", CORE_BUDGET),
+    (re.compile(r'\bvotering\b', re.I), "NO-votering", CORE_VOTING),
+    (re.compile(r'\bvalg\b', re.I), "NO-valg", CORE_ELECTION),
+    (re.compile(r'\bredegjørelse\b', re.I), "NO-redegjorelse", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r'\breferat\b', re.I), "NO-referat", CORE_PROCEDURAL),
+    (re.compile(r'\brepresentantforslag\b', re.I), "NO-representantforslag", CORE_REGULAR),
+    (re.compile(r'\b(?:innstilling|lovforslag)\b', re.I), "NO-lovforslag", CORE_REGULAR),
+    (re.compile(r'\bdagsorden\b', re.I), "NO-dagsorden", CORE_PROCEDURAL),
+]
+
+
+def classify_no(saktittel: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify a Storting agenda by free-text ``Saktittel``."""
+    if not saktittel:
+        return None, CORE_REGULAR
+    for pat, native, core in _NO_PATTERNS:
+        if pat.search(saktittel):
             return native, core
     return None, CORE_REGULAR
 
