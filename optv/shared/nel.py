@@ -26,11 +26,14 @@ def cleanup(name):
         return None
     else:
         name = remove_accents(name.strip()).lower()
-        # Replace non-alphanumeric chars with space
-        name = re.sub('[^A-Za-z0-9]+', ' ', name)
+        # Replace non-word chars with space. Unicode-aware: keeps CJK
+        # characters (TW), Cyrillic, etc. intact while still stripping
+        # punctuation and ASCII-only separators (the legacy behaviour for
+        # Latin-script names).
+        name = re.sub(r'[^\w]+', ' ', name, flags=re.UNICODE)
         # Replace multiple whitespaces
         name = re.sub(r'\s+', ' ', name)
-        return name
+        return name.strip()
 
 def _build_ep_id_index(persons: dict) -> dict:
     """Build {epId: entity} from the persons map.
