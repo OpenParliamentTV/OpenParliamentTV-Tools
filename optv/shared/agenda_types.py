@@ -271,6 +271,318 @@ def classify_de_st(title: Optional[str]) -> tuple[Optional[str], str]:
 
 
 # ---------------------------------------------------------------------------
+# DE-SH — Landtag Schleswig-Holstein title regex
+# ---------------------------------------------------------------------------
+
+# The m7k mediathek exposes a short ``thema`` per speech rather than a full
+# Plenarprotokoll TOP title (e.g. "Eröffnung der Sitzung durch den
+# Alterspräsidenten", "Wahl und Vereidigung der Landtagspräsidentin"). The
+# regex set mirrors what shows up in practice; titles outside these procedural
+# categories fall through to CORE_REGULAR.
+_DE_SH_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"\bBefragung\s+der\s+Landesregierung\b", re.I),
+     "DE-SH-questioning_of_the_government", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\bFragestunde\b", re.I),
+     "DE-SH-question_time", CORE_QA),
+    (re.compile(r"\bAktuelle\s+(?:Debatte|Stunde)\b", re.I),
+     "DE-SH-current_affairs", CORE_CURRENT_AFFAIRS),
+    (re.compile(r"\bRegierungserkl[äa]rung\b", re.I),
+     "DE-SH-government_declaration", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"\bWahl\s+(?:der|des|und)\b", re.I),
+     "DE-SH-election", CORE_ELECTION),
+    (re.compile(r"\b(Vereidigung|Eidesleistung|Amtseid)\b", re.I),
+     "DE-SH-oath", CORE_OATH),
+    (re.compile(r"\bEr[öo]ffnung\b", re.I),
+     "DE-SH-opening", CORE_OPENING),
+    (re.compile(r"\bHaushalts(gesetz|plan)\b|\bEinzelplan\b|\bFinanzplan\b", re.I),
+     "DE-SH-budget", CORE_BUDGET),
+]
+
+
+def classify_de_sh(title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify Landtag Schleswig-Holstein agenda by m7k ``thema`` / TOP title."""
+    if not title:
+        return None, CORE_REGULAR
+    for pat, native, core in _DE_SH_PATTERNS:
+        if pat.search(title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# DE-BY — Bayerischer Landtag "Plenum Online" TOP title regex
+# ---------------------------------------------------------------------------
+
+# The accordion header carries a full TOP title, e.g.
+# "TOP 1a) Erste Lesung zum Gesetzentwurf …", "Aktuelle Stunde …",
+# "Fragestunde", "Befragung der Staatsregierung". Titles outside these
+# procedural categories fall through to CORE_REGULAR (most readings, motions,
+# interpellations are substantive debate).
+_DE_BY_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"\bBefragung\s+der\s+Staatsregierung\b", re.I),
+     "DE-BY-questioning_of_the_government", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\bFragestunde\b|\bM[üu]ndliche\s+Anfragen\b", re.I),
+     "DE-BY-question_time", CORE_QA),
+    (re.compile(r"\bAktuelle\s+Stunde\b", re.I),
+     "DE-BY-current_affairs", CORE_CURRENT_AFFAIRS),
+    (re.compile(r"\bRegierungserkl[äa]rung\b", re.I),
+     "DE-BY-government_declaration", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"\bWahl\s+(?:der|des|und|zum|zur)\b", re.I),
+     "DE-BY-election", CORE_ELECTION),
+    (re.compile(r"\b(Vereidigung|Eidesleistung|Amtseid)\b", re.I),
+     "DE-BY-oath", CORE_OATH),
+    (re.compile(r"\bEr[öo]ffnung\b|\bkonstituierende\b", re.I),
+     "DE-BY-opening", CORE_OPENING),
+    (re.compile(r"\bHaushalts(gesetz|plan)\b|\bEinzelplan\b|\bNachtragshaushalt\b", re.I),
+     "DE-BY-budget", CORE_BUDGET),
+]
+
+
+def classify_de_by(title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify Bayerischer Landtag agenda by the Plenum Online TOP title."""
+    if not title:
+        return None, CORE_REGULAR
+    for pat, native, core in _DE_BY_PATTERNS:
+        if pat.search(title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# DE-BW — Landtag von Baden-Württemberg mediathek chapter-list TOP title regex
+# ---------------------------------------------------------------------------
+
+# The mediathek chapter list gives a TOP header ("TOP 1 Aktuelle Debatte",
+# "TOP 3 Zweite Beratung", "Beginn der Sitzung") plus a substantive
+# description. We classify the combined title+description; first match wins.
+# Readings/motions/interpellations are substantive debate and fall through to
+# CORE_REGULAR.
+_DE_BW_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"\bRegierungsbefragung\b|\bBefragung\s+der\s+Landesregierung\b", re.I),
+     "DE-BW-questioning_of_the_government", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\bFragestunde\b|\bM[üu]ndliche\s+Anfragen\b", re.I),
+     "DE-BW-question_time", CORE_QA),
+    (re.compile(r"\bAktuelle\s+(?:Debatte|Stunde)\b", re.I),
+     "DE-BW-current_affairs", CORE_CURRENT_AFFAIRS),
+    (re.compile(r"\bRegierungserkl[äa]rung\b", re.I),
+     "DE-BW-government_declaration", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"\bWahl\s+(?:der|des|und|zum|zur)\b", re.I),
+     "DE-BW-election", CORE_ELECTION),
+    (re.compile(r"\b(Vereidigung|Eidesleistung|Amtseid|Verpflichtung)\b", re.I),
+     "DE-BW-oath", CORE_OATH),
+    (re.compile(r"\bBeginn\s+der\s+Sitzung\b|\bEr[öo]ffnung\b|\bkonstituierende\b", re.I),
+     "DE-BW-opening", CORE_OPENING),
+    (re.compile(r"\bAbstimmung\b", re.I),
+     "DE-BW-voting", CORE_VOTING),
+    (re.compile(r"\bStaatshaushaltsplan\b|\bHaushalts(gesetz|plan)\b|\bEinzelplan\b|"
+                r"\bNachtragshaushalt\b|\bStaatshaushalt\b", re.I),
+     "DE-BW-budget", CORE_BUDGET),
+]
+
+
+def classify_de_bw(title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify Landtag Baden-Württemberg agenda by the mediathek TOP title."""
+    if not title:
+        return None, CORE_REGULAR
+    for pat, native, core in _DE_BW_PATTERNS:
+        if pat.search(title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# DE-HH — Hamburgische Bürgerschaft mediathek agenda-item title regex
+# ---------------------------------------------------------------------------
+
+# The mediathek agenda-item header gives a TOP title ("AKTUELLE STUNDE …",
+# "Aktuelle Befragung des Senats", a motion/bill title, or a memorial header).
+# We classify the title; first match wins. Motions/bills/interpellations are
+# substantive debate and fall through to CORE_REGULAR.
+_DE_HH_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"\bAktuelle\s+(?:Stunde|Debatte)\b", re.I),
+     "DE-HH-current_affairs", CORE_CURRENT_AFFAIRS),
+    (re.compile(r"\b(?:Aktuelle\s+)?Befragung\s+des\s+Senats\b|\bSenatsbefragung\b", re.I),
+     "DE-HH-questioning_of_the_senate", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\bFragestunde\b|\bM[üu]ndliche\s+Anfragen\b", re.I),
+     "DE-HH-question_time", CORE_QA),
+    (re.compile(r"\bRegierungserkl[äa]rung\b", re.I),
+     "DE-HH-government_declaration", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"\bWahl\s+(?:der|des|und|zum|zur|von)\b", re.I),
+     "DE-HH-election", CORE_ELECTION),
+    (re.compile(r"\b(Vereidigung|Verpflichtung|Amtseid|Eidesleistung)\b", re.I),
+     "DE-HH-oath", CORE_OATH),
+    (re.compile(r"\bGedenk(?:worte|en|minute)\b|\bNachruf\b|\bGedenkstunde\b", re.I),
+     "DE-HH-condolence", CORE_CONDOLENCE),
+    (re.compile(r"\bHaushalts(?:gesetz|plan)\b|\bHaushaltsplan\b|\bEinzelplan\b|"
+                r"\bNachtragshaushalt\b|\bHaushalt\b", re.I),
+     "DE-HH-budget", CORE_BUDGET),
+]
+
+
+def classify_de_hh(title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify Hamburgische Bürgerschaft agenda by the mediathek TOP title."""
+    if not title:
+        return None, CORE_REGULAR
+    for pat, native, core in _DE_HH_PATTERNS:
+        if pat.search(title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# DE-NW — Landtag Nordrhein-Westfalen mediathek agenda-item (TOP) title regex
+# ---------------------------------------------------------------------------
+
+# The mediathek video page gives a per-TOP title in an ``<h3 class="e-top__title">``
+# (e.g. "Sitzungseröffnung …", "Aktuelle Stunde …", "Fragestunde", a
+# Gesetzentwurf / Antrag title, "in Verbindung damit" combined headers). We
+# classify the title; first match wins. Bills/motions/interpellations are
+# substantive debate and fall through to CORE_REGULAR.
+_DE_NW_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"\bUnterrichtung\s+durch\s+die\s+Landesregierung\b|"
+                r"\bBefragung\s+der\s+Landesregierung\b", re.I),
+     "DE-NW-questioning_of_the_government", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\bFragestunde\b|\bM[üu]ndliche\s+Anfragen\b", re.I),
+     "DE-NW-question_time", CORE_QA),
+    (re.compile(r"\b(Große|Grosse)\s+Anfrage\b", re.I),
+     "DE-NW-interpellation", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\bAktuelle\s+Stunde\b", re.I),
+     "DE-NW-current_affairs", CORE_CURRENT_AFFAIRS),
+    (re.compile(r"\bRegierungserkl[äa]rung\b", re.I),
+     "DE-NW-government_declaration", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"\bWahl\s+(?:der|des|und|zum|zur|von)\b", re.I),
+     "DE-NW-election", CORE_ELECTION),
+    (re.compile(r"\b(Vereidigung|Eidesleistung|Amtseid|Verpflichtung)\b", re.I),
+     "DE-NW-oath", CORE_OATH),
+    (re.compile(r"\bGedenk(?:en|worte|stunde)\b|\bNachruf\b|\bW[üu]rdigung\b", re.I),
+     "DE-NW-condolence", CORE_CONDOLENCE),
+    (re.compile(r"\b(Sitzungs)?Er[öo]ffnung\b|\bkonstituierende\b", re.I),
+     "DE-NW-opening", CORE_OPENING),
+    (re.compile(r"\bSitzungs(ende|schluss)\b|\bSchluss\s+der\s+Sitzung\b", re.I),
+     "DE-NW-closing", CORE_CLOSING),
+    (re.compile(r"\bAbstimmung\b", re.I),
+     "DE-NW-voting", CORE_VOTING),
+    (re.compile(r"\bHaushalts(?:gesetz|plan|begleitgesetz)\b|\bEinzelplan\b|"
+                r"\bNachtragshaushalt\b", re.I),
+     "DE-NW-budget", CORE_BUDGET),
+]
+
+
+def classify_de_nw(title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify Landtag NRW agenda by the mediathek TOP (``e-top__title``) title."""
+    if not title:
+        return None, CORE_REGULAR
+    for pat, native, core in _DE_NW_PATTERNS:
+        if pat.search(title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# DE-NI — Niedersächsischer Landtag (Plenar-TV API subject metadata)
+# ---------------------------------------------------------------------------
+
+# DE-NI subjects carry structured fields from the Plenar-TV REST API: a free-text
+# ``title``, a ``subjectArt`` (Gesetzentwurf / Antrag / Große Anfrage / …) and a
+# ``consultationType`` (Erste/Abschließende Beratung, …). We classify the combined
+# string; first match wins. Procedural and budget markers come from the title;
+# the ``subjectArt`` buckets the substantive items (bill / motion / interpellation
+# / report / recommendation). Plain readings fall through to CORE_REGULAR.
+_DE_NI_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"\bBefragung\s+der\s+Landesregierung\b", re.I),
+     "DE-NI-questioning_of_the_government", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\b(Mündliche|Muendliche)\s+Anfragen\b|\bFragestunde\b", re.I),
+     "DE-NI-question_time", CORE_QA),
+    (re.compile(r"\b(Große|Grosse|Dringliche)\s+Anfrage\b", re.I),
+     "DE-NI-interpellation", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\bAktuelle\s+Stunde\b", re.I),
+     "DE-NI-current_affairs", CORE_CURRENT_AFFAIRS),
+    (re.compile(r"\bRegierungserkl[äa]rung\b", re.I),
+     "DE-NI-government_declaration", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"\bWahl\s+(?:der|des|und|zum|zur|von)\b", re.I),
+     "DE-NI-election", CORE_ELECTION),
+    (re.compile(r"\b(Vereidigung|Eidesleistung|Amtseid|Verpflichtung)\b", re.I),
+     "DE-NI-oath", CORE_OATH),
+    (re.compile(r"\bGedenk(?:en|worte|stunde)\b|\bNachruf\b|\bW[üu]rdigung\b", re.I),
+     "DE-NI-condolence", CORE_CONDOLENCE),
+    (re.compile(r"\bMitteilungen\b|\bEr[öo]ffnung\b", re.I),
+     "DE-NI-announcements", CORE_PROCEDURAL),
+    (re.compile(r"\bHaushalts(?:gesetz|plan|begleitgesetz|beratungen)\b|\bEinzelplan\b|"
+                r"\bNachtragshaushalt\b|\bHaushaltsgesetz\b", re.I),
+     "DE-NI-budget", CORE_BUDGET),
+    (re.compile(r"\bUnterrichtung\b", re.I),
+     "DE-NI-unterrichtung", CORE_REPORT),
+    (re.compile(r"\bBeschlussempfehlung\b", re.I),
+     "DE-NI-beschlussempfehlung", CORE_RECOMMENDATION),
+    (re.compile(r"\bGesetzentwurf\b", re.I),
+     "DE-NI-gesetzentwurf", CORE_REGULAR),
+    (re.compile(r"\bAntrag\b", re.I),
+     "DE-NI-antrag", CORE_REGULAR),
+]
+
+
+def classify_de_ni(title: Optional[str], subject_art: Optional[str] = None,
+                   consultation_type: Optional[str] = None) -> tuple[Optional[str], str]:
+    """Classify a Niedersächsischer Landtag agenda item.
+
+    Matches the combined ``title | subjectArt | consultationType`` string from
+    the Plenar-TV API; first pattern wins. Returns ``(native_type, core_type)``.
+    """
+    haystack = " | ".join(x for x in (title, subject_art, consultation_type) if x)
+    if not haystack:
+        return None, CORE_REGULAR
+    for pat, native, core in _DE_NI_PATTERNS:
+        if pat.search(haystack):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# DE-SN — Sächsischer Landtag (mediathek per-speech theme / TOP text)
+# ---------------------------------------------------------------------------
+
+# The Saxony mediathek list item carries only a short per-speech ``thema`` text
+# (e.g. "Vor Eintritt in die Tagesordnung", "Aktuelle Debatte: …", a bill title)
+# plus a speech-time category ("Sonderredezeit", "Aktuelle Debatte", "Debatte",
+# "Kurzintervention"). We classify the combined ``thema | speechType`` string;
+# first match wins. Substantive readings/motions fall through to CORE_REGULAR.
+_DE_SN_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"\bBefragung\s+der\s+Staatsregierung\b", re.I),
+     "DE-SN-questioning_of_the_government", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\bFragestunde\b|\bM[üu]ndliche\s+Anfragen\b", re.I),
+     "DE-SN-question_time", CORE_QA),
+    (re.compile(r"\bAktuelle\s+(?:Debatte|Stunde)\b", re.I),
+     "DE-SN-current_affairs", CORE_CURRENT_AFFAIRS),
+    (re.compile(r"\bRegierungserkl[äa]rung\b", re.I),
+     "DE-SN-government_declaration", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"\bWahl\s+(?:der|des|und|zum|zur|von)\b", re.I),
+     "DE-SN-election", CORE_ELECTION),
+    (re.compile(r"\b(Vereidigung|Eidesleistung|Amtseid|Verpflichtung)\b", re.I),
+     "DE-SN-oath", CORE_OATH),
+    (re.compile(r"\bGedenk(?:en|worte|stunde)\b|\bNachruf\b|\bW[üu]rdigung\b", re.I),
+     "DE-SN-condolence", CORE_CONDOLENCE),
+    (re.compile(r"\b(Sitzungs)?Er[öo]ffnung\b|\bkonstituierende\b|"
+                r"\bVor\s+Eintritt\s+in\s+die\s+Tagesordnung\b", re.I),
+     "DE-SN-opening", CORE_OPENING),
+    (re.compile(r"\bAbstimmung\b", re.I),
+     "DE-SN-voting", CORE_VOTING),
+    (re.compile(r"\bHaushalts(?:gesetz|plan|begleitgesetz)\b|\bEinzelplan\b|"
+                r"\bNachtragshaushalt\b|\bDoppelhaushalt\b", re.I),
+     "DE-SN-budget", CORE_BUDGET),
+]
+
+
+def classify_de_sn(title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify a Sächsischer Landtag agenda item by its mediathek thema text."""
+    if not title:
+        return None, CORE_REGULAR
+    for pat, native, core in _DE_SN_PATTERNS:
+        if pat.search(title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
 # SE — Riksdag kammaraktivitet
 # ---------------------------------------------------------------------------
 
@@ -421,6 +733,126 @@ def classify_no(saktittel: Optional[str]) -> tuple[Optional[str], str]:
         return None, CORE_REGULAR
     for pat, native, core in _NO_PATTERNS:
         if pat.search(saktittel):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# FI — Eduskunta (PTK agenda-item titles / käsittely vocabulary)
+# ---------------------------------------------------------------------------
+
+# Finnish plenary agenda items (Asiakohta) carry a free-text Finnish title plus
+# a "käsittely" (reading) stage. Patterns are matched case-insensitively against
+# the agenda title; first match wins. Substantive items (Hallituksen esitys,
+# lähetekeskustelu, käsittely) fall through to CORE_REGULAR.
+_FI_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r'\bnimenhuuto\b', re.I), "FI-nimenhuuto", CORE_PROCEDURAL),
+    (re.compile(r'istunnon\s+avaus|\bavataan\s+istunto', re.I), "FI-avaus", CORE_OPENING),
+    (re.compile(r'\bsuullinen\s+kyselytunti\b', re.I), "FI-suullinen_kyselytunti", CORE_QA),
+    (re.compile(r'\bkyselytunti\b|\bkirjalli(nen|set)\s+kysymy', re.I), "FI-kyselytunti", CORE_QA),
+    (re.compile(r'\bvälikysymys\b', re.I), "FI-valikysymys", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r'\bajankohtaiskeskustelu\b', re.I), "FI-ajankohtaiskeskustelu", CORE_CURRENT_AFFAIRS),
+    (re.compile(r'pääministerin\s+ilmoitus|valtioneuvoston\s+(tiedonanto|ilmoitus|selonteko)', re.I),
+     "FI-paaministerin_ilmoitus", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r'talousarvio|lisätalousarvio|valtion\s+talousarvio', re.I), "FI-talousarvio", CORE_BUDGET),
+    (re.compile(r'\bvaali\b|\bvaalit\b|valitaan|toimitetaan\s+.*vaali', re.I), "FI-vaali", CORE_ELECTION),
+    (re.compile(r'\bäänesty', re.I), "FI-aanestys", CORE_VOTING),
+    (re.compile(r'juhlallinen\s+vakuutus|\bvakuutus\b|\bvala\b', re.I), "FI-vakuutus", CORE_OATH),
+    (re.compile(r'suruvalittelu|vaiti.{0,3}olo|muistosanat', re.I), "FI-suruvalittelu", CORE_CONDOLENCE),
+    (re.compile(r'työjärjestys|menettelytapa', re.I), "FI-tyojarjestys", CORE_RULES_OF_PROCEDURE),
+    (re.compile(r'istunnon\s+päättä|\bpäätetään\s+istunto', re.I), "FI-paattaminen", CORE_CLOSING),
+    (re.compile(r'\bselonteko\b|\bkertomus\b', re.I), "FI-kertomus", CORE_REPORT),
+    (re.compile(r'lähetekeskustelu', re.I), "FI-lahetekeskustelu", CORE_REGULAR),
+    (re.compile(r'(ensimmäinen|toinen|ainoa)\s+käsittely|\bkäsittely\b', re.I), "FI-kasittely", CORE_REGULAR),
+    (re.compile(r'hallituksen\s+esitys|lakialoite|toimenpidealoite', re.I), "FI-esitys", CORE_REGULAR),
+]
+
+
+def classify_fi(title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify an Eduskunta agenda item by its Finnish title text."""
+    if not title:
+        return None, CORE_REGULAR
+    for pat, native, core in _FI_PATTERNS:
+        if pat.search(title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# FR — Assemblée nationale (Syceron point titles / code_grammaire)
+# ---------------------------------------------------------------------------
+
+# French plenary agenda items come from the compte-rendu ``<point>`` titles
+# (free French prose). Patterns are matched case-insensitively against the
+# agenda title; first match wins. Substantive bills ("projet de loi",
+# "discussion des articles") fall through to CORE_REGULAR.
+_FR_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"questions?\s+au\s+gouvernement", re.I), "FR-questions_au_gouvernement", CORE_QA),
+    (re.compile(r"questions?\s+orales", re.I), "FR-questions_orales", CORE_QA),
+    (re.compile(r"d[ée]claration\s+(?:du\s+gouvernement|de\s+politique\s+g[ée]n[ée]rale)", re.I),
+     "FR-declaration_gouvernement", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"motion\s+de\s+censure", re.I), "FR-motion_de_censure", CORE_REGULAR),
+    (re.compile(r"explications?\s+de\s+vote|scrutin\s+public|mise\s+aux\s+voix", re.I),
+     "FR-scrutin", CORE_VOTING),
+    (re.compile(r"\b[ée]lection\s+(?:du|de\s+la|des)\b", re.I), "FR-election", CORE_ELECTION),
+    (re.compile(r"[ée]loge\s+fun[èe]bre|hommage", re.I), "FR-eloge_funebre", CORE_CONDOLENCE),
+    (re.compile(r"ouverture\s+de\s+la\s+(?:session|s[ée]ance)", re.I), "FR-ouverture", CORE_OPENING),
+    (re.compile(r"cl[ôo]ture\s+de\s+la\s+session", re.I), "FR-cloture", CORE_CLOSING),
+    (re.compile(r"rappels?\s+au\s+r[èe]glement|modification\s+de\s+l['’]ordre\s+du\s+jour",
+                re.I), "FR-rappel_au_reglement", CORE_RULES_OF_PROCEDURE),
+    (re.compile(r"projet\s+de\s+loi\s+de\s+finances|loi\s+de\s+finances|budget", re.I),
+     "FR-budget", CORE_BUDGET),
+    (re.compile(r"ordre\s+du\s+jour", re.I), "FR-ordre_du_jour", CORE_PROCEDURAL),
+    (re.compile(r"suspension\s+et\s+reprise\s+de\s+la\s+s[ée]ance|suspension\s+de\s+la\s+s[ée]ance",
+                re.I), "FR-suspension", CORE_PROCEDURAL),
+    (re.compile(r"discussion\s+g[ée]n[ée]rale|discussion\s+des\s+articles|"
+                r"projet\s+de\s+loi|proposition\s+de\s+(?:loi|r[ée]solution)", re.I),
+     "FR-discussion", CORE_REGULAR),
+]
+
+
+def classify_fr(title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify an Assemblée nationale agenda item by its French ``<point>`` title."""
+    if not title:
+        return None, CORE_REGULAR
+    for pat, native, core in _FR_PATTERNS:
+        if pat.search(title):
+            return native, core
+    return None, CORE_REGULAR
+
+
+# ---------------------------------------------------------------------------
+# PT — Assembleia da República (av.parlamento.pt interventionType vocabulary)
+# ---------------------------------------------------------------------------
+
+# Unlike the others, the PT classification key is the per-speech
+# ``interventionType`` from the av.parlamento.pt JSON — a controlled vocabulary
+# (Abertura da sessão, Votações, Intervenção, Pedido de esclarecimento, …), not a
+# free-text agenda title. Matched case/accent-insensitively; first match wins;
+# a plain "Intervenção" (substantive speech) falls through to CORE_REGULAR.
+_PT_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"abertura", re.I), "PT-abertura", CORE_OPENING),
+    (re.compile(r"encerramento", re.I), "PT-encerramento", CORE_CLOSING),
+    (re.compile(r"vota", re.I), "PT-votacoes", CORE_VOTING),
+    (re.compile(r"leitura", re.I), "PT-leitura", CORE_PROCEDURAL),
+    (re.compile(r"interpela", re.I), "PT-interpelacao_a_mesa", CORE_PROCEDURAL),
+    (re.compile(r"protesto", re.I), "PT-protesto", CORE_PROCEDURAL),
+    (re.compile(r"ponto\s+de\s+ordem", re.I), "PT-ponto_de_ordem", CORE_PROCEDURAL),
+    (re.compile(r"defesa\s+da?\s+honra|defesa\s+da\s+consist", re.I),
+     "PT-defesa_da_honra", CORE_PROCEDURAL),
+    (re.compile(r"pedido\s+de\s+esclarecimento|esclarecimento|resposta", re.I),
+     "PT-pedido_de_esclarecimento", CORE_QA),
+    (re.compile(r"declara", re.I), "PT-declaracao_politica", CORE_REGULAR),
+    (re.compile(r"interven", re.I), "PT-intervencao", CORE_REGULAR),
+]
+
+
+def classify_pt(intervention_type: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify a PT speech by its av.parlamento.pt ``interventionType``."""
+    if not intervention_type:
+        return None, CORE_REGULAR
+    for pat, native, core in _PT_PATTERNS:
+        if pat.search(intervention_type):
             return native, core
     return None, CORE_REGULAR
 

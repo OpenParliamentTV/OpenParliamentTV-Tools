@@ -18,8 +18,8 @@ pids
 .idea/
 __pycache__
 _planning/
-
-# Python virtual environments
+.cursor/
+.claude/
 .venv/
 .venv-*/
 

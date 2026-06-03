@@ -82,6 +82,7 @@ Schema validation is structural. Cross-field, cross-item, and cross-source invar
 6. Warnings when `people[].wid` or `people[].faction` are absent (faction warning is restricted to speaker contexts where a faction is expected).
 7. Warning on the deprecated `agendaItem.speechIndex`.
 8. Warning on `Unknown` speaker context.
+9. Warning when two speeches in a session share a `media.sourcePage` (`semantic.media.sourcePage.duplicate`). The platform's media.php import keys speech identity on `sourcePage`, so duplicates collapse distinct speeches at import. Parliaments serving one video per session/debate/part must make it unique per speech — e.g. appending the per-speech start offset (SE `?pos=`, NO `&t=`, FI `?start=`) or a per-speech id (DE-SH, DE-ST `?player=`).
 
 ---
 

@@ -52,6 +52,7 @@ def validate_semantic(doc):
     findings.extend(_rule_people(doc))
     findings.extend(_rule_deprecated_agenda_speech_index(doc))
     findings.extend(_rule_text_contents_source_uri(doc))
+    findings.extend(_rule_media_source_page_unique(doc))
     findings.extend(_rule_sentence_times(doc))
     return findings
 
@@ -234,6 +235,37 @@ def _rule_text_contents_source_uri(doc):
                     f"data/{i}/textContents/{k}/sourceURI",
                     f"sourceURI {uri!r} is not an http(s) URL (likely a local path leaked into output).",
                 ))
+    return out
+
+
+def _rule_media_source_page_unique(doc):
+    """media.sourcePage must be unique per speech within a session.
+
+    The platform's media.php import keys speech identity on ``sourcePage`` to
+    detect already-imported speeches, so two speeches sharing a sourcePage
+    collapse into one (silent data loss). Parliaments with one video per
+    session/debate/part must therefore make sourcePage distinct per speech —
+    e.g. by appending the per-speech start offset (SE: ``?pos=``) or a
+    per-speech id (DE-SH). Empty sourcePage is left to the schema's
+    minLength check.
+    """
+    out = []
+    seen = {}  # sourcePage -> first index
+    for i, sp in enumerate(doc.get("data") or []):
+        page = (sp.get("media") or {}).get("sourcePage")
+        if not page:
+            continue
+        if page in seen:
+            out.append(_warn(
+                "semantic.media.sourcePage.duplicate",
+                f"data/{i}/media/sourcePage",
+                f"sourcePage {page!r} duplicates data[{seen[page]}]; the platform "
+                "keys speech identity on sourcePage, so duplicates collapse "
+                "distinct speeches at import. Append a per-speech token (start "
+                "offset or speech id).",
+            ))
+        else:
+            seen[page] = i
     return out
 
 
