@@ -1,0 +1,29 @@
+name: "Bayerischer Landtag"
+language: deu
+language_code: "de"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: de_core_news_md
+  aeneas_language: deu
+  entityfishing_language: de
+periods: [19]
+# `align` and `ner` deliberately omitted: the "Plenum Online" archive
+# provides a per-speech video spine (per-TOP JSON playlists, one HLS
+# master per speech) but the Plenarprotokoll is PDF-only and we do not
+# yet have a PDF parser. Without transcript text neither stage can
+# produce meaningful output. The platform still imports the per-speech
+# video clips with speaker / faction / agenda metadata. See DE-SH for
+# the same regime.
+supported_stages: [download, parse, merge, nel]
+# Aspirational - the dump may not exist on de-by.openparliament.tv yet.
+# Until it does, scraper/build_entity_dump.py writes the local fallback
+# at <data_dir>/metadata/entities.json.
+entity_dump_url: "https://de-by.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+default_retry_count: 20
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    license: 'Bayerischer Landtag – Plenarvideos sind urheberrechtlich geschützt; Vervielfältigung oder Verwendung nur mit vorheriger Genehmigung. Quelle: Bayerischer Landtag.'
+    creator: Bayerischer Landtag
+    sourceURI: https://www.bayern.landtag.de/aktuelles/sitzungen/plenum-videos/

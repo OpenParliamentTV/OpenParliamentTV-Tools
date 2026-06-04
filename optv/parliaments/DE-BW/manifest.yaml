@@ -1,0 +1,29 @@
+name: "Landtag von Baden-Württemberg"
+language: deu
+language_code: "de"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: de_core_news_md
+  aeneas_language: deu
+  entityfishing_language: de
+periods: [17, 18]
+# `align` and `ner` deliberately omitted: the mediathek video pages carry a
+# per-speech chapter list (one session MP4 + per-speech start offsets, the
+# SE/DE-SH `#t=start,end` model) but the Plenarprotokoll is PDF-only and we do
+# not yet have a PDF parser. Without transcript text neither stage can produce
+# meaningful output. The platform still imports the per-speech video windows
+# with speaker / faction / agenda metadata. See DE-SH / DE-BY for the same
+# regime.
+supported_stages: [download, parse, merge, nel]
+# Aspirational - the dump may not exist on de-bw.openparliament.tv yet.
+# Until it does, scraper/build_entity_dump.py writes the local fallback
+# at <data_dir>/metadata/entities.json.
+entity_dump_url: "https://de-bw.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+default_retry_count: 20
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    license: 'Landtag von Baden-Württemberg – die Aufzeichnungen dürfen zu nicht kommerziellen Zwecken (politische Berichterstattung, Bildung) genutzt werden; keine kommerzielle Verwendung/Werbung. Quelle: Landtag von Baden-Württemberg. https://www.landtag-bw.de/de/mediathek/nutzungsbedingungen-fuer-die-mediathek'
+    creator: Landtag von Baden-Württemberg
+    sourceURI: https://www.landtag-bw.de/de/mediathek/videos

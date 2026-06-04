@@ -1,0 +1,25 @@
+name: "Legislative Yuan (立法院)"
+language: zho
+language_code: "zh"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: zh_core_web_md
+  aeneas_language: cmn               # not used in practice: TW skips aeneas, the
+                                     # whisperx data on each IVOD already carries
+                                     # sentence-level timings. Kept to satisfy
+                                     # inject_locale()'s required-keys check.
+  entityfishing_language: zh
+periods: [11]
+supported_stages: [download, parse, merge, nel, align, ner]
+entity_dump_url: ""                  # built locally; see scraper/build_entity_dump.py
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    creator: 立法院 (Legislative Yuan)
+    license: https://ivod.ly.gov.tw/Copyright
+proceedings:
+  default:
+    creator: 立法院 (Legislative Yuan)
+    license: https://data.gov.tw/license

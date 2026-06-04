@@ -1,0 +1,17 @@
+#! /bin/sh
+
+# Main update script - takes only a data directory.
+# Parliament-specific options baked in.
+#
+# Note: this runs the full pipeline including --download-original because
+# Stortinget's public API has no auth and the per-sesjon overview is small.
+# entity dump is built separately (see scraper/build_entity_dump.py) since
+# no.openparliament.tv doesn't host one yet.
+
+OUTPUT=${1?Missing output directory parameter (data base directory)}
+
+CALLDIR="$(dirname "$(readlink "$0" 2>/dev/null || echo "$0")")"
+
+python3 "${CALLDIR}/workflow.py" --period=22 --retry-count=10 "$OUTPUT" \
+    --download-original --merge-speeches \
+    --link-entities --align-sentences --extract-entities

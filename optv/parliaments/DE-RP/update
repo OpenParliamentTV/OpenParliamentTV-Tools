@@ -1,0 +1,20 @@
+#! /bin/sh
+
+# Main update script - expects a data directory as the only argument.
+# Period 18 and the inbox/media-inbox layout under the data dir are baked in.
+
+OUTPUT=${1?Missing output directory parameter (data base directory)}
+
+CALLDIR="$(dirname "$(readlink "$0" 2>/dev/null || echo "$0")")"
+
+# --limit-session scopes merge/link/align/NER to just the sessions for which
+# we have ePP XML proceedings (currently sessions 77-85 of WP 18). Extra
+# OPAL data outside this range is still ingested into original/media/ but
+# is not published. Update this regex when more proceedings arrive.
+python3 "${CALLDIR}/workflow.py" --period=18 \
+    --limit-session '1807[7-9]|1808[0-5]' \
+    --inbox-dir "${OUTPUT}/inbox" \
+    --media-inbox-dir "${OUTPUT}/original/media/inbox" \
+    --download-original --merge-speeches \
+    --link-entities --align-sentences --extract-entities \
+    "${OUTPUT}"

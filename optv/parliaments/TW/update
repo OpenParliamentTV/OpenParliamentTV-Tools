@@ -1,0 +1,20 @@
+#! /bin/sh
+
+# Update script for an OpenParliamentTV-Data-TW output directory.
+#
+# --download-original is intentionally omitted because TW downloads require an
+# explicit --session <code> (the LY API does not expose a "current
+# plenary" auto-discovery). To download a new plenary, call workflow.py directly:
+#
+#   ./workflow.py --period=11 <data_dir> --download-original \
+#       --session 院會-11-5-11
+#
+# Once raw files exist under original/, this wrapper merges + links + aligns +
+# extracts entities for everything in scope.
+
+OUTPUT=${1?Missing output directory parameter (data base directory)}
+
+CALLDIR="$(dirname "$(readlink "$0" 2>/dev/null || echo "$0")")"
+
+python3 "${CALLDIR}/workflow.py" --period=11 --retry-count=10 "$OUTPUT" \
+    --merge-speeches --link-entities --align-sentences --extract-entities

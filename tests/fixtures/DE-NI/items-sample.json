@@ -1,0 +1,56 @@
+{
+  "session_id": "19080",
+  "period": 19,
+  "sitzung": 80,
+  "tagungsabschnitt": 30,
+  "date": "2025-12-16",
+  "meeting_id": "76ce46ca-d089-4321-a69d-4831724dc075",
+  "session_page_url": "https://plenartv.de/tagungsabschnitt/19-30?sitzung=80",
+  "subjects": [
+    {
+      "subject_id": "aaaa1111-0000-0000-0000-000000000001",
+      "subject_number": 1,
+      "item_number": 11.0,
+      "item_beginning": "09:00:00",
+      "title": "Mitteilungen der Präsidentin",
+      "subject_art": "",
+      "consultation_type": "",
+      "applicant": "",
+      "incoming_print": "",
+      "incoming_print_link": "",
+      "stream_file_name": "session30_meeting80_85516",
+      "video_start_time": "2025-12-16T07:55:16.638000",
+      "video_offset": 0,
+      "vtt_offset": 0,
+      "speeches": [
+        {"timing_id": "t-pres-1", "abg_id": 202835, "surname": "Otte-Kinast",
+         "name": "Barbara", "fraktion": "CDU", "speech_type": "Mitteilungen",
+         "start_secs": 382.0, "stop_secs": 505.0}
+      ]
+    },
+    {
+      "subject_id": "bbbb2222-0000-0000-0000-000000000002",
+      "subject_number": 1,
+      "item_number": 19.0,
+      "item_beginning": "09:10:00",
+      "title": "Entwurf eines Gesetzes über die Feststellung des Haushaltsplans 2026 (Haushaltsgesetz 2026)",
+      "subject_art": "Gesetzentwurf",
+      "consultation_type": "Abschließende Beratung",
+      "applicant": "Landesregierung",
+      "incoming_print": "19/7910",
+      "incoming_print_link": "https://www.landtag-niedersachsen.de/x.pdf",
+      "stream_file_name": "session30_meeting80_85516",
+      "video_start_time": "2025-12-16T07:55:16.638000",
+      "video_offset": 0,
+      "vtt_offset": 0,
+      "speeches": [
+        {"timing_id": "t-mp-2", "abg_id": 200001, "surname": "Mustermann",
+         "name": "Erika", "fraktion": "SPD", "speech_type": "RZ",
+         "start_secs": 1000.0, "stop_secs": 1300.0},
+        {"timing_id": "t-min-3", "abg_id": 200002, "surname": "Heere",
+         "name": "Gerald", "fraktion": "", "speech_type": "Antwort",
+         "start_secs": 700.0, "stop_secs": 999.0}
+      ]
+    }
+  ]
+}

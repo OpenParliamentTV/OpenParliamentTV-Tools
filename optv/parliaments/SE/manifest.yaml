@@ -1,0 +1,22 @@
+name: "Sveriges Riksdag"
+language: swe
+language_code: "sv"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: sv_core_news_md
+  aeneas_language: swe
+  entityfishing_language: sv
+periods: [2025]
+supported_stages: [download, parse, merge, align, nel, ner]
+entity_dump_url: ""             # set if/when an SE entities.json is hosted upstream
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    creator: Sveriges Riksdag
+    license: https://www.riksdagen.se/en/about-the-website/photo-and-film-rights/
+proceedings:
+  default:
+    creator: Sveriges Riksdag
+    license: https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anvandarstod/anvandningsvillkor/

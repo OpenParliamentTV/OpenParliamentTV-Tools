@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "session": "21999",
+    "dateStart": "2025-01-01T10:00:00+01:00",
+    "dateEnd": "2025-01-01T11:00:00+01:00",
+    "processing": {
+      "parse_media": "<timestamp>",
+      "merge": "<timestamp>"
+    },
+    "schemaVersion": "1.0"
+  },
+  "data": [
+    {
+      "parliament": "DE",
+      "electoralPeriod": {
+        "number": 21
+      },
+      "session": {
+        "number": 999,
+        "dateStart": "2025-01-01T10:00:00+01:00",
+        "dateEnd": "2025-01-01T11:00:00+01:00"
+      },
+      "agendaItem": {
+        "title": "Tagesordnungspunkt 1",
+        "officialTitle": "Tagesordnungspunkt 1",
+        "type": "regular",
+        "nativeType": "DE-closing"
+      },
+      "dateStart": "2025-01-01T10:05:00+01:00",
+      "dateEnd": "2025-01-01T10:10:00+01:00",
+      "debug": {
+        "originalTitle": "Redebeitrag von Max Beispiel (SPD) am 01.01.2025 um 10:05 Uhr (999. Sitzung, TOP 1)",
+        "proceedingIndex": 1003,
+        "proceedingIndexes": [
+          1003
+        ],
+        "mediaIndex": 1,
+        "confidence": 0.5,
+        "linkedMediaIndexes": [
+          1
+        ]
+      },
+      "media": {
+        "videoFileURI": "https://example.invalid/test/video.mp4",
+        "sourcePage": "https://example.invalid/test/page/9999001",
+        "duration": 300.0,
+        "creator": "Deutscher Bundestag",
+        "license": "&lt;a href=&quot;https://www.bundestag.de/nutzungsbedingungen&quot; target=&quot;_blank&quot;&gt;Nutzungsbedingungen&lt;/a&gt;",
+        "originMediaID": "9999001",
+        "audioFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/9999001/9999001_mp3_128kb_stereo_de_128.mp3"
+      },
+      "people": [
+        {
+          "label": "Max Beispiel",
+          "context": "main-speaker",
+          "faction": {
+            "label": "SPD"
+          }
+        },
+        {
+          "type": "memberOfParliament",
+          "label": "Erika Mustermann",
+          "context": "main-proceeding-speaker"
+        }
+      ],
+      "speechIndex": 1,
+      "textContents": [
+        {
+          "type": "proceedings",
+          "sourceURI": "/Users/joscha/Projects/OpenParliamentTV/_SERVER/OpenParliamentTV-Tools/tests/fixtures/DE/tiny-proceedings.xml",
+          "creator": "Deutscher Bundestag",
+          "license": "Public Domain",
+          "language": "de",
+          "originTextID": "ende-intro",
+          "textBody": [
+            {
+              "speech_id": "ende-intro",
+              "type": "speech",
+              "speaker": "Erika Mustermann",
+              "speakerstatus": "main-speaker",
+              "text": "Die Sitzung ist geschlossen.",
+              "sentences": [
+                {
+                  "text": "Die Sitzung ist geschlossen."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "documents": []
+    }
+  ]
+}

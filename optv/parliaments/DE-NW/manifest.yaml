@@ -1,0 +1,29 @@
+name: "Landtag Nordrhein-Westfalen"
+language: deu
+language_code: "de"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: de_core_news_md
+  aeneas_language: deu
+  entityfishing_language: de
+periods: [18]
+# `align` and `ner` deliberately omitted: the mediathek session pages carry a
+# rich per-speech spine (one HLS stream per session + precise per-speech start
+# offsets and real wall-clock session start, the SE/DE-SH `#t=start,end` model),
+# but the Plenarprotokoll is PDF-only (`MMP18-{N}.pdf`) and we do not yet have a
+# PDF parser. Without transcript text neither stage can produce meaningful
+# output. The platform still imports the per-speech video windows with speaker /
+# faction / agenda metadata. See DE-HH / DE-NI / DE-BW for the same regime.
+supported_stages: [download, parse, merge, nel]
+# Aspirational - the dump may not exist on de-nw.openparliament.tv yet.
+# Until it does, scraper/build_entity_dump.py writes the local fallback
+# at <data_dir>/metadata/entities.json.
+entity_dump_url: "https://de-nw.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+default_retry_count: 20
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    license: Landtag Nordrhein-Westfalen – die Aufzeichnungen dürfen zu nicht kommerziellen Zwecken (politische Berichterstattung, Bildung) genutzt werden; Quellenangabe "Landtag Nordrhein-Westfalen". https://www.landtag.nrw.de/home/footer/impressum.html
+    creator: Landtag Nordrhein-Westfalen
+    sourceURI: https://www.landtag.nrw.de/home/mediathek.html

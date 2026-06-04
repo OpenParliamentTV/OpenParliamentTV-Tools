@@ -1,0 +1,32 @@
+name: "Niedersächsischer Landtag"
+language: deu
+language_code: "de"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: de_core_news_md
+  aeneas_language: deu
+  entityfishing_language: de
+periods: [19]
+# `align` and `ner` deliberately omitted for v1: the Plenar-TV API
+# (api.plenartv.de) already provides a rich per-speech spine (per-subject agenda
+# + speaker timings into a per-Sitzung HLS stream + stable abg_id speaker IDs),
+# so the published Stage 2 carries video + speaker + agenda metadata with an
+# empty `textContents` list — the DE-HH / DE-SH / DE-BY / DE-BW regime.
+#
+# Unlike those (PDF-locked text), DE-NI's source *does* expose machine-readable
+# text: time-aligned WebVTT subtitles per subject (GET /vtt/{subject_id}) and the
+# verbatim Plenarprotokoll PDF. Wiring VTT would re-enable text + sentence
+# timings (no aeneas needed) — a planned next pass, not v1.
+supported_stages: [download, parse, merge, nel]
+# Aspirational — the hosted dump may not exist on de-ni.openparliament.tv yet.
+# Until it does, scraper/build_entity_dump.py writes the local fallback at
+# <data_dir>/metadata/entities.json (picked up by optv.shared.nel.get_nel_data).
+entity_dump_url: "https://de-ni.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+default_retry_count: 20
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    creator: Niedersächsischer Landtag
+    license: 'Niedersächsischer Landtag – Plenar-TV. Die Aufzeichnungen dürfen unter Angabe der Quelle "Niedersächsischer Landtag" genutzt werden; Nutzungsbedingungen: https://www.landtag-niedersachsen.de/plenar-tv-nutzungsbedingungen/'
+    sourceURI: https://plenartv.de/

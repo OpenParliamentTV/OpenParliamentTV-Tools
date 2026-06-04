@@ -1,0 +1,24 @@
+name: "Assembleia da República"
+language: por                    # ISO 639-3
+language_code: "pt"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:                         # consumed by optv.shared.{align,ner}
+  spacy_model: pt_core_news_md          # full pip model id (python -m spacy download pt_core_news_md)
+  aeneas_language: por                  # ISO 639-3 for aeneas/espeak
+  entityfishing_language: pt            # 2-letter; the Portuguese KB `db-pt` must be
+                                        # loaded into the entity-fishing endpoint
+# `--period` is the legislatura (sequential term). Sessions are keyed by
+# {legislatura}-{sessão legislativa}-{reunião}; the per-sessão-legislativa meeting
+# number resets each parliamentary year, so common.py encodes
+# session.number = sessão_legislativa * 1000 + reunião to stay unique within the
+# term (TW/FI/FR composite-encoding class). See optv/parliaments/PT/common.py.
+periods: [17]                   # XVII legislatura (since 2025)
+supported_stages: [download, parse, merge, nel, align, ner]
+entity_dump_url: ""             # built locally via scraper/build_entity_dump.py (FR/NO/FI pattern)
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    creator: Assembleia da República
+    license: https://www.parlamento.pt/

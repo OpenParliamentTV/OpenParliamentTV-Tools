@@ -1,0 +1,26 @@
+name: "Assemblée nationale"
+language: fra                   # ISO 639-3
+language_code: "fr"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:                         # consumed by optv.shared.{align,ner}
+  spacy_model: fr_core_news_md          # full pip model id (python -m spacy download fr_core_news_md)
+  aeneas_language: fra                  # ISO 639-3 for aeneas/espeak
+  entityfishing_language: fr            # 2-letter for entity-fishing (French KB `db-fr` required)
+# `--period` is the legislature (sequential term). Sessions are keyed by the
+# Syceron compte-rendu uid (session-ordinaire year + séance number), which
+# resets each parliamentary year; see optv/parliaments/FR/common.py for the
+# uid ↔ session.number encoding.
+periods: [17]                   # 17e législature (snap election July 2024)
+supported_stages: [download, parse, merge, nel, align, ner]
+entity_dump_url: ""             # built locally via scraper/build_entity_dump.py (NO/FI pattern)
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    creator: Assemblée nationale
+    license: https://www.assemblee-nationale.fr/
+proceedings:
+  default:
+    creator: Assemblée nationale
+    license: https://www.assemblee-nationale.fr/

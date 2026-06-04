@@ -1,0 +1,17 @@
+#! /bin/sh
+
+# Main update script - it expects only a data directory for output.
+# Parliament-specific options are baked in here.
+#
+# Note: --download-original is intentionally omitted because Riksdag downloads
+# require an explicit --session <dok_id> (the anforandelista filter is
+# unreliable). To download a new protokoll, call workflow.py directly:
+#   ./workflow.py --period=2025 <data_dir> --download-original --session HD0991
+# Once raw files exist under original/, this wrapper merges + aligns + NERs them.
+
+OUTPUT=${1?Missing output directory parameter (data base directory)}
+
+CALLDIR="$(dirname "$(readlink "$0" 2>/dev/null || echo "$0")")"
+
+python3 "${CALLDIR}/workflow.py" --period=2025 --retry-count=10 "$OUTPUT" \
+    --merge-speeches --align-sentences --extract-entities

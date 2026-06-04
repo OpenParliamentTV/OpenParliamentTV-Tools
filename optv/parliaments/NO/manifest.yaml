@@ -1,0 +1,18 @@
+name: "Stortinget"
+language: nob
+language_code: "nb"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: nb_core_news_md
+  aeneas_language: nor
+  entityfishing_language: sv      # entity-fishing has no Norwegian KB; Swedish is the closest cognate, returns correct Wikidata QIDs for Norwegian proper nouns
+periods: [22]
+supported_stages: [download, parse, merge, nel, align, ner]
+entity_dump_url: ""                  # built locally; see scraper/build_entity_dump.py
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+proceedings:
+  default:
+    creator: Stortinget
+    license: https://data.stortinget.no/om-datatjenesten/bruksvilkar/

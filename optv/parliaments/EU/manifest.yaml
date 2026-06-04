@@ -1,0 +1,17 @@
+name: "European Parliament"
+language: eng
+language_code: "en"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: en_core_web_md
+  aeneas_language: eng
+  entityfishing_language: en
+periods: [10]
+supported_stages: [download, parse, merge, align, nel, ner]
+entity_dump_url: ""                     # local-file only until an EU OPTV platform
+                                        # hosts a dump endpoint. Generated via
+                                        # scraper/build_entity_dump.py → metadata/entities.json
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# NLP model installation (one-time, per host):
+#   python -m spacy download en_core_web_md

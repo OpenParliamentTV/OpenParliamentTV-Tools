@@ -1,0 +1,17 @@
+#! /bin/sh
+
+# Main update script - expects a data directory for output. Parliament-specific
+# options are baked in here. See docs/ADDING-A-PARLIAMENT.md for context.
+#
+# `--period` is the vaalikausi (term) start year. NER is omitted (entity-fishing
+# has no Finnish KB). When --session is not given, sessions are discovered
+# from SaliDBIstunto for the term years; to (re)process one session:
+#   ./workflow.py --period=2023 <data_dir> --session 2026-058 \
+#       --download-original --merge-speeches --link-entities --align-sentences
+
+OUTPUT=${1?Missing output directory parameter (data base directory)}
+
+CALLDIR="$(dirname "$(readlink "$0" 2>/dev/null || echo "$0")")"
+
+python3 "${CALLDIR}/workflow.py" --period=2023 --retry-count=10 "$OUTPUT" \
+    --download-original --merge-speeches --link-entities --align-sentences

@@ -1,0 +1,15 @@
+#! /bin/sh
+
+# Main update script - expects a data directory as the only argument.
+# Period 18 (current WP) is baked in. align/ner deliberately omitted: see
+# manifest.yaml (no PDF parser yet, no transcript text to align).
+
+OUTPUT=${1?Missing output directory parameter (data base directory)}
+
+CALLDIR="$(dirname "$(readlink "$0" 2>/dev/null || echo "$0")")"
+
+python3 "${CALLDIR}/workflow.py" --period=18 \
+    --retry-count=20 \
+    --download-original --merge-speeches \
+    --link-entities \
+    "${OUTPUT}"

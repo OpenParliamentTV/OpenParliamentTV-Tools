@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Trimmed, synthetic Eduskunta PTK plenary-minutes XML modelled on the real
+  VaskiData document for PTK 58/2026 vp. Two speech turns under one agenda item.
+  Namespaces are collapsed to a single prefix (the parser matches on local
+  element/attribute names), but the element nesting and the attributes the
+  parser reads (muuTunnus, kieliKoodi, puheenvuoroAloitusHetki/-LopetusHetki)
+  mirror the production schema.
+-->
+<vsk:Siirto xmlns:vsk="urn:fi:eduskunta:test">
+  <vsk:Asiakohta>
+    <vsk:KohtaNumero>6</vsk:KohtaNumero>
+    <vsk:KohtaNimeke>
+      <vsk:NimekeTeksti>Hallituksen esitys eduskunnalle työeläkejärjestelmästä</vsk:NimekeTeksti>
+    </vsk:KohtaNimeke>
+    <vsk:PuheenvuoroToimenpide vsk:muuTunnus="991373" vsk:puheenvuoroAloitusHetki="2026-05-29T13:07:28" vsk:puheenvuoroLuokitusKoodi="T">
+      <vsk:AjankohtaTeksti>13.07</vsk:AjankohtaTeksti>
+      <vsk:Toimija>
+        <vsk:Henkilo vsk:muuTunnus="1391">
+          <vsk:EtuNimi>Ari</vsk:EtuNimi>
+          <vsk:SukuNimi>Koponen</vsk:SukuNimi>
+          <vsk:LisatietoTeksti>ps</vsk:LisatietoTeksti>
+        </vsk:Henkilo>
+      </vsk:Toimija>
+      <vsk:PuheenvuoroOsa vsk:kieliKoodi="fi" vsk:muuTunnus="647919" vsk:puheenvuoroAloitusHetki="2026-05-29T13:07:28" vsk:puheenvuoroLopetusHetki="2026-05-29T13:07:50">
+        <vsk:KohtaSisalto>
+          <vsk:KappaleKooste>Arvoisa herra puhemies! [Hälinää — Puhemies koputtaa] Tällä esityksellä turvataan työeläkejärjestelmää.</vsk:KappaleKooste>
+          <vsk:PuheenjohtajaRepliikki>
+            <vsk:PuheenjohtajaTeksti>Puhemies Jussi Halla-aho</vsk:PuheenjohtajaTeksti>
+            <vsk:KappaleKooste>Kiitoksia. — Edustaja Lyly, olkaa hyvä.</vsk:KappaleKooste>
+          </vsk:PuheenjohtajaRepliikki>
+        </vsk:KohtaSisalto>
+      </vsk:PuheenvuoroOsa>
+    </vsk:PuheenvuoroToimenpide>
+    <vsk:PuheenvuoroToimenpide vsk:muuTunnus="991374" vsk:puheenvuoroAloitusHetki="2026-05-29T13:07:50" vsk:puheenvuoroLuokitusKoodi="T">
+      <vsk:AjankohtaTeksti>13.07</vsk:AjankohtaTeksti>
+      <vsk:Toimija>
+        <vsk:Henkilo vsk:muuTunnus="1511">
+          <vsk:EtuNimi>Lauri</vsk:EtuNimi>
+          <vsk:SukuNimi>Lyly</vsk:SukuNimi>
+          <vsk:LisatietoTeksti>sd</vsk:LisatietoTeksti>
+        </vsk:Henkilo>
+      </vsk:Toimija>
+      <vsk:PuheenvuoroOsa vsk:kieliKoodi="fi" vsk:muuTunnus="647920" vsk:puheenvuoroAloitusHetki="2026-05-29T13:07:50" vsk:puheenvuoroLopetusHetki="2026-05-29T13:11:00">
+        <vsk:KohtaSisalto>
+          <vsk:KappaleKooste>Arvoisa puhemies! Tämä lakiesitys on tärkeä. Kannatan sitä.</vsk:KappaleKooste>
+        </vsk:KohtaSisalto>
+      </vsk:PuheenvuoroOsa>
+    </vsk:PuheenvuoroToimenpide>
+  </vsk:Asiakohta>
+</vsk:Siirto>

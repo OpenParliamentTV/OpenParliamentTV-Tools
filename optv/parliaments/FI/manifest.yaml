@@ -1,0 +1,28 @@
+name: "Eduskunta"
+language: fin                    # ISO 639-3
+language_code: "fi"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:                         # consumed by optv.shared.{align,ner}
+  spacy_model: fi_core_news_md          # full pip model id (python -m spacy download fi_core_news_md)
+  aeneas_language: fin                  # ISO 639-3 for aeneas/espeak
+  entityfishing_language: fi            # 2-letter; informational only — `ner` is not in
+                                        # supported_stages (entity-fishing ships no Finnish KB,
+                                        # and Finnish is Finno-Ugric so no cognate fallback works)
+# `--period` is the vaalikausi (electoral term) start year. The Finnish
+# parliament keys sessions by valtiopäivät (parliamentary year) + number, which
+# spans the term; see optv/parliaments/FI/common.py for the year+number ↔
+# session.number encoding.
+periods: [2023]                 # vaalikausi 2023–2027
+supported_stages: [download, parse, merge, nel, align]
+entity_dump_url: ""             # built locally via scraper/build_entity_dump.py (NO pattern)
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    creator: Eduskunta
+    license: https://verkkolahetys.eduskunta.fi/fi/kayttoehdot/
+proceedings:
+  default:
+    creator: Eduskunta
+    license: https://avoindata.eduskunta.fi/

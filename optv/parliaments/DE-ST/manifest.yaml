@@ -1,0 +1,24 @@
+name: "Landtag von Sachsen-Anhalt"
+language: deu
+language_code: "de"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: de_core_news_md
+  aeneas_language: deu
+  entityfishing_language: de
+periods: [8]
+supported_stages: [download, parse, merge, nel, align, ner]
+# Aspirational - the dump may not exist on de-st.openparliament.tv yet.
+# Until it does, point --nel-data-dir at <data_dir>/metadata/entities.json
+# (built by scraper/build_entity_dump.py).
+entity_dump_url: "https://de-st.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+default_retry_count: 20
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    license: Landtag von Sachsen-Anhalt - social sharing and private use permitted; commercial use requires written consent
+    creator: Landtag von Sachsen-Anhalt
+proceedings:
+  default:
+    license: © Landtag von Sachsen-Anhalt

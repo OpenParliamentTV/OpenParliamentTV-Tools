@@ -1,0 +1,11 @@
+#! /bin/sh
+
+# Main update script - it expects only a data directory for output
+# Parliament specific options/settings are set in this file (through options passed to workflow.py)
+
+OUTPUT=${1?Missing output directory parameter (data base directory)}
+
+CALLDIR="$(dirname "$(readlink "$0")")"
+
+python3 "${CALLDIR}/workflow.py" --period=15 --retry-count=20 "$OUTPUT" \
+    --download-original --merge-speeches --align-sentences --extract-entities

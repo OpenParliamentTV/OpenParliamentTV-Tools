@@ -1,0 +1,26 @@
+name: "Landtag Schleswig-Holstein"
+language: deu
+language_code: "de"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: de_core_news_md
+  aeneas_language: deu
+  entityfishing_language: de
+periods: [20]
+# `align` and `ner` deliberately omitted: m7k provides per-speech video
+# with #t=start,end offsets but the Plenarprotokoll is PDF-only and we
+# do not yet have a PDF parser. Without transcript text neither stage
+# can produce meaningful output. The platform still imports the per-
+# speech video clips with speaker / faction / agenda metadata.
+supported_stages: [download, parse, merge, nel]
+# Aspirational - the dump may not exist on de-sh.openparliament.tv yet.
+# Until it does, scraper/build_entity_dump.py writes the local fallback
+# at <data_dir>/metadata/entities.json.
+entity_dump_url: "https://de-sh.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+default_retry_count: 20
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    license: 'Landtag Schleswig-Holstein – political reporting and private use permitted; commercial / advertising use requires written consent. Attribution: Schleswig-Holsteinischer Landtag.'
+    creator: Schleswig-Holsteinischer Landtag

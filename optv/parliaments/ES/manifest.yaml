@@ -1,0 +1,27 @@
+name: "Congreso de los Diputados"
+language: spa                   # ISO 639-3
+language_code: "es"   # Stage-2 emission code (SHORTCODES.md §3)
+locale:                         # consumed by optv.shared.{align,ner}
+  spacy_model: es_core_news_md          # python -m spacy download es_core_news_md
+  aeneas_language: spa                  # ISO 639-3 for aeneas/espeak
+  entityfishing_language: es            # 2-letter for entityfishing
+periods: [15]                   # XV Legislature (Aug 2023–present); only term with per-speech video
+# NEL works once a locally-built entities.json sits in <data_dir>/metadata/.
+# 2026-05-23: first dump built directly from Wikidata SPARQL (all Spanish
+# Congress MPs ever, 3 830 persons; 11 hand-mapped XV parliamentary groups).
+# entity_dump_url is empty because no hosted dump exists yet — set it once
+# the ES platform publishes one, so workflow.py --update-nel-entities can
+# refresh in place.
+supported_stages: [download, parse, merge, nel, align, ner]
+entity_dump_url: ""             # set once the ES entities.json is published
+default_retry_count: 20
+default_retry_delay_max: 10
+
+# Rights/source metadata (moved from code constants).
+media:
+  default:
+    license: https://www.congreso.es/es/web/guest/cem/aviso-legal
+proceedings:
+  default:
+    creator: Congreso de los Diputados
+    license: https://www.congreso.es/es/web/guest/cem/aviso-legal

@@ -1,0 +1,18 @@
+#! /bin/sh
+
+# Main update script - expects a data directory as the only argument.
+# Period 8 (current WP) and the canonical Sittings 105+106 sample are baked in.
+
+OUTPUT=${1?Missing output directory parameter (data base directory)}
+
+CALLDIR="$(dirname "$(readlink "$0" 2>/dev/null || echo "$0")")"
+
+# --limit-session scopes merge/link/align/NER. By default we ship the
+# sample run that the implementation was validated against (Sittings
+# 105+106 = Sitzungsperiode 47). Override with --limit-session to widen.
+python3 "${CALLDIR}/workflow.py" --period=8 \
+    --limit-session '0810[56]' \
+    --retry-count=20 \
+    --download-original --merge-speeches \
+    --link-entities --align-sentences --extract-entities \
+    "${OUTPUT}"
