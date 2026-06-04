@@ -58,6 +58,22 @@ CORE_TYPES = frozenset({
 })
 
 
+def _match_title(value, patterns):
+    """Shared first-match dispatch for the regex-on-a-single-string
+    classifiers. Returns ``(native_type, core_type)`` from the first
+    pattern whose ``search`` hits ``value``; ``(None, CORE_REGULAR)``
+    when ``value`` is empty or nothing matches. New parliaments only need
+    a ``_X_PATTERNS`` list + a one-line wrapper (or call this directly) —
+    no bespoke loop.
+    """
+    if not value:
+        return None, CORE_REGULAR
+    for pat, native, core in patterns:
+        if pat.search(value):
+            return native, core
+    return None, CORE_REGULAR
+
+
 # ---------------------------------------------------------------------------
 # DE — ParlaMint vocabulary (period 17, structured `ana` attribute)
 # ---------------------------------------------------------------------------
@@ -185,12 +201,7 @@ _DE_NATIVE_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_de_native(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify Bundestag period-18+ data by agenda title regex."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _DE_NATIVE_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _DE_NATIVE_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -217,12 +228,7 @@ _DE_RP_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_de_rp(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify Landtag RLP agenda by title."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _DE_RP_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _DE_RP_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -262,12 +268,7 @@ _DE_ST_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_de_st(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify Landtag Sachsen-Anhalt agenda by TOP title."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _DE_ST_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _DE_ST_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -301,12 +302,7 @@ _DE_SH_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_de_sh(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify Landtag Schleswig-Holstein agenda by m7k ``thema`` / TOP title."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _DE_SH_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _DE_SH_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -340,12 +336,7 @@ _DE_BY_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_de_by(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify Bayerischer Landtag agenda by the Plenum Online TOP title."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _DE_BY_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _DE_BY_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -382,12 +373,7 @@ _DE_BW_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_de_bw(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify Landtag Baden-Württemberg agenda by the mediathek TOP title."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _DE_BW_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _DE_BW_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -421,12 +407,7 @@ _DE_HH_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_de_hh(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify Hamburgische Bürgerschaft agenda by the mediathek TOP title."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _DE_HH_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _DE_HH_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -470,12 +451,7 @@ _DE_NW_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_de_nw(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify Landtag NRW agenda by the mediathek TOP (``e-top__title``) title."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _DE_NW_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _DE_NW_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -574,12 +550,7 @@ _DE_SN_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_de_sn(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify a Sächsischer Landtag agenda item by its mediathek thema text."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _DE_SN_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _DE_SN_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -696,12 +667,7 @@ def classify_eu_native(official_title: Optional[str]) -> tuple[Optional[str], st
     ``(None, CORE_REGULAR)`` when no pattern matches — CRE titles are
     free-form so the fall-through rate is non-trivial.
     """
-    if not official_title:
-        return None, CORE_REGULAR
-    for pat, native, core in _EU_PATTERNS:
-        if pat.search(official_title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(official_title, _EU_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -729,12 +695,7 @@ _NO_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_no(saktittel: Optional[str]) -> tuple[Optional[str], str]:
     """Classify a Storting agenda by free-text ``Saktittel``."""
-    if not saktittel:
-        return None, CORE_REGULAR
-    for pat, native, core in _NO_PATTERNS:
-        if pat.search(saktittel):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(saktittel, _NO_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -770,12 +731,7 @@ _FI_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_fi(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify an Eduskunta agenda item by its Finnish title text."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _FI_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _FI_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -813,12 +769,7 @@ _FR_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_fr(title: Optional[str]) -> tuple[Optional[str], str]:
     """Classify an Assemblée nationale agenda item by its French ``<point>`` title."""
-    if not title:
-        return None, CORE_REGULAR
-    for pat, native, core in _FR_PATTERNS:
-        if pat.search(title):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(title, _FR_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -849,12 +800,7 @@ _PT_PATTERNS: list[tuple[re.Pattern, str, str]] = [
 
 def classify_pt(intervention_type: Optional[str]) -> tuple[Optional[str], str]:
     """Classify a PT speech by its av.parlamento.pt ``interventionType``."""
-    if not intervention_type:
-        return None, CORE_REGULAR
-    for pat, native, core in _PT_PATTERNS:
-        if pat.search(intervention_type):
-            return native, core
-    return None, CORE_REGULAR
+    return _match_title(intervention_type, _PT_PATTERNS)
 
 
 # ---------------------------------------------------------------------------

@@ -42,10 +42,17 @@ _nlp.add_pipe("sentencizer")
 def _split_sentences(text: str) -> list:
     return [{"text": str(s).strip()} for s in _nlp(text).sents if str(s).strip()]
 
-PROCEEDINGS_LICENSE = "CC-BY-4.0"
-PROCEEDINGS_LANGUAGE = "DE-de"
-PROCEEDINGS_SOURCE = "parlamint-de-beta"
-PROCEEDINGS_CREATOR = "PolMine ParlaMint-DE_beta"
+# ParlaMint-DE (periods 16-17) rights come from the manifest proceedings
+# `overrides` entry; kept as module constants so the references below are
+# unchanged (and byte-identical to the previous hardcoded values).
+from optv.parliaments import get_rights as _get_rights
+from optv.parliaments import get_language as _get_language
+
+_PARLAMINT_RIGHTS = _get_rights("DE", 17, "proceedings")
+PROCEEDINGS_LICENSE = _PARLAMINT_RIGHTS["license"]
+PROCEEDINGS_LANGUAGE = _get_language("DE")
+PROCEEDINGS_SOURCE = _PARLAMINT_RIGHTS["source"]
+PROCEEDINGS_CREATOR = _PARLAMINT_RIGHTS["creator"]
 
 TEI_NS = "http://www.tei-c.org/ns/1.0"
 XML_NS = "http://www.w3.org/XML/1998/namespace"

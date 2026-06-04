@@ -30,8 +30,14 @@ if __package__ is None or __package__ == "":
 from .common import fix_faction, fix_fullname, parse_fullname
 from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
 
-PROCEEDINGS_LICENSE = "Public Domain"
-PROCEEDINGS_LANGUAGE = "DE-de"
+# Native Bundestag TEI (periods 18+) license = manifest proceedings default.
+# The proceedings `creator` stays data-driven (TEI <herausgeber>), so only the
+# license is sourced here.
+from optv.parliaments import get_rights as _get_rights
+from optv.parliaments import get_language as _get_language
+
+PROCEEDINGS_LICENSE = _get_rights("DE", stream="proceedings")["license"]
+PROCEEDINGS_LANGUAGE = _get_language("DE")
 
 SPEECH_CLASSES = set(('J', 'J_1', 'O', 'T_NaS', 'T_fett', 'Z'))
 

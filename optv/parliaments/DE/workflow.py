@@ -21,14 +21,7 @@ if __package__ is None or __package__ == "":
     __package__ = module_dir.name
 
 from optv.shared.align import align_audiofile
-from optv.shared.workflow import (
-    WorkflowHooks,
-    acquire_lockfile,
-    build_common_argparser,
-    inject_locale,
-    run_workflow,
-    setup_logging,
-)
+from optv.shared.workflow import WorkflowHooks, run_main
 
 from .common import Config
 from .merger.merge_session import merge_session
@@ -89,25 +82,13 @@ HOOKS = WorkflowHooks(
 
 
 def main():
-    parser = build_common_argparser(
+    # `--lang` and `--retry-count` are now shared flags (build_common_argparser),
+    # defaulting from the manifest; the Conductor cron passes them explicitly.
+    run_main(
+        PARLIAMENT_ID, HOOKS,
         description="DE Bundestag workflow: fetch, parse, merge, align, NEL, NER.",
+        config_cls=Config,
     )
-    parser.add_argument("--lang", type=str, default="deu", help="Language")
-    parser.add_argument("--retry-count", type=int, default=0,
-                        help="Max number of times to retry a media download")
-    args = parser.parse_args()
-    if args.data_dir is None:
-        parser.print_help()
-        sys.exit(1)
-
-    setup_logging(args.debug)
-    inject_locale(args, PARLIAMENT_ID)
-    args.data_dir = Path(args.data_dir)
-    args.cache_dir = Path(args.cache_dir) if args.cache_dir else args.data_dir / "cache"
-
-    with acquire_lockfile(args):
-        config = Config(args.data_dir, cache_dir=args.cache_dir)
-        run_workflow(config, args, HOOKS)
 
 
 if __name__ == "__main__":

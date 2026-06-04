@@ -53,7 +53,8 @@ def is_chair(speech: dict) -> bool:
 
 
 def origin_suffix(speech: dict) -> Optional[str]:
-    oid = speech.get("originTextID") or ""
+    # Speech id is converging on originID; accept either name (same value).
+    oid = speech.get("originID") or speech.get("originTextID") or ""
     for s in SYNTHETIC_SUFFIXES:
         if oid.endswith(s):
             return s

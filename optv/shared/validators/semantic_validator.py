@@ -54,7 +54,49 @@ def validate_semantic(doc):
     findings.extend(_rule_text_contents_source_uri(doc))
     findings.extend(_rule_media_source_page_unique(doc))
     findings.extend(_rule_sentence_times(doc))
+    findings.extend(_rule_speech_origin_text_id_deprecated(doc))
+    findings.extend(_rule_original_language_consistency(doc))
     return findings
+
+
+def _rule_speech_origin_text_id_deprecated(doc):
+    """Speech-level ``originTextID`` is deprecated in favour of ``originID``
+    (the textContents-level field of the same name is fine). Warn so the
+    parser gets migrated; old/not-yet-re-emitted data still validates."""
+    out = []
+    for i, sp in enumerate(doc.get("data") or []):
+        if "originTextID" in sp:
+            out.append(_warn(
+                "semantic.speech.originTextID_deprecated",
+                f"data/{i}/originTextID",
+                "Speech-level 'originTextID' is deprecated. The merger normalizer "
+                "promotes it to 'originID' (a joint speech id, kept only when "
+                "distinct from media.originMediaID / textContents[].originTextID). "
+                "The textContents-level 'originTextID' is unaffected.",
+            ))
+    return out
+
+
+def _rule_original_language_consistency(doc):
+    """``originalLanguage`` selects the original text out of a multi-language
+    ``textContents[]`` array, so it must match the ``language`` of one entry and
+    share its code standard. Warning-only (does not block publish)."""
+    out = []
+    for i, sp in enumerate(doc.get("data") or []):
+        lang = sp.get("originalLanguage")
+        texts = sp.get("textContents") or []
+        if not lang or not texts:
+            continue
+        langs = {t.get("language") for t in texts if t.get("language")}
+        if langs and lang not in langs:
+            out.append(_warn(
+                "semantic.speech.originalLanguage_mismatch",
+                f"data/{i}/originalLanguage",
+                f"originalLanguage {lang!r} matches no textContents[].language "
+                f"({sorted(langs)!r}); it must select the original text entry "
+                f"and use the same code standard.",
+            ))
+    return out
 
 
 def _rule_parliament_code(doc):

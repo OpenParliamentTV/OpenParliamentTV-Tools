@@ -27,6 +27,7 @@ if __package__ is None or __package__ == "":
     __package__ = _module_dir.name
 
 from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
+from optv.shared.speech_id import normalize_speech_originid
 
 # Q&A agenda types — Bundestag cuts one video per ministerial Q&A block while
 # proceedings have many <rede> per block. Text inflates onto one media clip.
@@ -598,6 +599,11 @@ def merge_data(proceedings, media, options) -> list:
     for speech in speeches:
         speech['session']['dateStart'] = dateStart
         speech['session']['dateEnd'] = dateEnd
+
+    # Enforce the speech-id model: DE has no joint id, so the top-level id
+    # (which equals the text id) is dropped here after all internal use of it.
+    for sp in speeches:
+        normalize_speech_originid(sp)
 
     return { "meta": { **proceedings['meta'],
                        "schemaVersion": "1.0",
