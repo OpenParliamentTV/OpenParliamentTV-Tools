@@ -48,8 +48,16 @@ def test_merge_data_produces_speeches_with_downstream_keys():
     for speech in merged["data"]:
         missing = DOWNSTREAM_REQUIRED - set(speech)
         assert not missing, f"merged speech missing keys: {missing}"
-        # originID is the contract field that broke before
-        assert "originID" in speech
+        # Speech-id model: top-level `originID` is set only when the source has a
+        # *joint* id (DE has none → absent). The speech must still be identifiable
+        # via the text id (textContents[].originTextID) or speechIndex.
+        text_id = any(
+            tc.get("originTextID") for tc in (speech.get("textContents") or [])
+        )
+        assert speech.get("originID") or text_id or speech.get("speechIndex"), (
+            "merged speech must carry a stable identity "
+            "(originID, textContents[].originTextID, or speechIndex)"
+        )
 
 
 def test_merge_data_meta_has_processing_timestamps():

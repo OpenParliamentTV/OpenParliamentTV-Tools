@@ -5,18 +5,43 @@ import pytest
 from optv.shared.agenda_types import (
     CORE_CLOSING,
     CORE_CURRENT_AFFAIRS,
+    CORE_ELECTION,
     CORE_GOVERNMENT_DECLARATION,
     CORE_GOVERNMENT_QUESTIONING,
+    CORE_OATH,
     CORE_OPENING,
     CORE_QA,
     CORE_REGULAR,
+    CORE_PROCEDURAL,
+    CORE_VOTING,
     annotate_agenda_item,
+    classify_de_bw,
     classify_de_native,
     classify_de_rp,
+    classify_de_sh,
     classify_parlamint_de,
+    classify_pt,
     classify_se,
     is_de_closing_chair_text,
 )
+
+
+@pytest.mark.parametrize("itype,expected_native,expected_core", [
+    ("Abertura da sessão", "PT-abertura", CORE_OPENING),
+    ("Encerramento", "PT-encerramento", CORE_CLOSING),
+    ("Votações", "PT-votacoes", CORE_VOTING),
+    ("Leitura", "PT-leitura", CORE_PROCEDURAL),
+    ("Interpelação à mesa", "PT-interpelacao_a_mesa", CORE_PROCEDURAL),
+    ("Protesto", "PT-protesto", CORE_PROCEDURAL),
+    ("Pedido de esclarecimento", "PT-pedido_de_esclarecimento", CORE_QA),
+    ("Intervenção", "PT-intervencao", CORE_REGULAR),
+    ("Declaração política", "PT-declaracao_politica", CORE_REGULAR),
+    ("", None, CORE_REGULAR),
+    (None, None, CORE_REGULAR),
+])
+def test_classify_pt(itype, expected_native, expected_core):
+    native, core = classify_pt(itype)
+    assert (native, core) == (expected_native, expected_core)
 
 
 @pytest.mark.parametrize("title,expected_native,expected_core", [
@@ -83,6 +108,68 @@ def test_is_de_closing_chair_text(text, expected):
 
 def test_classify_de_rp_question_time():
     assert classify_de_rp("Fragestunde der CDU-Fraktion") == ("DE-RP-question_time", CORE_QA)
+
+
+@pytest.mark.parametrize("title,expected_native,expected_core", [
+    # m7k themes observed on the live mediathek
+    ("Eröffnung der Sitzung durch den Alterspräsidenten", "DE-SH-opening", CORE_OPENING),
+    ("Wahl und Vereidigung der Landtagspräsidentin", "DE-SH-election", CORE_ELECTION),
+    # Standard procedural categories
+    ("Fragestunde", "DE-SH-question_time", CORE_QA),
+    ("Aktuelle Stunde zur Energiewende", "DE-SH-current_affairs", CORE_CURRENT_AFFAIRS),
+    ("Aktuelle Debatte zur Bildungspolitik", "DE-SH-current_affairs", CORE_CURRENT_AFFAIRS),
+    ("Regierungserklärung des Ministerpräsidenten", "DE-SH-government_declaration",
+     CORE_GOVERNMENT_DECLARATION),
+    ("Befragung der Landesregierung", "DE-SH-questioning_of_the_government",
+     CORE_GOVERNMENT_QUESTIONING),
+    ("Wahl des Vizepräsidenten", "DE-SH-election", CORE_ELECTION),
+    ("Vereidigung der Ministerin", "DE-SH-oath", CORE_OATH),
+    ("Haushaltsgesetz 2026", "DE-SH-budget", None),  # core is CORE_BUDGET — see below
+    # Negative / fall-through cases
+    ("3 Minuten Beiträge", None, CORE_REGULAR),
+    ("Tagesordnungspunkt 5", None, CORE_REGULAR),
+    ("", None, CORE_REGULAR),
+    (None, None, CORE_REGULAR),
+])
+def test_classify_de_sh(title, expected_native, expected_core):
+    native, core = classify_de_sh(title)
+    assert native == expected_native
+    # Special-case: the budget core constant isn't imported above to keep the
+    # imports lean; assert it positionally instead.
+    if expected_native == "DE-SH-budget":
+        assert core == "budget"
+    else:
+        assert core == expected_core
+
+
+@pytest.mark.parametrize("title,expected_native,expected_core", [
+    # mediathek TOP headers observed on the live chapter list
+    ("TOP 1 Aktuelle Debatte", "DE-BW-current_affairs", CORE_CURRENT_AFFAIRS),
+    ("Beginn der Sitzung", "DE-BW-opening", CORE_OPENING),
+    ("Fragestunde", "DE-BW-question_time", CORE_QA),
+    ("Regierungsbefragung", "DE-BW-questioning_of_the_government",
+     CORE_GOVERNMENT_QUESTIONING),
+    ("Regierungserklärung des Ministerpräsidenten", "DE-BW-government_declaration",
+     CORE_GOVERNMENT_DECLARATION),
+    ("Wahl des Präsidenten", "DE-BW-election", CORE_ELECTION),
+    ("Verpflichtung der Abgeordneten", "DE-BW-oath", CORE_OATH),
+    # Substantive readings fall through to regular
+    ("TOP 3 Zweite Beratung des Gesetzentwurfs", None, CORE_REGULAR),
+    ("Tagesordnungspunkt 5", None, CORE_REGULAR),
+    ("", None, CORE_REGULAR),
+    (None, None, CORE_REGULAR),
+])
+def test_classify_de_bw(title, expected_native, expected_core):
+    native, core = classify_de_bw(title)
+    assert native == expected_native
+    assert core == expected_core
+
+
+def test_classify_de_bw_budget():
+    # budget core constant not imported above; assert positionally
+    native, core = classify_de_bw("TOP 2 Zweite Beratung Staatshaushaltsplan 2025")
+    assert native == "DE-BW-budget"
+    assert core == "budget"
 
 
 def test_classify_se_falls_through():

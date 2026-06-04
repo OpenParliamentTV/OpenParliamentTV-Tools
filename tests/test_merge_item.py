@@ -61,7 +61,7 @@ def make_proceeding_item():
             "sourceURI": "https://example.invalid/proceedings.xml",
             "creator": "Deutscher Bundestag",
             "license": "Public Domain",
-            "language": "DE-de",
+            "language": "de",
             "originTextID": "ID29999900",
             "textBody": [
                 {"speech_id": "ID29999900", "type": "speech",
@@ -181,7 +181,7 @@ def _make_textcontent(speech_id="ID29999900"):
         "sourceURI": "https://example.invalid/proceedings.xml",
         "creator": "Deutscher Bundestag",
         "license": "Public Domain",
-        "language": "DE-de",
+        "language": "de",
         "originTextID": speech_id,
         "textBody": [
             {"speech_id": speech_id, "type": "speech",
