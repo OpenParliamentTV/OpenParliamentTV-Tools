@@ -354,6 +354,15 @@ def build_common_argparser(*, description: str) -> argparse.ArgumentParser:
                         help="API endpoint URL for entityfishing server")
     parser.add_argument("--nel-entity-url", type=str, default="",
                         help="Override NEL entity dump URL (defaults to entity_dump_url from manifest.yaml)")
+    # Shared across all parliaments (the Conductor passes all three to every
+    # workflow). Defaults are filled from the manifest in run_main when unset,
+    # so an explicit value (Conductor cron / update scripts) always wins.
+    parser.add_argument("--lang", type=str, default=None,
+                        help="Language override (default: manifest locale.aeneas_language)")
+    parser.add_argument("--retry-count", type=int, default=None,
+                        help="Max media download retries (default: manifest default_retry_count)")
+    parser.add_argument("--retry-delay-max", type=float, default=None,
+                        help="Max delay (s) between download retries (default: manifest default_retry_delay_max)")
     parser.add_argument("--validate", action=argparse.BooleanOptionalAction,
                         default=True,
                         help="Run Stage 2 schema+semantic validation on each publish (warning-only)")
@@ -372,6 +381,51 @@ def build_common_argparser(*, description: str) -> argparse.ArgumentParser:
     parser.add_argument("--extract-entities", action=argparse.BooleanOptionalAction,
                         default=False, help="Run NER on aligned sessions")
     return parser
+
+
+def _apply_manifest_defaults(args, parliament_id: str) -> None:
+    """Fill ``--retry-count`` / ``--retry-delay-max`` / ``--lang`` from the
+    manifest when the caller did not pass them explicitly."""
+    try:
+        from optv.parliaments import load_manifest
+        manifest = load_manifest(parliament_id)
+    except Exception as e:  # pragma: no cover - manifest always present in practice
+        logger.warning(f"Cannot read manifest for {parliament_id}: {type(e).__name__}: {e}")
+        manifest = {}
+    if getattr(args, "retry_count", None) is None:
+        args.retry_count = manifest.get("default_retry_count", 0)
+    if getattr(args, "retry_delay_max", None) is None:
+        args.retry_delay_max = manifest.get("default_retry_delay_max", 10.0)
+    if getattr(args, "lang", None) is None:
+        # aeneas_language is the canonical per-parliament language code; --lang
+        # is the legacy alias the Conductor/align path still reads.
+        args.lang = getattr(args, "aeneas_language", None)
+
+
+def run_main(parliament_id: str, hooks: WorkflowHooks, *, description: str,
+             add_arguments: Optional[Callable] = None, config_cls) -> None:
+    """Shared entry point for every parliament's ``workflow.py``.
+
+    Absorbs the boilerplate each ``main()`` repeated: build the common
+    argparser (+ parliament-specific flags via ``add_arguments``), parse,
+    set up logging, inject locale + manifest defaults, resolve data/cache dirs,
+    acquire the single-instance lockfile, and drive ``run_workflow``.
+    """
+    parser = build_common_argparser(description=description)
+    if add_arguments is not None:
+        add_arguments(parser)
+    args = parser.parse_args()
+    if args.data_dir is None:
+        parser.print_help()
+        sys.exit(1)
+    setup_logging(args.debug)
+    inject_locale(args, parliament_id)
+    _apply_manifest_defaults(args, parliament_id)
+    args.data_dir = Path(args.data_dir)
+    args.cache_dir = Path(args.cache_dir) if args.cache_dir else args.data_dir / "cache"
+    with acquire_lockfile(args):
+        config = config_cls(args.data_dir, cache_dir=args.cache_dir)
+        run_workflow(config, args, hooks)
 
 
 def setup_logging(debug: bool) -> None:

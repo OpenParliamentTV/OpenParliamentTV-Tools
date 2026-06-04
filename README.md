@@ -40,13 +40,18 @@ optv/
 │       ├── update           # shell wrapper with parliament-specific defaults
 │       └── Makefile         # download + merge targets driven by file mtimes
 └── shared/                  # cross-parliament infrastructure
-    ├── workflow.py          # stage orchestrator + WorkflowHooks + shared argparser
+    ├── workflow.py          # run_main + stage orchestrator + WorkflowHooks + shared argparser
+    ├── config.py            # BaseConfig (on-disk layout, status/mtime helpers)
     ├── publish.py           # non-destructive publish helpers (demotion guard, carry-forward)
     ├── session_status.py    # SessionStatus enum
+    ├── speech_id.py         # speech-id model normalizer (originID/originMediaID/originTextID)
+    ├── merge_format.py      # generic merge formatting helpers (slug, offsets, name split)
+    ├── lang/                # language-specific text helpers, keyed by ISO 639-1 (de, …)
     ├── align.py             # forced sentence alignment (aeneas)
     ├── nel.py               # named-entity linking (Wikidata)
     ├── ner.py               # named-entity recognition (spaCy + entity-fishing)
-    ├── agenda_types.py      # cross-parliament agenda-type vocabulary
+    ├── agenda_types.py      # cross-parliament agenda-type vocabulary + classifier registry
+    ├── entity_dump_bootstrap.py  # temporary pre-platform Wikidata entity-dump builder
     ├── schema/              # Stage 2 JSON schemas + reference doc
     ├── validators/          # structural + semantic validators, CLI
     └── docs/EXAMPLES/       # example Stage 2 documents

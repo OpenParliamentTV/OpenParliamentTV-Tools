@@ -1,5 +1,6 @@
 name: "Deutscher Bundestag"
 language: deu
+language_code: "de"   # Stage-2 emission code, ISO 639 Alpha-2 lowercase (SHORTCODES.md §3)
 locale:
   spacy_model: de_core_news_md
   aeneas_language: deu
@@ -9,3 +10,18 @@ supported_stages: [download, parse, merge, nel, align, ner]
 entity_dump_url: "https://de.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
 default_retry_count: 20
 default_retry_delay_max: 10
+
+# Rights metadata emitted into Stage 2. Only the literal values that used to be
+# module constants live here; data-driven fields stay in the parsers (media
+# `creator` = feed author, native-proceedings `creator` = TEI <herausgeber>).
+media:
+  default:
+    license: '&lt;a href=&quot;https://www.bundestag.de/nutzungsbedingungen&quot; target=&quot;_blank&quot;&gt;Nutzungsbedingungen&lt;/a&gt;'
+proceedings:
+  default:                 # periods 18+ → native Bundestag TEI
+    license: "Public Domain"
+  overrides:
+    - periods: [16, 17]    # ParlaMint-DE_beta corpus
+      creator: "PolMine ParlaMint-DE_beta"
+      license: "CC-BY-4.0"
+      source: "parlamint-de-beta"

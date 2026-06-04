@@ -48,7 +48,8 @@ Per-parliament metadata that [OpenParliamentTV-Conductor](https://github.com/Ope
 
 ```yaml
 name: "Deutscher Bundestag"
-language: deu                   # ISO 639-3
+language: deu                   # ISO 639-3 (locale stack)
+language_code: "de"             # ISO 639-1 lowercase — the Stage-2 emission code (SHORTCODES.md §3)
 locale:                         # consumed by optv.shared.{align,ner}
   spacy_model: de_core_news_md          # full pip model id
   aeneas_language: deu                  # ISO 639-3 for aeneas/espeak
@@ -58,11 +59,26 @@ supported_stages: [download, parse, merge, nel, align, ner]
 entity_dump_url: "https://de.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
 default_retry_count: 20
 default_retry_delay_max: 10
+
+# Rights metadata emitted into Stage 2 (resolved by optv.parliaments.get_rights).
+# Only the literal values that would otherwise be code constants; data-driven
+# fields (e.g. a creator pulled from the source document) stay in the parser.
+# Per-period overrides cover sources that change across electoral terms.
+media:
+  default: { creator: "Deutscher Bundestag", license: "…" }
+proceedings:
+  default: { license: "Public Domain" }              # periods 18+ (native TEI)
+  overrides:
+    - periods: [16, 17]                               # ParlaMint-DE corpus
+      creator: "PolMine ParlaMint-DE_beta"
+      license: "CC-BY-4.0"
 ```
 
 `supported_stages` lets parliaments opt out of stages that don't apply (e.g. a parliament with pre-aligned source data can omit `align`).
 
-`locale.*` are required when `align` or `ner` is in `supported_stages`. The model name is given in full (no `lang + suffix` composition) because spaCy's naming isn't uniform across languages — not every language ships every size tier. The parliament's `workflow.py` calls `optv.shared.workflow.inject_locale(args, parliament_id)` (which reads `optv.parliaments.get_locale()`) before invoking shared stages.
+`language_code` is the lowercase ISO 639-1 code the parser writes into `originalLanguage` and `textContents[].language`; read it via `optv.parliaments.get_language(parliament_id)`. It is distinct from the ISO-639-3 `language` used by the locale stack.
+
+`locale.*` are required when `align` or `ner` is in `supported_stages`. The model name is given in full (no `lang + suffix` composition) because spaCy's naming isn't uniform across languages. Locale is injected onto `args` by `run_main` (via `optv.shared.workflow.inject_locale` → `optv.parliaments.get_locale()`) before invoking shared stages.
 
 ## 5. Implement Stage 1 (parliament-specific)
 
@@ -70,7 +86,7 @@ These three packages are where most of the parliament-specific work lives:
 
 - **`scraper/`** — Download proceedings and media into `<data_dir>/original/{proceedings,media}/`. Handle pagination, rate limits, and transient failures (the DE implementation uses `--retry-count` because the Bundestag media server returns frequent 503s). Idempotent: only fetch what's missing.
 - **`parsers/`** — Convert the parliament's native format into intermediate per-session JSON. Two streams (proceedings and media) are kept separate at this point because they often need different cleanup logic.
-- **`merger/`** — Join the two streams into Stage 2 JSON, one record per speech. The DE merger uses Needleman-Wunsch alignment to match transcript speech entries against media items; new parliaments can use whatever join logic the source data permits.
+- **`merger/`** — Join the two streams into Stage 2 JSON, one record per speech. The DE merger uses Needleman-Wunsch alignment to match transcript speech entries against media items; new parliaments can use whatever join logic the source data permits. Follow the id model: put the media id in `media.originMediaID`, the text id in `textContents[].originTextID`, and set a speech-level `originID` only for a genuine joint id — call `optv.shared.speech_id.normalize_speech_originid(speech)` at finalization to enforce this. Generic formatting helpers live in `optv.shared.merge_format`; language-specific ones (honorifics, chair→context) in `optv.shared.lang.<code>`.
 
 The merger's output must validate against [stage2-full.schema.json](../optv/shared/schema/stage2-full.schema.json). Run the validator early and often:
 
@@ -80,7 +96,7 @@ python -m optv.shared.validators.cli --file <data_dir>/cache/merged/<session>-me
 
 ## 6. Configure paths
 
-`common.py` exposes a `Config` class that defines the on-disk layout:
+`common.py` exposes a `Config` class subclassing the shared `BaseConfig` ([`optv/shared/config.py`](../optv/shared/config.py)), which defines the on-disk layout:
 
 ```
 <data_dir>/
@@ -90,20 +106,17 @@ python -m optv.shared.validators.cli --file <data_dir>/cache/merged/<session>-me
 └── metadata/                       # NEL entity dumps
 ```
 
-Stage outputs go into `cache/`; `processed/` holds what the platform actually consumes. The `is_newer()` and `status()` helpers drive the mtime-based "only run if input is newer than output" behaviour. If the parliament needs additional directories, extend the `Config` class — don't hardcode paths in stage scripts.
+Stage outputs go into `cache/`; `processed/` holds what the platform actually consumes. The `is_newer()` and `status()` helpers (in `BaseConfig`) drive the mtime-based "only run if input is newer than output" behaviour; video-only parliaments set `HAS_TEXT = False` on their `Config` so `status()` skips the align/ner probes. If the parliament needs additional directories or a different session-file glob, override the relevant attributes/methods in your `Config` subclass — don't hardcode paths in stage scripts.
 
 ## 7. Wire the workflow
 
 `workflow.py` is the entry point but it is intentionally thin: stage orchestration (merge → NEL → align → NER → publish), the common argparser, lockfile handling, locale injection and the publish helper all live in [`optv/shared/workflow.py`](../optv/shared/workflow.py). The per-parliament file only contains the genuinely parliament-specific adapters and any extra CLI flags.
 
-Define four hook functions and pass them as a `WorkflowHooks` instance to `run_workflow`:
+Define the hook functions, pass them as a `WorkflowHooks` instance, and call `run_main` — it handles the common argparser, logging, locale + manifest-default injection, the lockfile, and `run_workflow`:
 
 ```python
 from optv.shared.align import align_audiofile
-from optv.shared.workflow import (
-    WorkflowHooks, run_workflow, build_common_argparser,
-    acquire_lockfile, setup_logging, inject_locale,
-)
+from optv.shared.workflow import WorkflowHooks, run_main
 from .common import Config
 # parliament-specific imports
 from .scraper.fetch_proceedings import download_proceedings
@@ -121,7 +134,7 @@ def _merge(config, session, args):    # return path to merged cache file
 def _align(config, session, args):    # return path to aligned cache file
     merged_file = config.file(session, 'merged')
     aligned_file = config.file(session, 'aligned', create=True)
-    align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir,
+    align_audiofile(merged_file, aligned_file, args.aeneas_language, args.cache_dir,
                     timeout=args.align_timeout,
                     max_audio_seconds=args.align_max_audio_seconds)
     return aligned_file
@@ -136,18 +149,17 @@ HOOKS = WorkflowHooks(
 )
 
 
+def _add_arguments(parser):           # optional — only genuinely-unique flags
+    parser.add_argument("--year", type=int, default=None, help="…")
+
+
 def main():
-    parser = build_common_argparser(description="...")
-    parser.add_argument("--lang", type=str, default="...")   # parliament-specific
-    args = parser.parse_args()
-    setup_logging(args.debug)
-    inject_locale(args, PARLIAMENT_ID)
-    args.data_dir = Path(args.data_dir)
-    args.cache_dir = Path(args.cache_dir) if args.cache_dir else args.data_dir / "cache"
-    with acquire_lockfile(args):
-        config = Config(args.data_dir, cache_dir=args.cache_dir)
-        run_workflow(config, args, HOOKS)
+    run_main(PARLIAMENT_ID, HOOKS, description="…",
+             add_arguments=_add_arguments,   # omit if no extra flags
+             config_cls=Config)
 ```
+
+`--lang` / `--retry-count` / `--retry-delay-max` / `--session` (seed filter) / `--limit-session` and all stage flags are **shared** (added by `build_common_argparser`, defaulted from the manifest) — do not re-declare them. Add only flags unique to this parliament via `add_arguments`. The path bootstrap at the top of `workflow.py` (for `python -m` + `./workflow.py`) is still required.
 
 Then invoking the workflow is unchanged from a user perspective — each `--*` flag enables one stage:
 
@@ -215,8 +227,9 @@ timestamp-window (EU). One paragraph, link the file path.>
 ## Running
 
 <The `update` shell wrapper if present, then the bare `workflow.py` invocation
-with the `--period` value and the stage flags. Include parliament-specific
-flags (`--eu-date`, `--protokoll`, `--inbox-dir`, …).>
+with the `--period` value and the stage flags. Use the generic `--session`
+flag to target specific seed sessions; document any parliament-specific flags
+(`--year`, `--kid`, …).>
 
 ## Access notes (optional)
 

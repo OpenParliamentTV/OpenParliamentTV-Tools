@@ -83,6 +83,8 @@ Schema validation is structural. Cross-field, cross-item, and cross-source invar
 7. Warning on the deprecated `agendaItem.speechIndex`.
 8. Warning on `Unknown` speaker context.
 9. Warning when two speeches in a session share a `media.sourcePage` (`semantic.media.sourcePage.duplicate`). The platform's media.php import keys speech identity on `sourcePage`, so duplicates collapse distinct speeches at import. Parliaments serving one video per session/debate/part must make it unique per speech — e.g. appending the per-speech start offset (SE `?pos=`, NO `&t=`, FI `?start=`) or a per-speech id (DE-SH, DE-ST `?player=`).
+10. Warning on a deprecated speech-level `originTextID` (`semantic.speech.originTextID_deprecated`) — the speech id belongs in `originID` (joint id) or `textContents[].originTextID`. See [Speech identity model](#speech-identity-model-originid--originmediaid--origintextid).
+11. Warning when `originalLanguage` matches no `textContents[].language` (`semantic.speech.originalLanguage_mismatch`) — they must share the same code standard so `originalLanguage` can select the original text.
 
 ---
 
@@ -94,3 +96,36 @@ python -m optv.shared.validators.cli --file <session>.json --no-semantic
 ```
 
 Schema errors do not block publishing in the workflow; findings are logged for review.
+
+## Language codes & multilingual text (convention)
+
+Stage-2 language codes use **ISO 639 Alpha-2, lowercase** (`de`, `es`, `sv`, `fr`,
+`pt`, `nb`, `zh`, `en`; Alpha-3 lowercase only in special cases) per
+`OpenParliamentTV-Architecture/SHORTCODES.md` §3. Each parliament pins its code in
+`manifest.yaml` as `language_code`, read via `optv.parliaments.get_language()`.
+
+`textContents[]` is an array with a per-entry `language`. When a parliament exposes
+the same speech in several languages (e.g. the EU CRE in 24 languages), emit **one
+`textContents[]` entry per language**; the entry whose `language == originalLanguage`
+is the original, the rest are translations/interpretations. So `originalLanguage`
+and every `textContents[].language` MUST use the same code standard — the semantic
+validator (`semantic.speech.originalLanguage_mismatch`) warns when they diverge.
+Multilingual **media** (interpretation booths / sign-language tracks) is out of
+scope for now; `media` stays a single object.
+
+## Speech identity model (originID / originMediaID / originTextID)
+
+Three id slots, each at its own level, no duplication:
+
+- `speech.originID` — a **joint** speech id, set **only** when the source has one
+  identity spanning media ⋈ proceedings (e.g. SE's `anforande`-based key,
+  `HD0930-1`). Absent when there is no joint id (DE, EU, FR, …): the speech is
+  identified by its text id + `speechIndex`.
+- `media.originMediaID` — the media source id (platform `MediaOriginMediaID`).
+- `textContents[].originTextID` — the proceedings/text source id (platform
+  `TextOriginTextID`).
+
+Mergers call `optv.shared.speech_id.normalize_speech_originid` at finalization:
+it promotes a legacy speech-level `originTextID` to `originID`, then drops
+`originID` when it merely repeats the media or a text id. The platform does not
+read the speech-level id at all (media identity = `sourcePage`).

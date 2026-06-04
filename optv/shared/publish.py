@@ -81,10 +81,12 @@ def is_demotion(new_data: list, published_data: list) -> bool:
 def _speech_key(speech: dict):
     """Stable per-speech identity for cross-stage matching.
 
-    originID is dropped at top level in some outputs, so originTextID is the
-    reliable key; speechIndex is the fallback.
+    Speech-level id is converging on ``originID``; some (older / not-yet-re-emitted)
+    outputs still carry it as ``originTextID``. The rename was name-only, so the
+    *value* is identical — coalescing here lets a speech written under either name
+    match the same key across a re-publish. ``speechIndex`` is the final fallback.
     """
-    return speech.get('originTextID') or speech.get('speechIndex')
+    return speech.get('originID') or speech.get('originTextID') or speech.get('speechIndex')
 
 
 # Per-speech enrichment fields that are append-only across a publish.
