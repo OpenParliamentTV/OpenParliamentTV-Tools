@@ -172,7 +172,7 @@ def test_merge_item_does_not_mutate_inputs():
 
 
 # ---------------------------------------------------------------------------
-# Gate-fail rules — see _planning/whisper_qc/decision.md
+# Gate-fail rules
 # ---------------------------------------------------------------------------
 
 def _make_textcontent(speech_id="ID29999900"):

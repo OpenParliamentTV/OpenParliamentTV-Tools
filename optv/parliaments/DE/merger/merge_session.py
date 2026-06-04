@@ -31,7 +31,6 @@ from optv.shared.speech_id import normalize_speech_originid
 
 # Q&A agenda types — Bundestag cuts one video per ministerial Q&A block while
 # proceedings have many <rede> per block. Text inflates onto one media clip.
-# See _planning/whisper_qc/decision.md §"Decision queue".
 QA_TYPES = frozenset({'qa', 'questioning_of_the_government'})
 # Chair-only inter-TOP transition turns ("Ich schließe …, ich rufe TOP N
 # auf, …"). Tagged by parlamint2json on DE-17 ParlaMint XML. The proceedings
@@ -491,7 +490,7 @@ def merge_data(proceedings, media, options) -> list:
     # was over-eager: the synth would smear chair-intro text onto the first-MP
     # slot. Dropping the synth from the MP side restores the clean pre-fix
     # state; the chair side keeps both halves (still procedural → gate-failed)
-    # so no chair text is lost. See _planning/whisper_qc/DE-17/.
+    # so no chair text is lost.
     procs_by_media: dict = {}
     for entry in path:
         procs_by_media.setdefault(entry['media_index'], []).append(entry)
@@ -547,8 +546,7 @@ def merge_data(proceedings, media, options) -> list:
     # wide name index so a chair/minister whose Q-ID lives in another
     # proceeding still gets linked here. Closes a ~2 % wid gap that NEL
     # would otherwise have to fill; for DE-17 (ParlaMint XML carries Q-IDs
-    # natively) this brings merger output to ~99.9 % wid coverage. See
-    # _planning/whisper_qc/decision.md (2026-05-13).
+    # natively) this brings merger output to ~99.9 % wid coverage.
     persons_by_label: dict = {}
     for p in proceedings.get('data', []):
         for person in p.get('people', []):

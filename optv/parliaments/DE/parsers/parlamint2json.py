@@ -353,8 +353,7 @@ _TOP_ANNOUNCE_RE = re.compile(
 
 # Match a chair announcement that the following speeches are written submissions
 # ("zu Protokoll genommen") rather than delivered orally. Used to filter out
-# Protokoll-rede MP <u>s that have no corresponding audio — see
-# _planning/whisper_qc/decision.md and DE-17/findings.md.
+# Protokoll-rede MP <u>s that have no corresponding audio.
 _PROTOKOLL_ANNOUNCE_RE = re.compile(
     r"\bRede(?:n)?\b.*?\bzu\s+Protokoll\b"
     r"|\bzu\s+Protokoll\s+(?:gegeben|genommen|gehen|nehmen)\b",
@@ -404,8 +403,7 @@ def _find_top_announce_split(text_body: list) -> int | None:
     Used to split a chair-transition <u> (which packs both the close of the
     previous TOP and the announcement of the next TOP) into two emitted
     speeches so that Needleman-Wunsch alignment in the merger has one
-    proceedings entry per chair media clip. See _planning/whisper_qc/DE-17/
-    findings.md and DE-17-F02 follow-up.
+    proceedings entry per chair media clip.
     """
     for i, b in enumerate(text_body):
         if b.get("type") != "speech":
@@ -829,7 +827,7 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
                     # boundary restores 3-to-3 alignment. Both halves stay
                     # procedural-typed so the chair-transition rule gate-fails
                     # them at the merger; only the recovered first-MP speech
-                    # newly passes the gate. See _planning/whisper_qc/DE-17/.
+                    # newly passes the gate.
                     idx = _find_top_announce_split(all_text_body)
                     if idx is not None and 0 < idx < len(all_text_body):
                         chair_intro_split_idx = idx

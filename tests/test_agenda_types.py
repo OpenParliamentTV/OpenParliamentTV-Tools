@@ -180,8 +180,7 @@ def test_classify_se_falls_through():
 
 
 # ---------------------------------------------------------------------------
-# Protokoll-rede announcement detection (parlamint2json) — see
-# _planning/whisper_qc/decision.md and DE-17/findings.md
+# Protokoll-rede announcement detection (parlamint2json)
 # ---------------------------------------------------------------------------
 
 import re
