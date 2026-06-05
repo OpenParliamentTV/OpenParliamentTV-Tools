@@ -67,7 +67,7 @@
       "textContents": [
         {
           "type": "proceedings",
-          "sourceURI": "/Users/joscha/Projects/OpenParliamentTV/_SERVER/OpenParliamentTV-Tools/tests/fixtures/DE/tiny-proceedings.xml",
+          "sourceURI": "<FIXTURES>/tiny-proceedings.xml",
           "creator": "Deutscher Bundestag",
           "license": "Public Domain",
           "language": "de",

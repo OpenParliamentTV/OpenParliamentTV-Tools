@@ -29,6 +29,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "DE"
 GOLDEN = FIXTURES / "golden" / "tiny-session.json"
 
 _TS_PLACEHOLDER = "<timestamp>"
+_FIXTURES_PLACEHOLDER = "<FIXTURES>"
 
 
 def _normalize(doc: dict) -> dict:
@@ -59,7 +60,11 @@ def _produce_merged() -> dict:
 
 
 def _serialize(doc: dict) -> str:
-    return json.dumps(_normalize(doc), indent=2, ensure_ascii=False)
+    rendered = json.dumps(_normalize(doc), indent=2, ensure_ascii=False)
+    # ``sourceURI`` records the absolute path the parser was handed, which is
+    # machine-specific (``/Users/...`` locally, ``/home/runner/...`` in CI).
+    # Replace the fixtures root with a stable token so the snapshot is portable.
+    return rendered.replace(str(FIXTURES), _FIXTURES_PLACEHOLDER)
 
 
 def test_de_merged_output_matches_golden():
