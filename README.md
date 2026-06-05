@@ -114,26 +114,26 @@ An opt-in QC toolset cross-checks output without touching pipeline data. It has 
 
 `DE` (Deutscher Bundestag) is the reference implementation and the only parliament in production; the others are in development. For how their data structures differ, see [DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
-| Parliament | Type | Status |
-|-----------|------|--------|
-| [`DE`](optv/parliaments/DE/) | national | production |
-| [`DE-BW`](optv/parliaments/DE-BW/) | regional | in development |
-| [`DE-BY`](optv/parliaments/DE-BY/) | regional | in development |
-| [`DE-HH`](optv/parliaments/DE-HH/) | regional | in development |
-| [`DE-NI`](optv/parliaments/DE-NI/) | regional | in development |
-| [`DE-NW`](optv/parliaments/DE-NW/) | regional | in development |
-| [`DE-RP`](optv/parliaments/DE-RP/) | regional | in development |
-| [`DE-SH`](optv/parliaments/DE-SH/) | regional | in development |
-| [`DE-SN`](optv/parliaments/DE-SN/) | regional | in development |
-| [`DE-ST`](optv/parliaments/DE-ST/) | regional | in development |
-| [`ES`](optv/parliaments/ES/) | national | in development |
-| [`EU`](optv/parliaments/EU/) | supranational | in development |
-| [`FI`](optv/parliaments/FI/) | national | in development |
-| [`FR`](optv/parliaments/FR/) | national | in development |
-| [`NO`](optv/parliaments/NO/) | national | in development |
-| [`PT`](optv/parliaments/PT/) | national | in development |
-| [`SE`](optv/parliaments/SE/) | national | in development |
-| [`TW`](optv/parliaments/TW/) | national | in development |
+| Parliament | Name | Type | Status |
+|------------|------|------|--------|
+| [`DE`](optv/parliaments/DE/) | Deutscher Bundestag | national | production |
+| [`DE-BW`](optv/parliaments/DE-BW/) | Landtag von Baden-Württemberg | regional | in development |
+| [`DE-BY`](optv/parliaments/DE-BY/) | Bayerischer Landtag | regional | in development |
+| [`DE-HH`](optv/parliaments/DE-HH/) | Hamburgische Bürgerschaft | regional | in development |
+| [`DE-NI`](optv/parliaments/DE-NI/) | Niedersächsischer Landtag | regional | in development |
+| [`DE-NW`](optv/parliaments/DE-NW/) | Landtag Nordrhein-Westfalen | regional | in development |
+| [`DE-RP`](optv/parliaments/DE-RP/) | Landtag Rheinland-Pfalz | regional | in development |
+| [`DE-SH`](optv/parliaments/DE-SH/) | Landtag Schleswig-Holstein | regional | in development |
+| [`DE-SN`](optv/parliaments/DE-SN/) | Sächsischer Landtag | regional | in development |
+| [`DE-ST`](optv/parliaments/DE-ST/) | Landtag von Sachsen-Anhalt | regional | in development |
+| [`ES`](optv/parliaments/ES/) | Congreso de los Diputados | national | in development |
+| [`EU`](optv/parliaments/EU/) | European Parliament | supranational | in development |
+| [`FI`](optv/parliaments/FI/) | Eduskunta | national | in development |
+| [`FR`](optv/parliaments/FR/) | Assemblée nationale | national | in development |
+| [`NO`](optv/parliaments/NO/) | Stortinget | national | in development |
+| [`PT`](optv/parliaments/PT/) | Assembleia da República | national | in development |
+| [`SE`](optv/parliaments/SE/) | Sveriges Riksdag | national | in development |
+| [`TW`](optv/parliaments/TW/) | Legislative Yuan (立法院) | national | in development |
 
 ## Adding a new parliament
 
