@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV; joscha.jaeger@gmail.com)")
+              "(+https://github.com/OpenParliamentTV)")
 
 
 def sparql_get(query: str, *, timeout: float = 120.0) -> dict:
