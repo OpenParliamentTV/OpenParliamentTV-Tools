@@ -6,7 +6,7 @@ spine, no transcript text yet) — see
 [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) for repo-wide
 context and the DE-HH / DE-NI / DE-BW READMEs for the same regime. It combines
 the richest signals of that family: a parliament-native MdL id per speech, real
-per-speech wall-clock, and precise (second-resolution) per-speech offsets.
+per-speech wall-clock, and precise (second-resolution) per-speech offsets. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

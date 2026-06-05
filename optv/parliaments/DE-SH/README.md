@@ -2,7 +2,7 @@
 
 Pipeline implementation for the Schleswig-Holstein Landtag mediathek
 (`m7k.ltsh.de`). See [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md)
-for the cross-parliament onboarding flow.
+for the cross-parliament onboarding flow. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

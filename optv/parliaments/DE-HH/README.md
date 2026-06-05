@@ -6,7 +6,7 @@ no transcript text yet) — see
 [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) for repo-wide
 context and the DE-SH / DE-BY / DE-BW READMEs for the same regime. Among the
 video-only German Landtage it is the richest source: genuine per-TOP agenda,
-**real per-speech wall-clock timestamps**, and source-native per-speech UUIDs.
+**real per-speech wall-clock timestamps**, and source-native per-speech UUIDs. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

@@ -4,7 +4,7 @@ This directory implements the OpenParliamentTV pipeline for the Landtag von
 Baden-Württemberg (WP 17). It is a **video-only** onboarding (per-speech video
 spine, no transcript text yet) — see
 [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) for repo-wide
-context and the DE-SH / DE-BY READMEs for the same regime.
+context and the DE-SH / DE-BY READMEs for the same regime. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

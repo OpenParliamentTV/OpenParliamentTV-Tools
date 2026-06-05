@@ -7,7 +7,7 @@ context. It follows the DE-HH single-source video-spine shape, but the source is
 much richer: Plenar-TV (`plenartv.de`) is a SvelteKit SPA backed by a **public,
 unauthenticated REST API** (`api.plenartv.de`) that delivers the agenda, the
 per-speech speaker timings, stable speaker IDs (`abg_id`) and time-aligned WebVTT
-subtitles. There is no scraping and no cross-source alignment.
+subtitles. There is no scraping and no cross-source alignment. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 > The v1 onboarding ships **video + speaker + agenda metadata** with
 > `textContents: []` (`supported_stages: [download, parse, merge, nel]`;

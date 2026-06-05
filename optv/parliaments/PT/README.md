@@ -4,7 +4,7 @@ Pipeline for the Portuguese Assembly of the Republic (plenary, *reuniões
 plenárias*). This directory implements the parliament-specific Stage 1 (scrape +
 parse + merge); the shared stages (NEL → align → NER → publish) come from
 `optv.shared.workflow`. See [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md)
-for repo-wide context.
+for repo-wide context. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

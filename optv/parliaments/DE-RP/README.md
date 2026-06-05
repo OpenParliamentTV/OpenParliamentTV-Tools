@@ -1,6 +1,6 @@
 # Landtag Rheinland-Pfalz (DE-RP)
 
-Parser/merger for the Rhineland-Palatinate state parliament (Wahlperiode 18). Mirrors the DE Bundestag's architecture (proceedings-spine + Needleman-Wunsch) but reads both streams from local inboxes rather than live feeds. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md).
+Parser/merger for the Rhineland-Palatinate state parliament (Wahlperiode 18). Mirrors the DE Bundestag's architecture (proceedings-spine + Needleman-Wunsch) but reads both streams from local inboxes rather than live feeds. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md). For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

@@ -3,7 +3,7 @@
 Pipeline for the Saxony state parliament. Video-only v1: per-speech video +
 speaker/faction/agenda metadata, no transcript text yet. See
 [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) for repo-wide
-context.
+context. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

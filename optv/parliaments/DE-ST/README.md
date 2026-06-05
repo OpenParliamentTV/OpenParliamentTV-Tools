@@ -1,6 +1,6 @@
 # Landtag von Sachsen-Anhalt (DE-ST)
 
-Parser/merger for the Saxony-Anhalt state parliament (Wahlperiode 8, since 2021). Both proceedings and media come from the same Landtag portal (`landtag.sachsen-anhalt.de`); the per-speech text-video join is in the DOM, so no Needleman-Wunsch alignment is needed. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md).
+Parser/merger for the Saxony-Anhalt state parliament (Wahlperiode 8, since 2021). Both proceedings and media come from the same Landtag portal (`landtag.sachsen-anhalt.de`); the per-speech text-video join is in the DOM, so no Needleman-Wunsch alignment is needed. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md). For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

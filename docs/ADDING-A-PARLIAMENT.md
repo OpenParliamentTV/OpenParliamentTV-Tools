@@ -2,7 +2,7 @@
 
 This is the end-to-end checklist for onboarding a new parliament into OpenParliamentTV. The German Bundestag implementation in [optv/parliaments/DE/](../optv/parliaments/DE/) is the reference; new parliaments follow the same shape.
 
-For the data contract and pipeline concepts, see [Architecture/STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md) and [Architecture/PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md).
+For the data contract and pipeline concepts, see [Architecture/STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md) and [Architecture/PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md). For how parliaments' data shapes differ structurally, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ---
 
@@ -208,7 +208,9 @@ Use this skeleton:
 # <Parliament Name> (<CODE>)
 
 <1–2 sentence intro: what this directory implements + a link back to
-docs/ADDING-A-PARLIAMENT.md for repo-wide context.>
+docs/ADDING-A-PARLIAMENT.md for repo-wide context and to
+Architecture/DATA-STRUCTURES.md for how this parliament's data shape fits the
+cross-parliament model.>
 
 ## Data model
 
@@ -244,7 +246,7 @@ only), data-quality gaps, missing live scraper, aspirational
 `entity_dump_url`, alignment quirks.>
 ```
 
-Do not duplicate content that already lives elsewhere: pipeline concepts go in [Architecture/PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md), the Stage 2 format in [Architecture/STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md), the generic onboarding flow in this file, and per-parliament metadata (spaCy model, language codes, `supported_stages`, `entity_dump_url`) in `manifest.yaml`. The README links to those rather than restating them.
+Do not duplicate content that already lives elsewhere: pipeline concepts go in [Architecture/PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md), the Stage 2 format in [Architecture/STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md), cross-parliament structural divergences in [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md), the generic onboarding flow in this file, and per-parliament metadata (spaCy model, language codes, `supported_stages`, `entity_dump_url`) in `manifest.yaml`. The README links to those rather than restating them.
 
 ## 11. Onboard with Conductor
 

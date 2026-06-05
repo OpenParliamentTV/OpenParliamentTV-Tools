@@ -3,7 +3,7 @@
 Pipeline implementation for the Bavarian state parliament's "Plenum Online"
 video archive (`www1.bayern.landtag.de/plon-webanzeige`). See
 [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) for the
-cross-parliament onboarding flow.
+cross-parliament onboarding flow. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

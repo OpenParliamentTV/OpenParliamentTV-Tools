@@ -1,6 +1,6 @@
 # Sveriges Riksdag (SE)
 
-Parser/merger for the Swedish Riksdag (riksmöte 2025/26 and forward). For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md).
+Parser/merger for the Swedish Riksdag (riksmöte 2025/26 and forward). For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md). For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

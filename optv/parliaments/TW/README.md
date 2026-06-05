@@ -1,6 +1,6 @@
 # Legislative Yuan (TW)
 
-Parser/merger for the Republic of China's Legislative Yuan (立法院), term 11 (2024–). For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md).
+Parser/merger for the Republic of China's Legislative Yuan (立法院), term 11 (2024–). For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md). For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

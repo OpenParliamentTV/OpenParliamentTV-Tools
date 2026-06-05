@@ -1,6 +1,6 @@
 # European Parliament (EU)
 
-Parser/merger for the European Parliament plenary (term 10, 2024–2029). Built around the official European Parliament Open Data Portal API (`data.europarl.europa.eu/api/v2`) and the glcloud HLS media stream. Verbatim text is pulled in English; per-speech NER and audio alignment run as a single English pipeline. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md).
+Parser/merger for the European Parliament plenary (term 10, 2024–2029). Built around the official European Parliament Open Data Portal API (`data.europarl.europa.eu/api/v2`) and the glcloud HLS media stream. Verbatim text is pulled in English; per-speech NER and audio alignment run as a single English pipeline. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md). For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 

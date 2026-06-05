@@ -1,6 +1,6 @@
 # Assemblée nationale (FR)
 
-Parser/merger for the French National Assembly plenary (legislature 17, 2024–present). Built around the official Assemblée nationale open data (Syceron comptes rendus + AMO acteurs/organes) and the `videos-diffusion.assemblee-nationale.fr` HLS stream. The compte rendu carries the verbatim text **and** the per-speech video offsets, so the merge is a single-source spine; only the séance video URL is resolved externally. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md).
+Parser/merger for the French National Assembly plenary (legislature 17, 2024–present). Built around the official Assemblée nationale open data (Syceron comptes rendus + AMO acteurs/organes) and the `videos-diffusion.assemblee-nationale.fr` HLS stream. The compte rendu carries the verbatim text **and** the per-speech video offsets, so the merge is a single-source spine; only the séance video URL is resolved externally. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md). For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 
