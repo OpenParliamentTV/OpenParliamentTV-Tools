@@ -103,6 +103,13 @@ make -C optv/parliaments/DE test
 
 Flat layout under [tests/](tests/), no config files. Covers pure helpers, the merger contract that catches `originID`/`originTextID`-class regressions, the agenda-type vocabulary, and an end-to-end smoke run on tiny synthetic fixtures. Stages that need external data or services (aeneas alignment, the NEL entity dump, entity-fishing NER) are not in the suite. CI runs the same command on every push and PR via [.github/workflows/tests.yml](.github/workflows/tests.yml).
 
+## Quality control
+
+An opt-in QC toolset cross-checks output without touching pipeline data. It has its own dependencies (`pip install -r requirements-qc.txt` — faster-whisper, Resemblyzer, torch) and is not part of the production pipeline:
+
+- [`optv/shared/whisper_diff.py`](optv/shared/whisper_diff.py) (`rank` / `transcribe` / `diff`) — transcribes a session's audio with faster-whisper (+ optional Resemblyzer speaker-change detection, via [`whisper_qc.py`](optv/shared/whisper_qc.py)) and reports where it diverges from the proceedings text.
+- [`optv/shared/merge_audit.py`](optv/shared/merge_audit.py) — read-only sweep over merger output that flags text-accumulation anomalies (histograms + suspect lists).
+
 ## Implemented parliaments
 
 `DE` (Deutscher Bundestag) is the reference implementation and the only parliament in production; the others are in development. For how their data structures differ, see [DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
