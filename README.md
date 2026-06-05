@@ -114,26 +114,26 @@ An opt-in QC toolset cross-checks output without touching pipeline data. It has 
 
 `DE` (Deutscher Bundestag) is the reference implementation and the only parliament in production; the others are in development. For how their data structures differ, see [DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
-| Parliament | Name | Type | Data | Status |
+| Parliament | Name | Type | Data Repository | Status |
 |------------|------|------|------|--------|
-| [`DE`](optv/parliaments/DE/) | Deutscher Bundestag | national | [OpenParliamentTV-Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE) | **production** |
-| [`DE-BW`](optv/parliaments/DE-BW/) | Landtag von Baden-Württemberg | regional | [OpenParliamentTV-Data-DE-BW](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-BW) | in development |
-| [`DE-BY`](optv/parliaments/DE-BY/) | Bayerischer Landtag | regional | [OpenParliamentTV-Data-DE-BY](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-BY) | in development |
-| [`DE-HH`](optv/parliaments/DE-HH/) | Hamburgische Bürgerschaft | regional | [OpenParliamentTV-Data-DE-HH](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-HH) | in development |
-| [`DE-NI`](optv/parliaments/DE-NI/) | Niedersächsischer Landtag | regional | [OpenParliamentTV-Data-DE-NI](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-NI) | in development |
-| [`DE-NW`](optv/parliaments/DE-NW/) | Landtag Nordrhein-Westfalen | regional | [OpenParliamentTV-Data-DE-NW](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-NW) | in development |
-| [`DE-RP`](optv/parliaments/DE-RP/) | Landtag Rheinland-Pfalz | regional | [OpenParliamentTV-Data-DE-RP](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-RP) | in development |
-| [`DE-SH`](optv/parliaments/DE-SH/) | Landtag Schleswig-Holstein | regional | [OpenParliamentTV-Data-DE-SH](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-SH) | in development |
-| [`DE-SN`](optv/parliaments/DE-SN/) | Sächsischer Landtag | regional | [OpenParliamentTV-Data-DE-SN](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-SN) | in development |
-| [`DE-ST`](optv/parliaments/DE-ST/) | Landtag von Sachsen-Anhalt | regional | [OpenParliamentTV-Data-DE-ST](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-ST) | in development |
-| [`ES`](optv/parliaments/ES/) | Congreso de los Diputados | national | [OpenParliamentTV-Data-ES](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-ES) | in development |
-| [`EU`](optv/parliaments/EU/) | European Parliament | supranational | [OpenParliamentTV-Data-EU](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-EU) | in development |
-| [`FI`](optv/parliaments/FI/) | Eduskunta | national | [OpenParliamentTV-Data-FI](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-FI) | in development |
-| [`FR`](optv/parliaments/FR/) | Assemblée nationale | national | [OpenParliamentTV-Data-FR](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-FR) | in development |
-| [`NO`](optv/parliaments/NO/) | Stortinget | national | [OpenParliamentTV-Data-NO](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-NO) | in development |
-| [`PT`](optv/parliaments/PT/) | Assembleia da República | national | [OpenParliamentTV-Data-PT](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-PT) | in development |
-| [`SE`](optv/parliaments/SE/) | Sveriges Riksdag | national | [OpenParliamentTV-Data-SE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-SE) | in development |
-| [`TW`](optv/parliaments/TW/) | Legislative Yuan (立法院) | national | [OpenParliamentTV-Data-TW](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-TW) | in development |
+| [`DE`](optv/parliaments/DE/) | Deutscher Bundestag | national | [Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE) | **production** |
+| [`DE-BW`](optv/parliaments/DE-BW/) | Landtag von Baden-Württemberg | regional | [Data-DE-BW](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-BW) | in development |
+| [`DE-BY`](optv/parliaments/DE-BY/) | Bayerischer Landtag | regional | [Data-DE-BY](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-BY) | in development |
+| [`DE-HH`](optv/parliaments/DE-HH/) | Hamburgische Bürgerschaft | regional | [Data-DE-HH](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-HH) | in development |
+| [`DE-NI`](optv/parliaments/DE-NI/) | Niedersächsischer Landtag | regional | [Data-DE-NI](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-NI) | in development |
+| [`DE-NW`](optv/parliaments/DE-NW/) | Landtag Nordrhein-Westfalen | regional | [Data-DE-NW](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-NW) | in development |
+| [`DE-RP`](optv/parliaments/DE-RP/) | Landtag Rheinland-Pfalz | regional | [Data-DE-RP](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-RP) | in development |
+| [`DE-SH`](optv/parliaments/DE-SH/) | Landtag Schleswig-Holstein | regional | [Data-DE-SH](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-SH) | in development |
+| [`DE-SN`](optv/parliaments/DE-SN/) | Sächsischer Landtag | regional | [Data-DE-SN](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-SN) | in development |
+| [`DE-ST`](optv/parliaments/DE-ST/) | Landtag von Sachsen-Anhalt | regional | [Data-DE-ST](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-ST) | in development |
+| [`ES`](optv/parliaments/ES/) | Congreso de los Diputados | national | [Data-ES](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-ES) | in development |
+| [`EU`](optv/parliaments/EU/) | European Parliament | supranational | [Data-EU](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-EU) | in development |
+| [`FI`](optv/parliaments/FI/) | Eduskunta | national | [Data-FI](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-FI) | in development |
+| [`FR`](optv/parliaments/FR/) | Assemblée nationale | national | [Data-FR](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-FR) | in development |
+| [`NO`](optv/parliaments/NO/) | Stortinget | national | [Data-NO](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-NO) | in development |
+| [`PT`](optv/parliaments/PT/) | Assembleia da República | national | [Data-PT](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-PT) | in development |
+| [`SE`](optv/parliaments/SE/) | Sveriges Riksdag | national | [Data-SE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-SE) | in development |
+| [`TW`](optv/parliaments/TW/) | Legislative Yuan (立法院) | national | [Data-TW](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-TW) | in development |
 
 ## Adding a new parliament
 
