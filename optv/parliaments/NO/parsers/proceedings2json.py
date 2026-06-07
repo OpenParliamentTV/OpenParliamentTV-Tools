@@ -399,7 +399,13 @@ def parse_proceedings_for_meeting(config: Config, period: int, moteid: int,
         raise ValueError(f"No meeting overview entry for moteid={moteid} in period {period}")
 
     meeting_date, meeting_date_iso = _meeting_date_iso(meeting)
-    session_number = meeting.get("mote_rekkefolge") or moteid
+    # session.number must be unique per meeting: it keys the per-speech audio
+    # cache filename (period+session.number+speechIndex in align.cachedfile /
+    # align_prep). mote_rekkefolge is always 1 across the whole session-year
+    # (and dagsorden_nummer is not unique either), so all meetings collided on
+    # the same clip names. moteid is the only reliable unique key (also used by
+    # originID and the meta.session string).
+    session_number = moteid
     referat_id = meeting.get("referat_id") or ""
     sesjon_path = sesjonid_for_meeting or ""
     referat_url = REFERAT_URL_TEMPLATE.format(sesjon_path=sesjon_path,
