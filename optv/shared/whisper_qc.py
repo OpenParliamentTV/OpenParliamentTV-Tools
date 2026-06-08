@@ -9,8 +9,11 @@ call runs in a spawn-context child so the heavy ML models never leak into the
 parent and per-call timeouts are enforceable.
 """
 
+import json
 import logging
 import multiprocessing
+import os
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -29,7 +32,14 @@ SPEAKER_DEDUP_WINDOW_S = 3.0
 
 
 def _whisper_worker(audio_path: str, language: str, model_size: str,
-                    out_queue) -> None:
+                    out_path: str) -> None:
+    """Transcribe and write the result to ``out_path`` as JSON.
+
+    The result is handed back via a file rather than a ``multiprocessing.Queue``:
+    a long, dense clip produces a segment list larger than the OS pipe buffer,
+    which deadlocks the Queue feeder (child blocks on ``put`` while the parent is
+    blocked in ``join``). A file handoff has no such size limit.
+    """
     try:
         from faster_whisper import WhisperModel
         model = WhisperModel(model_size, device="cpu", compute_type="int8")
@@ -44,7 +54,7 @@ def _whisper_worker(audio_path: str, language: str, model_size: str,
             for s in segments_iter
         ]
         text = "".join(s["text"] for s in segments).strip()
-        out_queue.put({
+        result = {
             "ok": True,
             "text": text,
             "segments": segments,
@@ -52,9 +62,14 @@ def _whisper_worker(audio_path: str, language: str, model_size: str,
             "language_probability": float(info.language_probability),
             "duration": float(info.duration),
             "model": model_size,
-        })
+        }
     except Exception as e:
-        out_queue.put({"ok": False, "error": f"{type(e).__name__}: {e}"})
+        result = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+    # Atomic write so the parent never reads a half-written file.
+    tmp = f"{out_path}.partial"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(result, fh)
+    os.replace(tmp, out_path)
 
 
 def transcribe_speech(audio_path: Path, language: str = "de",
@@ -69,25 +84,37 @@ def transcribe_speech(audio_path: Path, language: str = "de",
         logger.error(f"Audio file missing: {audio_path}")
         return None
 
+    fd, tmp_name = tempfile.mkstemp(prefix="whisper_qc_", suffix=".json")
+    os.close(fd)
+    out_path = Path(tmp_name)
     ctx = multiprocessing.get_context("spawn")
-    q = ctx.Queue()
     p = ctx.Process(target=_whisper_worker,
-                    args=(str(audio_path), language, model_size, q))
-    p.start()
-    p.join(timeout)
-    if p.is_alive():
-        p.terminate()
-        p.join(5)
-        logger.error(f"faster-whisper timed out after {timeout}s on {audio_path.name}")
-        return None
-    if q.empty():
-        logger.error(f"faster-whisper produced no result for {audio_path.name}")
-        return None
-    result = q.get()
-    if not result.get("ok"):
-        logger.error(f"faster-whisper failed on {audio_path.name}: {result.get('error')}")
-        return None
-    return result
+                    args=(str(audio_path), language, model_size, str(out_path)))
+    try:
+        p.start()
+        p.join(timeout)
+        if p.is_alive():
+            p.terminate()
+            p.join(5)
+            logger.error(f"faster-whisper timed out after {timeout}s on {audio_path.name}")
+            return None
+        if out_path.stat().st_size == 0:
+            logger.error(f"faster-whisper produced no result for {audio_path.name}")
+            return None
+        try:
+            result = json.loads(out_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError) as e:
+            logger.error(f"faster-whisper result unreadable for {audio_path.name}: {e}")
+            return None
+        if not result.get("ok"):
+            logger.error(f"faster-whisper failed on {audio_path.name}: {result.get('error')}")
+            return None
+        return result
+    finally:
+        try:
+            out_path.unlink()
+        except OSError:
+            pass
 
 
 def _speaker_worker(audio_path: str, window_s: float, hop_s: float,
