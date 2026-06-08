@@ -243,11 +243,17 @@ def _resolve_faction(person: dict, orgs: dict, session_date: str) -> dict | None
         return None
     abbrev = org.get("abbrev") or org["label"]
     label = FACTION_LABEL_MAP.get(abbrev, abbrev)
-    item: dict = {"label": label}
-    if org.get("wid"):
-        item["wid"] = org["wid"]
-        item["wtype"] = "ORG"
-    return item
+    # Emit the faction as a label-only dict, exactly like proceedings2json
+    # does for periods 18+, and let the shared NEL stage resolve the
+    # Wikidata ID against metadata/entities.json. The ParlaMint listOrg
+    # <idno> for a parliamentaryGroup points at the *political party*
+    # entity (e.g. DIE LINKE -> Q49764), not the Bundestag *Fraktion*
+    # (Q1826856) that every other period links speakers to. Emitting that
+    # party ID here baked the wrong faction into all of EP17. Dropping it
+    # routes EP17 through the same faction-name -> Fraktion-ID mapping as
+    # later periods. (Person wids stay parser-supplied; only faction
+    # resolution defers to NEL.)
+    return {"label": label}
 
 
 def _person_type(person: dict, session_date: str) -> str:
