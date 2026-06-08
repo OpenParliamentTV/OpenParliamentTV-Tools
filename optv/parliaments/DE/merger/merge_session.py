@@ -40,6 +40,38 @@ CHAIR_TRANSITION_TYPES = frozenset({'procedural'})
 # Bimodal len(textContents) distribution at the gate-pass tail: 1–3 legitimate,
 # 60+ broken (Bettermann fingerprint). Any threshold in [4, 60] is equivalent.
 TEXT_CONTENTS_CAP = 5
+# chars-per-second cap — a speech whose proceedings text is far longer than its
+# media clip could physically contain is a mis-merge (whole-debate / wrong text
+# bound onto a short clip). German speech runs ~16 cps (p90 ~20); these run
+# 100s–1000s. Only gate substantive *debate* types: procedural/opening/voting/
+# election etc. legitimately carry long chair text (announcements, referral
+# lists) on a short representative clip and are correct-but-truncated, not wrong.
+# questioning_of_the_government IS included: the qa rule above already gates ALL
+# of it on re-merge, but listing it here means "extreme cps == mis-merge" also
+# holds for Q&A — so consumers of this set (e.g. the backfill) catch a Q&A dump
+# like a 426-cps Befragung answer WITHOUT blanket-suppressing normal Q&A turns.
+CPS_CAP = 100
+CPS_CAP_TYPES = frozenset({
+    'regular', 'report', 'current_affairs', 'government_declaration',
+    'budget', 'briefing', 'questioning_of_the_government',
+})
+# The char floor is source-dependent. Whisper cross-check (see
+# whisper_qc/period17_readiness.md): period-17 is ParlaMint-sourced — its
+# <rede> segmentation binds whole-debate text blocks onto short chair clips, so
+# even ~8k-char gate-passers are *wrong content* (sim 0.01–0.11). 18–21 is
+# official Bundestag XML — high-cps there is usually correct-but-truncated chair
+# text; only the >25k-char giant dumps (e.g. the Bettermann tail-accumulation
+# bug) are genuinely wrong. Keying on period 17 == the ParlaMint source.
+CPS_CAP_CHARS_BY_PERIOD = {17: 8000}
+CPS_CAP_CHARS_DEFAULT = 25000
+
+
+def _text_char_count(text_contents) -> int:
+    """Total characters across all sentences (mirrors the cps audit metric)."""
+    return sum(len(sent.get('text') or '')
+               for tc in text_contents or []
+               for tb in tc.get('textBody') or []
+               for sent in tb.get('sentences') or [])
 
 def remove_accents(input_str):
     nfkd_form = unicodedata.normalize('NFKD', input_str)
@@ -360,6 +392,16 @@ def merge_item(mediaitem, proceedingitems):
     if len(output['textContents']) > TEXT_CONTENTS_CAP:
         confidence = min(confidence, 0.5)
         confidence_reason = confidence_reason or 'len-cap'
+    # chars-per-second cap: text physically too long for the clip => mis-merge.
+    if agenda_type in CPS_CAP_TYPES:
+        duration = (output.get('media') or {}).get('duration')
+        if isinstance(duration, (int, float)) and duration > 0:
+            chars = _text_char_count(output['textContents'])
+            period = (output.get('electoralPeriod') or {}).get('number')
+            chars_floor = CPS_CAP_CHARS_BY_PERIOD.get(period, CPS_CAP_CHARS_DEFAULT)
+            if chars >= chars_floor and chars / duration >= CPS_CAP:
+                confidence = min(confidence, 0.5)
+                confidence_reason = confidence_reason or 'cps-cap'
 
     output['debug']['confidence'] = confidence
     if confidence_reason:

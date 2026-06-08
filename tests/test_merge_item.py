@@ -341,3 +341,55 @@ def test_merge_item_qa_type_distinct_reason_from_chair_transition():
     proc["agendaItem"]["type"] = "qa"
     merged = merge_item(media, [proc])
     assert merged["debug"]["confidence_reason"] == "qa-agenda-type"
+
+
+def _proceeding_with_text(total_chars, agenda_type="regular"):
+    """A proceeding whose single textContent holds `total_chars` characters."""
+    proc = make_proceeding_item()
+    proc["agendaItem"]["type"] = agenda_type
+    blob = "x" * total_chars
+    tb = proc["textContents"][0]["textBody"][0]
+    tb["text"] = blob
+    tb["sentences"] = [{"text": blob}]
+    return proc
+
+
+def test_merge_item_cps_cap_drops_confidence_huge_text_short_clip():
+    """18–21: substantive-type text far longer than the clip (>=25k chars and
+    >=100 cps) is a wrong-content mis-merge (Bettermann/Schmidt class)."""
+    media = make_media_item()             # period 21
+    media["media"]["duration"] = 100.0    # 30000 chars / 100s = 300 cps
+    merged = merge_item(media, [_proceeding_with_text(30000)])
+    assert merged["debug"]["confidence"] == 0.5
+    assert merged["debug"]["confidence_reason"] == "cps-cap"
+
+
+def test_merge_item_cps_cap_spares_correct_text_below_18_21_floor():
+    """18–21: a high-cps but moderate-length (>=8k, <25k) chair turn is
+    correct-but-truncated, not a wrong dump -> must stay gate-passing."""
+    media = make_media_item()
+    media["media"]["duration"] = 50.0     # 10000 chars / 50s = 200 cps (>100)
+    merged = merge_item(media, [_proceeding_with_text(10000)])
+    assert merged["debug"]["confidence"] == 1
+    assert "confidence_reason" not in merged["debug"]
+
+
+def test_merge_item_cps_cap_period17_uses_lower_char_floor():
+    """Period-17 (ParlaMint source) packs wrong whole-debate text even at ~8k
+    chars, so its floor is 8000 -> the same 10k case IS gate-failed."""
+    media = make_media_item()
+    media["electoralPeriod"] = {"number": 17}
+    media["media"]["duration"] = 50.0     # 10000 / 50 = 200 cps
+    merged = merge_item(media, [_proceeding_with_text(10000)])
+    assert merged["debug"]["confidence"] == 0.5
+    assert merged["debug"]["confidence_reason"] == "cps-cap"
+
+
+def test_merge_item_cps_cap_excludes_procedural_opening_types():
+    """opening/voting/etc. legitimately carry long chair text on a short clip
+    (correct-but-truncated) -> the cps cap must NOT fire for them."""
+    media = make_media_item()
+    media["media"]["duration"] = 100.0    # 30000 / 100 = 300 cps
+    merged = merge_item(media, [_proceeding_with_text(30000, agenda_type="opening")])
+    assert merged["debug"]["confidence"] == 1
+    assert "confidence_reason" not in merged["debug"]
