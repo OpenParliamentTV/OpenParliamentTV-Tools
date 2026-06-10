@@ -361,6 +361,12 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
         sourceUri = source_urls[0]
 
     intro = root.find('vorspann')
+    if intro is None:
+        # Preliminary or malformed protocol: the DBT Plenarprotokoll always
+        # carries <vorspann><kopfdaten>. A partial XML published while a session
+        # is still running (or a bad download) lacks it. Raise a clear error;
+        # parse_proceedings_directory skips this one file and keeps going.
+        raise ValueError(f"{filename}: no <vorspann> element (preliminary or malformed proceedings)")
     metadata = intro.find('kopfdaten')
 
     date = ddmmyyyy_to_iso(root.attrib.get('sitzung-datum', ''))
@@ -541,13 +547,30 @@ def parse_proceedings(source: str, output: str, uri: str, args):
 
 def parse_proceedings_directory(directory: Path, args):
     """Update parsed versions of proceedings files.
+
+    Only DBT-format ``<sessionid>-proceedings.xml`` files. The proceedings
+    directory is shared across electoral periods, and ParlaMint periods (16/17)
+    drop ``<sessionid>-data.xml`` source files into the same place. A bare
+    ``*.xml`` glob would sweep those up and hand ParlaMint TEI (no <vorspann>)
+    to the DBT parser, crashing every run — and it never cache-hits them
+    (ParlaMint writes ``…-proceedings.json``, this parser looks for ``…-data.json``),
+    so it re-parses and re-crashes forever. parse_parlamint_directory owns
+    ``*-data.xml``; keep this one to ``*-proceedings.xml``.
     """
-    for source in sorted(directory.glob('*.xml')):
+    for source in sorted(directory.glob('*-proceedings.xml')):
         output_file = get_parsed_proceedings_filename(source, directory)
         # If the output file does not exist, or is older than source file:
         if not output_file.exists() or output_file.stat().st_mtime < source.stat().st_mtime:
             # Since we do not know the source URI, we specify the local filename
-            parse_proceedings(source, directory, str(source), args)
+            try:
+                parse_proceedings(source, directory, str(source), args)
+            except Exception as e:
+                # One unparseable proceedings file (preliminary/partial protocol,
+                # empty transcript, malformed XML) must not abort the whole run —
+                # otherwise every other session, plus the media-only live
+                # speeches, stops publishing. Skip it; no JSON is written, so the
+                # next run retries once the Bundestag publishes a clean version.
+                logger.warning(f"Skipping {source.name}: could not parse proceedings ({e})")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parse Bundestag Proceedings XML files.")
