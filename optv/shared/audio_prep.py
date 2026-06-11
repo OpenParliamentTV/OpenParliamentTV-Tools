@@ -14,10 +14,8 @@ start, duration)`` off a speech) plus a download/slice choice; the driver owns
 the common skeleton (group-by-session, download-once, slice, cache accounting,
 skip/stale handling) and standardises the previously-divergent naming:
 
-* session audio lives under ``cache/audio_session/`` (a one-time merge of the
-  old ``audio_debate`` / ``audio_meeting`` layouts — see ``migrate_session_cache``);
-* the session filename keeps each parliament's own stable id (``md5(url)``
-  fallback), so the migration is a pure directory merge — no re-keying;
+* session audio lives under ``cache/audio_session/``, keyed by each parliament's
+  own stable id (``md5(url)`` fallback);
 * in-progress downloads use a ``…​.part.mp3`` temp name.
 
 Per-parliament *behaviour* differences are preserved as adapter parameters:
@@ -30,7 +28,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import shutil
 import subprocess
 import urllib.request
 from dataclasses import dataclass
@@ -107,43 +104,6 @@ def _is_complete(local_dur: float, required_duration: float) -> bool:
     if required_duration <= 0:
         return local_dur > 1.0
     return local_dur + _SESSION_AUDIO_TOLERANCE_S >= required_duration
-
-
-# --------------------------------------------------------------------------- #
-# One-time cache migration
-# --------------------------------------------------------------------------- #
-
-def migrate_session_cache(cachedir: Path, *, target_subdir: str = "audio_session",
-                          legacy_subdirs: tuple[str, ...] = ("audio_debate", "audio_meeting")) -> int:
-    """Merge legacy per-parliament session-audio dirs into ``audio_session``.
-
-    Idempotent and collision-free (one parliament per data dir, and the
-    standardised filename keeps each parliament's stable id, so a name already
-    present in the target is the same download). Returns the number of files
-    moved. A no-op when no legacy dir exists.
-    """
-    cachedir = Path(cachedir)
-    target = cachedir / target_subdir
-    moved = 0
-    for name in legacy_subdirs:
-        legacy = cachedir / name
-        if not legacy.is_dir() or legacy.resolve() == target.resolve():
-            continue
-        target.mkdir(parents=True, exist_ok=True)
-        for item in sorted(legacy.iterdir()):
-            dest = target / item.name
-            if dest.exists():
-                logger.debug("migrate: %s already in %s — keeping both", item.name, target.name)
-                continue
-            shutil.move(str(item), str(dest))
-            moved += 1
-        try:
-            legacy.rmdir()  # only succeeds when fully drained
-        except OSError:
-            logger.debug("migrate: %s not empty after merge — left in place", legacy.name)
-    if moved:
-        logger.info("Migrated %d session-audio file(s) into %s/", moved, target_subdir)
-    return moved
 
 
 # --------------------------------------------------------------------------- #
@@ -325,7 +285,6 @@ def prepare_per_speech_audio(
     Returns ``(prepared, skipped_existing, skipped_no_data)``.
     """
     cachedir = Path(cachedir)
-    migrate_session_cache(cachedir)
     session_dir = cachedir / session_subdir
 
     # Pass 1 (guarded downloads only): the latest offset each session must reach.

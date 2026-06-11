@@ -11,9 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from optv.shared import audio_prep as ap
-from optv.shared.audio_prep import (
-    SpeechAudio, md5_key, migrate_session_cache, prepare_per_speech_audio,
-)
+from optv.shared.audio_prep import SpeechAudio, md5_key, prepare_per_speech_audio
 
 
 # --------------------------------------------------------------------------- #
@@ -155,28 +153,6 @@ def test_force_reslices_existing(tmp_path):
                                       slice_fn=lambda *a: sl.append(a))
     assert counts == (1, 0, 0)
     assert len(sl) == 1
-
-
-# --------------------------------------------------------------------------- #
-# Cache migration
-# --------------------------------------------------------------------------- #
-
-def test_migrate_session_cache(tmp_path):
-    legacy = tmp_path / "audio_debate"
-    legacy.mkdir(parents=True)
-    (legacy / "abc.mp3").write_text("data")
-    (legacy / "abc.part.mp3").write_text("partial")
-
-    moved = migrate_session_cache(tmp_path)
-    assert moved == 2
-    assert (tmp_path / "audio_session" / "abc.mp3").read_text() == "data"
-    assert not legacy.exists()
-    # idempotent second run
-    assert migrate_session_cache(tmp_path) == 0
-
-
-def test_migrate_no_legacy_is_noop(tmp_path):
-    assert migrate_session_cache(tmp_path) == 0
 
 
 # --------------------------------------------------------------------------- #
