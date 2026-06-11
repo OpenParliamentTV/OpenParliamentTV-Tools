@@ -6,14 +6,12 @@ locale:
   aeneas_language: deu
   entityfishing_language: de
 periods: [19]
-# `align` and `ner` deliberately omitted: the "Plenum Online" archive
-# provides a per-speech video spine (per-TOP JSON playlists, one HLS
-# master per speech) but the Plenarprotokoll is PDF-only and we do not
-# yet have a PDF parser. Without transcript text neither stage can
-# produce meaningful output. The platform still imports the per-speech
-# video clips with speaker / faction / agenda metadata. See DE-SH for
-# the same regime.
-supported_stages: [download, parse, merge, nel]
+# The "Plenum Online" archive provides a per-speech video spine (per-TOP
+# JSON playlists, one HLS master per speech); the Plenarprotokoll PDF is
+# parsed and joined onto that spine (join_text_to_spine), so verbatim text
+# is published. `align` runs aeneas against each speech's own HLS clip;
+# `ner` follows on the aligned text (source text is § 5 Abs. 2 UrhG).
+supported_stages: [download, parse, merge, nel, align, ner]
 # Aspirational - the dump may not exist on de-by.openparliament.tv yet.
 # Until it does, scraper/build_entity_dump.py writes the local fallback
 # at <data_dir>/metadata/entities.json.
