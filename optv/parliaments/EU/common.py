@@ -44,7 +44,7 @@ class Config(BaseConfig):
             'aligned': cache_dir / "aligned",
             'ner': cache_dir / "ner",
             'audio': cache_dir / "audio",
-            'audio_debate': cache_dir / "audio_debate",
+            'audio_session': cache_dir / "audio_session",
             'processed': data_dir / "processed",
             'nel_data': data_dir / "metadata"
         }
