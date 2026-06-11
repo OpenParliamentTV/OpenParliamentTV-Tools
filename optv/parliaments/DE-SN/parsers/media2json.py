@@ -183,6 +183,21 @@ def parse_session(raw_path: Path) -> dict | None:
         return None
 
     speeches.sort(key=lambda s: (s.get("date") or "", s["start_offset"]))
+
+    # DE-SN-F03: the source player config's endPosition is unreliable and frequently
+    # overruns the next speech's startPosition, so per-speech clips bleed into the next
+    # 1–2 speakers (a shipped-product bug, and it corrupted the Whisper QC). startPosition
+    # is reliable; clamp each end to the next speech's start within the same daily stream
+    # so the windows are disjoint. Keep the source end when it is already shorter.
+    for a, b in zip(speeches, speeches[1:]):
+        if (a.get("date") == b.get("date") and a.get("end_offset") is not None
+                and a["end_offset"] > b["start_offset"]):
+            a["end_offset"] = b["start_offset"]
+            if a.get("start_datetime"):
+                span = max(0, a["end_offset"] - a["start_offset"])
+                a["end_datetime"] = (datetime.fromisoformat(a["start_datetime"])
+                                     + timedelta(seconds=span)).isoformat("T", "seconds")
+
     for idx, s in enumerate(speeches, start=1):
         s["speech_index"] = idx
 
