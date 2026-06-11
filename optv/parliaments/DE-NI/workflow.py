@@ -32,6 +32,7 @@ from optv.shared.workflow import WorkflowHooks, run_main
 from .common import Config
 from .merger.merge_session import merge_session
 from .parsers.media2json import parse_media_directory
+from .parsers.vtt2json import parse_proceedings_directory
 from .scraper.fetch_archive import fetch_archive
 from .scraper.fetch_media import fetch_media_for_archive
 
@@ -59,6 +60,7 @@ def _download(config, args):
 
 def _parse(config, args):
     parse_media_directory(config.dir('media'))
+    parse_proceedings_directory(config, args)
 
 
 def _merge(config, session, args):

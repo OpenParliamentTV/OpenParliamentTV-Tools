@@ -36,11 +36,15 @@ from optv.shared.agenda_types import classify_de_ni
 from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
 from ..scraper.common import video_clip_uri, vtt_uri
 from optv.parliaments import get_rights as _get_rights
+from optv.shared.pdf2tei.spine_join import load_turns, attach_text_by_index
 
 logger = logging.getLogger(__name__)
 
 PARLIAMENT_ID = "DE-NI"
 SOURCE_URI = _get_rights("DE-NI", stream="media")["sourceURI"]
+# Broadcaster WebVTT subtitles, time-aligned to the clips by Plenar-TV.
+PROCEEDINGS_CREATOR = "Landtag Niedersachsen (Plenar-TV)"
+PROCEEDINGS_LICENSE = "Plenar-TV (Landtag Niedersachsen)"
 
 _SLUG_RE = re.compile(r'[^a-z0-9]+')
 
@@ -197,6 +201,13 @@ def merge_session(session: str, config, options=None) -> Path:
             },
         }
         merged.append(record)
+
+    # Attach Plenar-TV WebVTT text (if parsed) onto the fixed spine by speechIndex.
+    turns = load_turns(config, session)
+    if turns:
+        matched = attach_text_by_index(merged, turns, creator=PROCEEDINGS_CREATOR,
+                                       license=PROCEEDINGS_LICENSE)
+        logger.info(f"{session}: attached VTT text to {matched}/{len(merged)} speeches")
 
     doc = {
         "meta": {

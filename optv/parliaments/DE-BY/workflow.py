@@ -31,8 +31,10 @@ from optv.shared.workflow import WorkflowHooks, run_main
 from .common import Config
 from .merger.merge_session import merge_session
 from .parsers.media2json import parse_media_directory
+from .parsers.proceedings2json import parse_proceedings_directory
 from .scraper.fetch_archive import fetch_archive
 from .scraper.fetch_media import fetch_media_for_archive
+from .scraper.fetch_proceedings import fetch_proceedings
 
 logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basename(sys.argv[0]))
 
@@ -54,10 +56,12 @@ def _download(config, args):
         retry_count=args.retry_count,
         session_filter=args.limit_session,
     )
+    fetch_proceedings(config, args)
 
 
 def _parse(config, args):
     parse_media_directory(config.dir('media'))
+    parse_proceedings_directory(config, args)
 
 
 def _merge(config, session, args):

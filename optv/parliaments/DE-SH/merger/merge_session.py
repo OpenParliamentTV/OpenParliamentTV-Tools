@@ -28,12 +28,16 @@ if __package__ is None or __package__ == "":
 from optv.shared.agenda_types import classify_de_sh
 from optv.shared.merge_format import split_first_last as _split_first_last
 from optv.shared.lang.de import strip_honorifics as _strip_honorifics
+from optv.shared.lang.de import match_key_surname as _match_key
+from optv.shared.pdf2tei.spine_join import load_turns, join_text_to_spine
 
 from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
 
 logger = logging.getLogger(__name__)
 
 PARLIAMENT_ID = "DE-SH"
+PROCEEDINGS_CREATOR = "Schleswig-Holsteinischer Landtag"
+PROCEEDINGS_LICENSE = "Amtliches Werk (§ 5 Abs. 2 UrhG)"
 SOURCE_PAGE_TEMPLATE = "https://m7k.ltsh.de/iframe.php?b={speech_id}"
 
 # Map the m7k ``gruppe`` field to (faction_label_or_None, speakerContext).
@@ -249,6 +253,16 @@ def merge_session(session: str, config, options) -> Path:
 
     earliest_iso = earliest_iso or f"{session_date}T00:00:00"
     latest_iso = latest_iso or f"{session_date}T23:59:59"
+
+    # Spine-join: attach proceedings text (if parsed) onto the fixed media spine.
+    turns = load_turns(config, session)
+    if turns:
+        spine_keys = [_match_key(sp.get("redner") or "") for sp in speeches]
+        matched = join_text_to_spine(merged, spine_keys, turns,
+                                     creator=PROCEEDINGS_CREATOR,
+                                     license=PROCEEDINGS_LICENSE)
+        logger.info(f"{session}: matched {matched}/{len(merged)} speeches to "
+                    f"{len(turns)} proceedings turns")
 
     doc = {
         "meta": {

@@ -420,6 +420,13 @@ def speaker_cleanup(item, default_value):
 
 def needleman_wunsch_align(proceedings, media, options):
     """Align data structures using Needleman-Wunsch algorithm
+
+    DE-specific on purpose: the matrix is seeded with the substitution scores
+    (no gap border), the backtrack compares raw neighbour cells, and a tail walks
+    any remaining media rows onto the first proceeding (Eröffnung skipped/split,
+    eg 19001/20021). These choices are tuned to the Bundestag's media↔proceedings
+    structure and are not shared — only the generic equal-key form in
+    ``optv.shared.sequence_align`` is.
     """
     config = {
         "speaker_weight": 4,

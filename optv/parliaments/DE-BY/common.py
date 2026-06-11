@@ -37,7 +37,7 @@ from optv.shared.session_status import SessionStatus  # noqa: F401
 
 
 class Config(BaseConfig):
-    # Video-only: PDF-only/absent proceedings, no `align`/`ner` stages, so the
-    # session status short-circuits to ``no_text``. Sessions are discovered
-    # from bare ``{session}-media.json`` files (BaseConfig defaults).
-    HAS_TEXT = False
+    # The Plenarprotokoll PDFs are now parsed (pdf2tei) and joined onto the video
+    # spine, so sessions carry proceedings text. Sessions are discovered from
+    # bare ``{session}-media.json`` files (BaseConfig defaults).
+    HAS_TEXT = True

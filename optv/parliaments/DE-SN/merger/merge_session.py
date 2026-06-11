@@ -38,11 +38,15 @@ from optv.shared.agenda_types import classify_de_sn
 
 from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
 from optv.parliaments import get_rights as _get_rights
+from optv.shared.lang.de import match_key_surname as _match_key
+from optv.shared.pdf2tei.spine_join import load_turns, join_text_to_spine
 
 logger = logging.getLogger(__name__)
 
 PARLIAMENT_ID = "DE-SN"
 SOURCE_URI = _get_rights("DE-SN", stream="media")["sourceURI"]
+PROCEEDINGS_CREATOR = "Sächsischer Landtag"
+PROCEEDINGS_LICENSE = "Amtliches Werk (§ 5 Abs. 2 UrhG)"
 
 _SLUG_RE = re.compile(r'[^a-z0-9]+')
 
@@ -178,6 +182,16 @@ def merge_session(session: str, config, options=None) -> Path:
             },
         }
         merged.append(record)
+
+    # Spine-join: attach proceedings text (if parsed) onto the fixed media spine.
+    turns = load_turns(config, session)
+    if turns:
+        spine_keys = [_match_key(sp.get("label") or sp.get("name_raw") or "") for sp in speeches]
+        matched = join_text_to_spine(merged, spine_keys, turns,
+                                     creator=PROCEEDINGS_CREATOR,
+                                     license=PROCEEDINGS_LICENSE)
+        logger.info(f"{session}: matched {matched}/{len(merged)} speeches to "
+                    f"{len(turns)} proceedings turns")
 
     doc = {
         "meta": {

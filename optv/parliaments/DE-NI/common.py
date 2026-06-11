@@ -42,4 +42,4 @@ class Config(BaseConfig):
     # Video-only: PDF-only/absent proceedings, no `align`/`ner` stages, so the
     # session status short-circuits to ``no_text``. Sessions are discovered
     # from bare ``{session}-media.json`` files (BaseConfig defaults).
-    HAS_TEXT = False
+    HAS_TEXT = True

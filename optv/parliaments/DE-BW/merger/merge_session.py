@@ -35,11 +35,15 @@ from optv.shared.agenda_types import classify_de_bw
 
 from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
 from optv.parliaments import get_rights as _get_rights
+from optv.shared.lang.de import match_key_surname as _match_key
+from optv.shared.pdf2tei.spine_join import load_turns, join_text_to_spine
 
 logger = logging.getLogger(__name__)
 
 PARLIAMENT_ID = "DE-BW"
 SOURCE_URI = _get_rights("DE-BW", stream="media")["sourceURI"]
+PROCEEDINGS_CREATOR = "Landtag von Baden-Württemberg"
+PROCEEDINGS_LICENSE = "Amtliches Werk (§ 5 Abs. 2 UrhG)"
 
 # "TOP 4 Zweite Beratung" / "Fortsetzung TOP 4 …" → both yield TOP number 4, so a
 # debate split across video parts collapses to one agendaItem. Letters are kept
@@ -195,6 +199,16 @@ def merge_session(session: str, config, options=None) -> Path:
             },
         }
         merged.append(record)
+
+    # Spine-join: attach proceedings text (if parsed) onto the fixed media spine.
+    turns = load_turns(config, session)
+    if turns:
+        spine_keys = [_match_key(sp.get("label") or sp.get("name_raw") or "") for sp in speeches]
+        matched = join_text_to_spine(merged, spine_keys, turns,
+                                     creator=PROCEEDINGS_CREATOR,
+                                     license=PROCEEDINGS_LICENSE)
+        logger.info(f"{session}: matched {matched}/{len(merged)} speeches to "
+                    f"{len(turns)} proceedings turns")
 
     doc = {
         "meta": {

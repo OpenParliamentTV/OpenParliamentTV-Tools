@@ -23,6 +23,7 @@ import json
 from pathlib import Path
 import sys
 import unicodedata
+from optv.shared.sequence_align import align_equal_keys
 from optv.shared.speech_id import normalize_speech_originid
 
 if __package__ is None or __package__ == "":
@@ -91,29 +92,14 @@ def align_by_surname(media: list, proceedings: list) -> dict:
     p_keys = [norm_surname(x) for x in proceedings]
     n, k = len(media), len(proceedings)
 
-    # Needleman-Wunsch over surnames.
-    score = [[0] * (k + 1) for _ in range(n + 1)]
-    for i in range(1, n + 1):
-        score[i][0] = i * GAP_SCORE
-    for j in range(1, k + 1):
-        score[0][j] = j * GAP_SCORE
-    for i in range(1, n + 1):
-        for j in range(1, k + 1):
-            diag = score[i - 1][j - 1] + (MATCH_SCORE if m_keys[i - 1] and m_keys[i - 1] == p_keys[j - 1] else MISMATCH_SCORE)
-            score[i][j] = max(diag, score[i - 1][j] + GAP_SCORE, score[i][j - 1] + GAP_SCORE)
-
-    # Backtrack into (media_index -> matched proceeding indices).
+    # Needleman-Wunsch over surnames (shared core). The high mismatch penalty
+    # keeps non-equal diagonals out, so the returned matches are the same
+    # media-index -> proceeding-index pairs the bespoke backtrack produced.
     matched: dict = {i: [] for i in range(n)}
-    i, j = n, k
-    while i > 0 and j > 0:
-        diag = score[i - 1][j - 1] + (MATCH_SCORE if m_keys[i - 1] and m_keys[i - 1] == p_keys[j - 1] else MISMATCH_SCORE)
-        if diag >= score[i - 1][j] + GAP_SCORE and diag >= score[i][j - 1] + GAP_SCORE and m_keys[i - 1] and m_keys[i - 1] == p_keys[j - 1]:
-            matched[i - 1].insert(0, j - 1)
-            i, j = i - 1, j - 1
-        elif score[i - 1][j] + GAP_SCORE >= score[i][j - 1] + GAP_SCORE:
-            i -= 1  # media gap (video clip without matched text)
-        else:
-            j -= 1  # proceedings gap (chair interjection without video)
+    for mi, pj in align_equal_keys(m_keys, p_keys,
+                                   match=MATCH_SCORE, mismatch=MISMATCH_SCORE,
+                                   gap=GAP_SCORE):
+        matched[mi].append(pj)
 
     # Absorb same-surname proceedings turns bracketing each match into the same
     # media item — one speech the Diario split across turns. Both directions

@@ -43,6 +43,7 @@ from optv.parliaments.PT.common import (
     Config, parse_session, save_if_changed, session_number_int, source_label,
 )
 from optv.shared.agenda_types import annotate_agenda_item, classify_pt
+from optv.shared.sequence_align import align_equal_keys
 from optv.shared.speech_id import normalize_speech_originid
 from optv.parliaments import get_rights as _get_rights
 
@@ -96,40 +97,13 @@ def align_speeches(av_keys: list[str], text_keys: list[str],
                    ) -> dict[int, int]:
     """Return ``{av_index: text_index}`` for diagonally-matched, equal-key pairs.
 
-    Classic global alignment; only pairs whose keys are equal (and non-empty)
-    are reported as matches. Unmatched av speeches (gaps) get no text; surplus
-    text turns (chair interjections etc.) are simply dropped.
+    Thin wrapper over :func:`optv.shared.sequence_align.align_equal_keys`: the
+    av interventions are the spine, so each matched av index keeps exactly one
+    text index. Unmatched av speeches get no text; surplus text turns (chair
+    interjections etc.) are dropped.
     """
-    m, n = len(av_keys), len(text_keys)
-    if m == 0 or n == 0:
-        return {}
-    # score matrix (m+1) x (n+1)
-    score = [[0] * (n + 1) for _ in range(m + 1)]
-    for i in range(1, m + 1):
-        score[i][0] = i * gap
-    for j in range(1, n + 1):
-        score[0][j] = j * gap
-    for i in range(1, m + 1):
-        ai = av_keys[i - 1]
-        for j in range(1, n + 1):
-            equal = ai and ai == text_keys[j - 1]
-            diag = score[i - 1][j - 1] + (match if equal else mismatch)
-            score[i][j] = max(diag, score[i - 1][j] + gap, score[i][j - 1] + gap)
-    # traceback
-    mapping: dict[int, int] = {}
-    i, j = m, n
-    while i > 0 and j > 0:
-        ai = av_keys[i - 1]
-        equal = ai and ai == text_keys[j - 1]
-        if score[i][j] == score[i - 1][j - 1] + (match if equal else mismatch):
-            if equal:
-                mapping[i - 1] = j - 1
-            i, j = i - 1, j - 1
-        elif score[i][j] == score[i - 1][j] + gap:
-            i -= 1
-        else:
-            j -= 1
-    return mapping
+    return dict(align_equal_keys(av_keys, text_keys,
+                                 match=match, mismatch=mismatch, gap=gap))
 
 
 # --------------------------------------------------------------------------- #
