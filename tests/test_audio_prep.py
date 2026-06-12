@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from optv.shared import audio_prep as ap
 from optv.shared.audio_prep import SpeechAudio, md5_key, prepare_per_speech_audio
 
@@ -282,3 +284,60 @@ def test_de_by_adapter(monkeypatch):
     assert kw["extract"] is by._extract
     assert kw["download_session"] is by._download
     assert "slice_fn" not in kw                          # direct mode uses the default
+
+
+# --------------------------------------------------------------------------- #
+# Fragment adapter (DE-BW/HH/NW/SH/SN: `<stream>#t=start,end` videoFileURI)
+# --------------------------------------------------------------------------- #
+
+def test_fragment_speech_audio_parses_t_fragment():
+    spec = ap.fragment_speech_audio(_speech(3, videoFileURI="http://x/s.m3u8#t=10,40"))
+    assert spec.source_url == "http://x/s.m3u8"
+    assert spec.session_key == "http://x/s.m3u8"        # whole stream is the slice source
+    assert (spec.start, spec.duration) == (10.0, 30.0)
+
+
+def test_fragment_speech_audio_clamps_negative_start():
+    spec = ap.fragment_speech_audio(_speech(3, videoFileURI="http://x/c/master.m3u8#t=-5,40"))
+    assert (spec.start, spec.duration) == (0.0, 40.0)
+
+
+def test_fragment_speech_audio_text_gate():
+    assert ap.fragment_speech_audio(
+        _speech(3, text=False, videoFileURI="http://x/s.m3u8#t=10,40")) is None
+
+
+def test_fragment_speech_audio_end_fallback_and_unbounded():
+    # start-only fragment: end taken from additionalInformation.endOffset
+    spec = ap.fragment_speech_audio(
+        _speech(3, videoFileURI="http://x/s.mp4#t=10",
+                additionalInformation={"endOffset": 25.0}))
+    assert (spec.start, spec.duration) == (10.0, 15.0)
+    # start-only, no endOffset → unbounded → skip
+    assert ap.fragment_speech_audio(_speech(4, videoFileURI="http://x/s.mp4#t=10")) is None
+    # no media fragment at all → skip
+    assert ap.fragment_speech_audio(_speech(5, videoFileURI="http://x/s.mp4")) is None
+
+
+def test_make_fragment_prepare_wires_driver(monkeypatch):
+    captured = {}
+
+    def fake_prepare(data, cachedir, *, force=False, **kw):
+        captured.update(kw)
+        return (0, 0, 0)
+
+    monkeypatch.setattr(ap, "prepare_per_speech_audio", fake_prepare)
+    ap.make_fragment_prepare(hls=True, reconnect=True)([], "x")
+    assert captured["extract"] is ap.fragment_speech_audio
+    assert captured["slice_fn"] is ap.slice_reencode
+    assert captured["two_pass"] is True
+
+
+def test_make_align_hook_raises_without_merged(tmp_path):
+    class _Cfg:
+        def file(self, session, kind, create=False):
+            return tmp_path / f"{session}-{kind}.json"
+
+    hook = ap.make_align_hook(lambda *a, **k: (0, 0, 0))
+    with pytest.raises(FileNotFoundError):
+        hook(_Cfg(), "21001", object())

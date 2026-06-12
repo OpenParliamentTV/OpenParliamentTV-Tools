@@ -6,11 +6,13 @@ operator-supplied URLs), fetches each page's static per-speech spine, then
 parses, merges, and NEL-links the per-Sitzung speeches through the shared
 pipeline. Stage orchestration lives in ``optv.shared.workflow``.
 
-``align`` and ``ner`` are intentionally not registered: the verbatim
-transcripts live only in PDF Plenarprotokolle (ParlDok) and we don't yet have a
-PDF parser. The published Stage 2 carries video + speaker + agenda metadata with
-an empty ``textContents`` list; once a proceedings spine exists those stages can
-be re-enabled. See DE-SH / DE-BY / DE-BW for the same regime.
+The verbatim Plenarprotokoll (ParlDok PDF) is now parsed via
+``optv.shared.pdf2tei`` and joined onto the media spine in the merger
+(``join_text_to_spine``), so ``align`` and ``ner`` are wired: ``_align`` slices
+each text-bearing speech's audio from its per-TOP HLS clip and runs aeneas. This
+text+align path is **experimental and unvalidated** — no Whisper-QC /
+text-fidelity audit has cleared it yet, and substantial refinement is still
+needed before platform integration.
 """
 
 import logging
@@ -26,8 +28,10 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = module_dir.name
 
+from optv.shared.audio_prep import make_align_hook
 from optv.shared.workflow import WorkflowHooks, run_main
 
+from .align_prep import prepare_per_speech_audio
 from .common import Config
 from .merger.merge_session import merge_session
 from .parsers.proceedings2json import parse_proceedings_directory
@@ -90,7 +94,7 @@ HOOKS = WorkflowHooks(
     download_originals=_download,
     parse_originals=_parse,
     merge_session_to_file=_merge,
-    align_session_to_file=None,   # transcript text unavailable — see manifest
+    align_session_to_file=make_align_hook(prepare_per_speech_audio),
     session_in_scope=_session_in_scope,
 )
 

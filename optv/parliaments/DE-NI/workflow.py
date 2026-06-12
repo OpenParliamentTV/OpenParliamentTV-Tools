@@ -6,12 +6,13 @@ Sitzung's per-subject agenda + per-speech speaker timings, then parses, merges a
 NEL-links the per-Sitzung speeches through the shared pipeline. Stage
 orchestration lives in ``optv.shared.workflow``.
 
-``align`` and ``ner`` are intentionally not registered for v1: the API already
-provides the per-speech spine and the published Stage 2 carries video + speaker +
-agenda metadata with an empty ``textContents`` list. Unlike DE-HH/DE-SH/DE-BW the
-text is **not** PDF-locked — time-aligned WebVTT subtitles are available per
-subject (``GET /vtt/{subject_id}``) and could re-enable text + sentence timings in
-a later pass.
+Verbatim text comes from the broadcaster's time-aligned WebVTT subtitles per
+subject (``GET /vtt/{subject_id}``), parsed by ``parsers/vtt2json.py`` and
+attached onto the spine by ``speechIndex`` in the merger. Because the VTT cues
+are already time-aligned, ``align`` (aeneas) is NOT needed and stays unregistered;
+only ``ner`` is wired (it runs on the attached text). This VTT text path is
+**experimental and unvalidated** — no Whisper-QC / fidelity audit has cleared the
+per-subject VTT calibration, and it needs refinement before platform integration.
 """
 
 import logging
@@ -81,7 +82,7 @@ HOOKS = WorkflowHooks(
     download_originals=_download,
     parse_originals=_parse,
     merge_session_to_file=_merge,
-    align_session_to_file=None,   # transcript text not wired in v1 — see manifest
+    align_session_to_file=None,   # VTT cues are pre-timed → no aeneas; ner only
     session_in_scope=_session_in_scope,
 )
 

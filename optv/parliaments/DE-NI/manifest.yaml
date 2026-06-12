@@ -6,17 +6,18 @@ locale:
   aeneas_language: deu
   entityfishing_language: de
 periods: [19]
-# `align` and `ner` deliberately omitted for v1: the Plenar-TV API
-# (api.plenartv.de) already provides a rich per-speech spine (per-subject agenda
-# + speaker timings into a per-Sitzung HLS stream + stable abg_id speaker IDs),
-# so the published Stage 2 carries video + speaker + agenda metadata with an
-# empty `textContents` list — the DE-HH / DE-SH / DE-BY / DE-BW regime.
-#
-# Unlike those (PDF-locked text), DE-NI's source *does* expose machine-readable
-# text: time-aligned WebVTT subtitles per subject (GET /vtt/{subject_id}) and the
-# verbatim Plenarprotokoll PDF. Wiring VTT would re-enable text + sentence
-# timings (no aeneas needed) — a planned next pass, not v1.
-supported_stages: [download, parse, merge, nel]
+# The Plenar-TV API (api.plenartv.de) provides a rich per-speech spine
+# (per-subject agenda + speaker timings into a per-Sitzung HLS stream + stable
+# abg_id speaker IDs). Unlike the PDF-locked state parliaments, DE-NI's source
+# exposes machine-readable text: time-aligned WebVTT subtitles per subject
+# (GET /vtt/{subject_id}), parsed by parsers/vtt2json.py and attached onto the
+# spine by speechIndex in the merger (attach_text_by_index). Because the VTT cues
+# are already time-aligned, sentence timings come straight from the subtitles —
+# `align` (aeneas) is NOT needed and deliberately stays unregistered; only `ner`
+# is added. NB this VTT text path is EXPERIMENTAL and UNVALIDATED — no Whisper-QC
+# / fidelity audit has cleared it (the per-subject VTT calibration is fragile) and
+# it needs substantial refinement before platform integration.
+supported_stages: [download, parse, merge, nel, ner]
 # Aspirational — the hosted dump may not exist on de-ni.openparliament.tv yet.
 # Until it does, scraper/build_entity_dump.py writes the local fallback at
 # <data_dir>/metadata/entities.json (picked up by optv.shared.nel.get_nel_data).

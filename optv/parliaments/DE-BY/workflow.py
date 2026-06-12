@@ -7,14 +7,14 @@ parses, merges, and NEL-links the per-Sitzung speeches through the shared
 pipeline. Stage orchestration lives in ``optv.shared.workflow``.
 
 Text comes from the joined Plenarprotokoll spine (``join_text_to_spine`` in the
-merger; the source text is § 5 Abs. 2 UrhG, free to reuse), so ``align`` and
-``ner`` are wired: ``_align`` stages per-speech audio (each BY speech has its own
-HLS clip — no slicing) and runs aeneas; NER is parliament-agnostic and driven by
-the shared runner.
+merger), so ``align`` and ``ner`` are wired: the align hook stages per-speech
+audio (each BY speech has its own HLS clip — no slicing) and runs aeneas; NER is
+parliament-agnostic and driven by the shared runner. This text+align path is
+**experimental and unvalidated** — no Whisper-QC / text-fidelity audit has
+cleared it yet, and substantial refinement is still needed before platform
+integration.
 """
 
-import datetime as _dt
-import json
 import logging
 import os
 import re
@@ -28,7 +28,7 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = module_dir.name
 
-from optv.shared.align import align_audio
+from optv.shared.audio_prep import make_align_hook
 from optv.shared.workflow import WorkflowHooks, run_main
 
 from .align_prep import prepare_per_speech_audio
@@ -72,30 +72,6 @@ def _merge(config, session, args):
     return merge_session(session, config, args)
 
 
-def _align(config, session, args):
-    merged_file = config.file(session, "merged")
-    if not merged_file.exists():
-        raise FileNotFoundError(f"[{session}] no merged file — cannot align")
-    doc = json.loads(merged_file.read_text())
-
-    logger.info(f"[{session}] staging per-speech audio")
-    prepare_per_speech_audio(doc["data"], args.cache_dir, force=args.force)
-
-    logger.info(f"[{session}] running aeneas alignment ({args.aeneas_language})")
-    align_audio(doc["data"], language=args.aeneas_language, cachedir=args.cache_dir,
-                force=args.force, timeout=args.align_timeout,
-                max_audio_seconds=args.align_max_audio_seconds)
-    now = _dt.datetime.utcnow().isoformat(timespec="seconds")
-    doc["meta"].setdefault("processing", {})["align"] = now
-    doc["meta"]["lastProcessing"] = "align"
-    doc["meta"]["lastUpdate"] = now
-
-    aligned_file = config.file(session, "aligned", create=True)
-    aligned_file.write_text(json.dumps(doc, indent=2, ensure_ascii=False))
-    logger.info(f"[{session}] wrote {aligned_file.name}")
-    return aligned_file
-
-
 def _session_in_scope(args, session: str) -> bool:
     """DE-BY session keys are 5-digit ``{period:02d}{sitzung:03d}`` (e.g. 19054).
 
@@ -115,7 +91,7 @@ HOOKS = WorkflowHooks(
     download_originals=_download,
     parse_originals=_parse,
     merge_session_to_file=_merge,
-    align_session_to_file=_align,
+    align_session_to_file=make_align_hook(prepare_per_speech_audio),
     session_in_scope=_session_in_scope,
 )
 

@@ -151,5 +151,5 @@ def video_clip_uri(stream_file_name: str, start_sec, end_sec) -> str:
 
 
 def vtt_uri(subject_id: str) -> str:
-    """Per-subject WebVTT subtitle URL (time-aligned text; not wired in v1)."""
+    """Per-subject WebVTT subtitle URL (time-aligned text; parsed by vtt2json)."""
     return f"{API_BASE}/vtt/{subject_id}" if subject_id else ""

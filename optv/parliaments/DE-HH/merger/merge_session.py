@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
 """Emit Stage 2 JSON for one DE-HH Sitzung from the intermediate media file.
 
-There is no proceedings stream to merge — Plenarprotokolle are PDF-only (ParlDok)
-and no parser exists yet (see manifest ``supported_stages``). The mediathek
-session page already provides per-speech segmentation with speaker, role,
-faction, per-TOP agenda title and a clip-relative start offset, so the "merge"
-here is a single-source translation pass (no Needleman-Wunsch) from the
-intermediate shape into Stage 2 with ``textContents: []``.
+The mediathek session page provides the per-speech spine (speaker, role, faction,
+per-TOP agenda title and a clip-relative start offset). The Plenarprotokoll PDF
+(ParlDok) is parsed via ``optv.shared.pdf2tei`` and joined onto that spine here
+(``join_text_to_spine``), so each matched speech carries verbatim ``textContents``
+(speeches with no text match keep ``textContents: []``). This text join is
+**experimental and unvalidated** — see manifest.
 
 DE-HH is the SE/DE-SH per-speech-offset model with a per-TOP twist: each
 Tagesordnungspunkt is its own server-side HLS clip, and per-speech windows are

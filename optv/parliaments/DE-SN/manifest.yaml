@@ -6,14 +6,16 @@ locale:
   aeneas_language: deu
   entityfishing_language: de
 periods: [8]   # archive also covers WP 7; out of scope for v1
-# `align` and `ner` deliberately omitted: the mediathek list carries a
-# per-speech video spine (one daily HLS stream + per-speech start/end offsets,
-# the SE/DE-SH/DE-BW `#t=start,end` model) but the Plenarprotokoll is PDF-only
-# and we do not yet have a PDF parser. Without transcript text neither stage can
-# produce meaningful output. The platform still imports the per-speech video
-# windows with speaker / faction / agenda metadata. See DE-BW / DE-HH for the
-# same regime.
-supported_stages: [download, parse, merge, nel]
+# The mediathek list carries a per-speech video spine (one daily HLS stream +
+# per-speech start/end offsets, the SE/DE-SH/DE-BW `#t=start,end` model; end
+# offsets are clamped to the next start in media2json so the windows are
+# disjoint). The Plenarprotokoll PDF is now parsed via `optv.shared.pdf2tei` and
+# joined onto that spine in the merger (`join_text_to_spine`), so `align` (aeneas,
+# slicing each speech from the daily HLS stream) and `ner` are wired. NB this
+# text+align path is EXPERIMENTAL and UNVALIDATED — no Whisper-QC/text-fidelity
+# audit has cleared it and it needs substantial refinement before platform
+# integration.
+supported_stages: [download, parse, merge, nel, align, ner]
 # Aspirational — the dump may not exist on de-sn.openparliament.tv yet. Until it
 # does, scraper/build_entity_dump.py writes the local fallback at
 # <data_dir>/metadata/entities.json.

@@ -28,13 +28,14 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 import subprocess
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
-from optv.shared.align import cachedfile
+from optv.shared.align import align_audio, cachedfile
 
 logger = logging.getLogger(__name__)
 
@@ -337,3 +338,111 @@ def prepare_per_speech_audio(
         "Audio prep: %d prepared, %d cached, %d skipped (no data); %d session download(s)",
         prepared, skipped_existing, skipped_no_data, len(seen))
     return prepared, skipped_existing, skipped_no_data
+
+
+# --------------------------------------------------------------------------- #
+# Media-fragment adapter (the `<stream>#t=start,end` DE state parliaments)
+# --------------------------------------------------------------------------- #
+
+# ``<base-stream>#t=start[,end]`` (start may be negative, e.g. DE-HH "#t=-5,391").
+_FRAGMENT_RE = re.compile(r"(?P<base>.*?)#t=(?P<start>-?[\d.]+)(?:,(?P<end>-?[\d.]+))?\s*$")
+
+
+def fragment_speech_audio(speech: dict, *, require_text: bool = True) -> Optional[SpeechAudio]:
+    """Build a :class:`SpeechAudio` from a ``<stream>#t=start,end`` videoFileURI.
+
+    The session-sliced DE state parliaments (DE-BW, DE-HH, DE-NW, DE-SH, DE-SN)
+    all address a speech as an HTML5 media fragment on ``media.videoFileURI``:
+    the part before ``#t=`` is the shared session/clip stream (the slice source,
+    used as ``session_key``) and ``start,end`` are the per-speech offsets into it.
+
+    Only text-bearing speeches are staged (alignment has nothing to do for a
+    speech with no joined proceedings text); returns ``None`` to skip otherwise,
+    or when no usable end offset is present (e.g. an unbounded trailing speech).
+    """
+    if require_text:
+        tcs = speech.get("textContents") or []
+        if not any((tc.get("textBody") or []) for tc in tcs):
+            return None
+    media = speech.get("media") or {}
+    m = _FRAGMENT_RE.match(media.get("videoFileURI") or "")
+    if not m or not m.group("base"):
+        return None
+    start = max(0.0, float(m.group("start")))
+    end = m.group("end")
+    if end is None:
+        # Fall back to an explicit endOffset; without an end we can't bound a slice.
+        end = (media.get("additionalInformation") or {}).get("endOffset")
+        if end is None:
+            return None
+    duration = float(end) - start
+    if duration <= 0:
+        return None
+    return SpeechAudio(source_url=m.group("base"), session_key=m.group("base"),
+                       start=start, duration=duration)
+
+
+def make_fragment_prepare(*, hls: bool, reconnect: bool = False, timeout: int = 14400):
+    """Build a ``prepare_per_speech_audio(merged_data, cachedir, *, force)``.
+
+    For the ``#t=start,end``-fragment, session-sliced DE state parliaments: the
+    shared stream (HLS master for DE-HH/NW/SN, base mp4 for DE-BW/SH) is
+    downloaded once per session and re-encode-sliced per speech. ``timeout`` is
+    generous because some sources are one long per-session stream (DE-NW serves
+    a ~10 h HLS master).
+    """
+    def _download(url: str, target: Path, *, required_duration: float = 0.0) -> None:
+        download_ffmpeg(url, target, required_duration=required_duration,
+                        hls=hls, reconnect=reconnect, timeout=timeout)
+
+    def prepare(merged_data: list[dict], cachedir: Path, *,
+                force: bool = False) -> tuple[int, int, int]:
+        return prepare_per_speech_audio(
+            merged_data, cachedir, force=force,
+            extract=fragment_speech_audio, download_session=_download,
+            slice_fn=slice_reencode, two_pass=True)
+
+    return prepare
+
+
+# --------------------------------------------------------------------------- #
+# Align workflow hook
+# --------------------------------------------------------------------------- #
+
+def make_align_hook(prepare_audio: Callable[..., tuple[int, int, int]]):
+    """Build an ``align_session_to_file`` workflow hook for a parliament.
+
+    Wraps a parliament's per-speech audio-prep function (e.g. the result of
+    :func:`make_fragment_prepare`, or a hand-written ``align_prep`` for a
+    per-speech-clip source like DE-BY): it loads the merged doc, stages audio,
+    runs aeneas, stamps ``meta.processing.align`` and writes
+    ``<session>-aligned.json``. Every aligning parliament shares this body; the
+    only per-parliament delta is how the audio is staged.
+    """
+    import datetime as _dt
+    import json as _json
+
+    def _align(config, session, args):
+        merged_file = config.file(session, "merged")
+        if not merged_file.exists():
+            raise FileNotFoundError(f"[{session}] no merged file — cannot align")
+        doc = _json.loads(merged_file.read_text())
+
+        logger.info("[%s] staging per-speech audio", session)
+        prepare_audio(doc["data"], args.cache_dir, force=args.force)
+
+        logger.info("[%s] running aeneas alignment (%s)", session, args.aeneas_language)
+        align_audio(doc["data"], language=args.aeneas_language, cachedir=args.cache_dir,
+                    force=args.force, timeout=args.align_timeout,
+                    max_audio_seconds=args.align_max_audio_seconds)
+        now = _dt.datetime.utcnow().isoformat(timespec="seconds")
+        doc["meta"].setdefault("processing", {})["align"] = now
+        doc["meta"]["lastProcessing"] = "align"
+        doc["meta"]["lastUpdate"] = now
+
+        aligned_file = config.file(session, "aligned", create=True)
+        aligned_file.write_text(_json.dumps(doc, indent=2, ensure_ascii=False))
+        logger.info("[%s] wrote %s", session, aligned_file.name)
+        return aligned_file
+
+    return _align

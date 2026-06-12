@@ -1,10 +1,14 @@
 #! /usr/bin/env python3
 """Emit Stage 2 JSON for one DE-NI Sitzung from the intermediate media file.
 
-There is no separate proceedings stream to align: the Plenar-TV REST API already
-delivers the agenda (subjects) and the per-speech spine (speaker timings)
-together, so the "merge" here is a single-source translation pass (no
-Needleman-Wunsch) into Stage 2 with ``textContents: []`` — the DE-HH shape.
+The Plenar-TV REST API delivers the agenda (subjects) and the per-speech spine
+(speaker timings) together, so the "merge" here is a single-source translation
+pass (no Needleman-Wunsch). Verbatim text comes from the broadcaster's
+time-aligned WebVTT subtitles: ``parsers/vtt2json.py`` parses and calibrates each
+subject VTT onto the spine, and ``attach_text_by_index`` attaches the cue-timed
+sentences onto each speech here (speeches with no VTT match keep
+``textContents: []``). Because the cues are already time-aligned, no aeneas step
+is needed. This VTT text path is **experimental and unvalidated** — see manifest.
 
 Per-speech video is a **server-side-clipped HLS playlist** addressed directly:
 ``{VOD}/stream/{streamFileName}/index.m3u8?start={sec}&end={sec}`` (the clip URL
@@ -130,7 +134,8 @@ def _build_media(speech: dict) -> dict:
     extras["streamFileName"] = stream
     subject_id = speech.get("subject_id") or ""
     if subject_id:
-        # Time-aligned WebVTT subtitles for this subject (text not wired in v1).
+        # Time-aligned WebVTT subtitles for this subject (parsed by vtt2json and
+        # attached as textContents; the URI is also exposed for downstream use).
         extras["subtitleVttURI"] = vtt_uri(subject_id)
     media["additionalInformation"] = extras
     return media

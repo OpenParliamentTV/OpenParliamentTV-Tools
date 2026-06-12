@@ -1,8 +1,9 @@
 #! /bin/sh
 
 # Main update script - expects a data directory as the only argument.
-# Period 18 (current WP) is baked in. align/ner deliberately omitted: see
-# manifest.yaml (no PDF parser yet, no transcript text to align).
+# Period 18 (current WP) is baked in. the align/ner flags are
+# omitted here (routine update); run them separately once the experimental
+# PDF→TEI text join is validated. See manifest.yaml.
 
 OUTPUT=${1?Missing output directory parameter (data base directory)}
 

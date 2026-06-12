@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
 """Emit Stage 2 JSON for one DE-SH Sitzung from the intermediate media file.
 
-There is no proceedings stream to merge — Plenarprotokolle are PDF-only
-and no parser exists yet (see manifest ``supported_stages``). The m7k
-mediathek's ``result.php`` already provides per-speech segmentation with
-IDs, speaker, faction, agenda title and ``#t=start,end`` video offsets,
-so the "merge" here is really a translation pass from the intermediate
-shape into Stage 2 with ``textContents: []``.
+The m7k mediathek's ``result.php`` provides the per-speech spine (IDs, speaker,
+faction, agenda title and ``#t=start,end`` video offsets). The Plenarprotokoll PDF
+is parsed via ``optv.shared.pdf2tei`` and joined onto that spine here
+(``join_text_to_spine``), so each matched speech carries verbatim ``textContents``
+(speeches with no text match keep ``textContents: []``). This text join is
+**experimental and unvalidated** — see manifest.
 """
 
 from __future__ import annotations

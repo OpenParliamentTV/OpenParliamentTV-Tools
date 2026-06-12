@@ -1,8 +1,9 @@
 #! /bin/sh
 
 # Main update script - expects a data directory as the only argument.
-# Period 19 (current WP) is baked in. align/ner deliberately omitted for v1: see
-# manifest.yaml (text not yet wired, no transcript text to align).
+# Period 19 (current WP) is baked in. The ner flag is omitted here (routine
+# update); VTT text needs no aeneas align. Run --extract-entities separately once
+# the experimental VTT text join is validated. See manifest.yaml.
 
 OUTPUT=${1?Missing output directory parameter (data base directory)}
 

@@ -37,8 +37,6 @@ logger = logging.getLogger(__name__)
 
 PARLIAMENT_ID = "DE-BY"
 SOURCE_URI = _get_rights("DE-BY", stream="media")["sourceURI"]
-# Verbatim Plenarprotokoll text is an amtliches Werk (§ 5 Abs. 2 UrhG, free to
-# reuse). The video clip carries its own (restrictive) media license separately.
 PROCEEDINGS_CREATOR = "Bayerischer Landtag"
 PROCEEDINGS_LICENSE = "Amtliches Werk (§ 5 Abs. 2 UrhG)"
 

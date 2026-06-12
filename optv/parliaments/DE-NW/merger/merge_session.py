@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
 """Emit Stage 2 JSON for one DE-NW Plenarsitzung from the intermediate media file.
 
-There is no proceedings stream to merge — Plenarprotokolle are PDF-only
-(``MMP18-{N}.pdf``) and no parser exists yet (see manifest ``supported_stages``).
-The mediathek session page already provides per-speech segmentation with speaker,
-MdL id, role, faction, per-TOP agenda title and a precise start offset, so the
-"merge" here is a single-source translation pass (no Needleman-Wunsch) from the
-intermediate shape into Stage 2 with ``textContents: []``.
+The mediathek session page provides the per-speech spine (speaker, MdL id, role,
+faction, per-TOP agenda title and a precise start offset). The Plenarprotokoll PDF
+(``MMP18-{N}.pdf``) is parsed via ``optv.shared.pdf2tei`` and joined onto that
+spine here (``join_text_to_spine``), so each matched speech carries verbatim
+``textContents`` (speeches with no text match keep ``textContents: []``). This
+text join is **experimental and unvalidated** — see manifest.
 
 DE-NW is the SE/DE-SH per-speech-offset model: one HLS stream per session and
 per-speech windows addressed by an HTML5 media-fragment ``#t=start,end`` on

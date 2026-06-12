@@ -6,12 +6,13 @@ locale:
   aeneas_language: deu
   entityfishing_language: de
 periods: [20]
-# `align` and `ner` deliberately omitted: m7k provides per-speech video
-# with #t=start,end offsets but the Plenarprotokoll is PDF-only and we
-# do not yet have a PDF parser. Without transcript text neither stage
-# can produce meaningful output. The platform still imports the per-
-# speech video clips with speaker / faction / agenda metadata.
-supported_stages: [download, parse, merge, nel]
+# m7k provides per-speech video with #t=start,end offsets on a session MP4. The
+# Plenarprotokoll PDF is now parsed via `optv.shared.pdf2tei` and joined onto that
+# spine in the merger (`join_text_to_spine`), so `align` (aeneas, slicing each
+# speech from the session MP4) and `ner` are wired. NB this text+align path is
+# EXPERIMENTAL and UNVALIDATED — no Whisper-QC/text-fidelity audit has cleared it
+# and it needs substantial refinement before platform integration.
+supported_stages: [download, parse, merge, nel, align, ner]
 # Aspirational - the dump may not exist on de-sh.openparliament.tv yet.
 # Until it does, scraper/build_entity_dump.py writes the local fallback
 # at <data_dir>/metadata/entities.json.

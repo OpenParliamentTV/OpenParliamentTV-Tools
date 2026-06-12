@@ -10,7 +10,9 @@ periods: [19]
 # JSON playlists, one HLS master per speech); the Plenarprotokoll PDF is
 # parsed and joined onto that spine (join_text_to_spine), so verbatim text
 # is published. `align` runs aeneas against each speech's own HLS clip;
-# `ner` follows on the aligned text (source text is § 5 Abs. 2 UrhG).
+# `ner` follows on the aligned text. NB this text+align path is EXPERIMENTAL
+# and UNVALIDATED — no Whisper-QC/text-fidelity audit has cleared it and it
+# needs substantial refinement before platform integration.
 supported_stages: [download, parse, merge, nel, align, ner]
 # Aspirational - the dump may not exist on de-by.openparliament.tv yet.
 # Until it does, scraper/build_entity_dump.py writes the local fallback

@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
 """Emit Stage 2 JSON for one DE-BW Sitzung from the intermediate media file.
 
-There is no proceedings stream to merge — Plenarprotokolle are PDF-only and no
-parser exists yet (see manifest ``supported_stages``). The mediathek chapter
-list already provides per-speech segmentation with speaker, role, faction,
-agenda (TOP) title and a start offset into the one session MP4, so the "merge"
-here is a translation pass from the intermediate shape into Stage 2 with
-``textContents: []``.
+The mediathek chapter list provides the per-speech spine (speaker, role, faction,
+agenda (TOP) title and a start offset into the one session MP4). The
+Plenarprotokoll PDF is parsed via ``optv.shared.pdf2tei`` and joined onto that
+spine here (``join_text_to_spine``), so each matched speech carries verbatim
+``textContents`` (speeches with no text match keep ``textContents: []``). This
+text join is **experimental and unvalidated** — see manifest.
 
 DE-BW is the SE/DE-SH per-speech-offset model: one session recording, per-speech
 windows addressed by an HTML5 media-fragment ``#t=start,end`` on
