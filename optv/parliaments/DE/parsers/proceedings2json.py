@@ -527,6 +527,17 @@ def parse_proceedings(source: str, output: str, uri: str, args):
     meeting = speech['session']['number']
     session_id = f"{period}{str(meeting).zfill(3)}"
 
+    # Guard against a wrong protocol served at the right URL (the Bundestag once
+    # served session 80 at 21081.xml). The XML-derived session_id must match the
+    # filename. isdigit() keeps the check to standard <5-digit>-proceedings.xml
+    # names, so fixtures and ad-hoc CLI filenames are skipped.
+    expected_id = Path(source).stem.replace('-proceedings', '')
+    if expected_id.isdigit() and session_id != expected_id:
+        raise ValueError(
+            f"{source}: session-id mismatch — XML header says {session_id} "
+            f"but filename expects {expected_id}"
+        )
+
     data = { "meta": { "session": session_id,
                        "processing": {
                            "parse_proceedings": datetime.now().isoformat('T', 'seconds'),

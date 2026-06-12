@@ -10,6 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import argparse
+import lxml.etree
 import lxml.html
 import os
 from pathlib import Path
@@ -28,6 +29,28 @@ AJAX_ID = {
     # Ajax ID Period 21
     21: "1058442-1058442"
 }
+
+def _verify_session_id(xml_path: Path, expected_id: str) -> bool:
+    """True unless the XML's root wahlperiode/sitzung-nr definitely contradict
+    expected_id (5-digit, period + 3-digit session). Returns True when the file
+    isn't the native <dbtplenarprotokoll> format or the attributes are absent —
+    we only HARD-reject a concrete mismatch, never an unverifiable file.
+
+    Guards against the Bundestag occasionally serving the wrong protocol at the
+    right URL (e.g. 21081.xml once contained sitzung-nr="80").
+    """
+    try:
+        root = lxml.etree.parse(str(xml_path)).getroot()
+    except Exception as e:
+        logger.warning(f"{xml_path}: could not parse for session-id check ({e})")
+        return True
+    if not str(root.tag).endswith('dbtplenarprotokoll'):
+        return True
+    period = root.attrib.get('wahlperiode')
+    session = root.attrib.get('sitzung-nr')
+    if not period or not session or not session.isdigit():
+        return True
+    return period == expected_id[:-3] and int(session) == int(expected_id[-3:])
 
 def download_plenary_protocols(destination_dir: str, fullscan: bool = False, period: int = 20) -> "list[(str, str)]":
     """Download and stores proceedings
@@ -91,6 +114,13 @@ def download_plenary_protocols(destination_dir: str, fullscan: bool = False, per
                             out.write(first_line)
                         # Write the rest of the file
                         out.write(f.read())
+                if not _verify_session_id(filename, session_id):
+                    logger.error(
+                        f"Session-id mismatch for {filename}: filename expects {session_id} "
+                        f"but XML header disagrees — rejecting download from {file_url}"
+                    )
+                    filename.unlink(missing_ok=True)
+                    continue
                 created_files.append( (filename, file_url) )
         if link_count == 0:
             # Empty file, end of data
