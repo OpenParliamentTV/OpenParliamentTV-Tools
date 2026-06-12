@@ -16,18 +16,22 @@ Two input streams *would* be the norm; for DE-BY only one is wired up:
   `original/media/19{NNN}-media.json`, one record per speech carrying speaker,
   party, TOP title, the HLS master URL, and the speech start time (parsed from
   the 14-digit timestamp in the HLS filename).
-- **Proceedings stream** — *deferred*. Plenarprotokolle are PDF-only; there is
-  no parser yet. `textContents` is emitted empty.
+- **Proceedings stream** — the Plenarprotokoll PDF is parsed via
+  `optv.shared.pdf2tei` and joined onto the spine in the merger
+  (`join_text_to_spine`). DE-BY is the first state parliament wired end-to-end:
+  `align` (aeneas, against each speech's own HLS clip) and `ner` run on the joined
+  text (experimental — see Known limitations).
 
 The **Plenum Online playlists are the spine** — already per-speech with
 speaker, party and agenda title — so no Needleman-Wunsch / fuzzy alignment is
-needed. The merger is a translation pass.
+needed for the spine; the PDF→TEI text is joined onto it.
 
 ## Merge strategy
 
 [`merger/merge_session.py`](merger/merge_session.py) emits one Stage 2 record
-per speech with `textContents: []`, one `agendaItem` per TOP
-(`agendaItem.id = "TOP-{index}"`, title from the accordion header). The shared
+per speech and joins the PDF→TEI text onto it (`join_text_to_spine`), one
+`agendaItem` per TOP (`agendaItem.id = "TOP-{index}"`, title from the accordion
+header). The shared
 `classify_de_by()` in [`optv/shared/agenda_types.py`](../../shared/agenda_types.py)
 maps the TOP title to a `(nativeType, type)` pair.
 
@@ -73,9 +77,12 @@ playlist URLs must be scraped from the rendered panels, not constructed.
 
 ## Known limitations
 
-- **No transcript text.** Plenarprotokolle are PDF-only and there is no parser;
-  `textContents: []`, `align`/`ner` omitted. The published clips still carry
-  speaker / faction / agenda metadata. (DE-SH regime — see audit §4.7.)
+- **Experimental, unvalidated text path.** The Plenarprotokoll PDF is parsed via
+  `optv.shared.pdf2tei` and joined onto the spine, and `align`/`ner` run on the
+  result (DE-BY is the pilot wired end-to-end). None of this has been validated —
+  there is no Whisper-QC/text-fidelity audit yet, and the PDF→TEI extraction and
+  the text↔spine join still need refinement. **Not ready for platform
+  integration.**
 - **No per-speech end time.** The source gives only a start timestamp (in the
   HLS filename); `dateEnd` equals `dateStart` and `media.duration` is unset. The
   HLS master is itself the per-speech clip, so the player ends naturally.

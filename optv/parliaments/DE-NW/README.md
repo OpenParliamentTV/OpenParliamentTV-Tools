@@ -1,8 +1,9 @@
 # Landtag Nordrhein-Westfalen (DE-NW)
 
 This directory implements the OpenParliamentTV pipeline for the Landtag
-Nordrhein-Westfalen (WP 18). It is a **video-only** onboarding (per-speech video
-spine, no transcript text yet) — see
+Nordrhein-Westfalen (WP 18). It is built on a per-speech video spine; the
+Plenarprotokoll PDF is now joined onto that spine via an **experimental,
+unvalidated** PDF→TEI text path (see below) — see
 [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) for repo-wide
 context and the DE-HH / DE-NI / DE-BW READMEs for the same regime. It combines
 the richest signals of that family: a parliament-native MdL id per speech, real
@@ -11,10 +12,11 @@ per-speech wall-clock, and precise (second-resolution) per-speech offsets. For h
 ## Data model
 
 One input stream: **media** (the `www.landtag.nrw.de` Mediathek session pages).
-There is no proceedings stream — Plenarprotokolle are PDF-only (`MMP18-{N}.pdf`)
-and OPTV has no PDF parser yet, so DE-NW ships `textContents: []` and
-`supported_stages: [download, parse, merge, nel]` (`align`/`ner` omitted; see
-`manifest.yaml`).
+The media stream is the spine. The Plenarprotokoll PDF (`MMP18-{N}.pdf`) is
+parsed via `optv.shared.pdf2tei` and joined onto that spine in the merger
+(`join_text_to_spine`), so matched speeches carry verbatim `textContents`
+(unmatched keep `[]`) and `supported_stages` now includes `align`/`ner` (see Known
+limitations).
 
 - `scraper/fetch_archive.py` → the candidate session index
   (`metadata/archive-wp{N}.json`). Sessions are addressed by an opaque `kid`
@@ -94,10 +96,12 @@ is exposed in the page's debug comments and carried as `originPersonID`.
 
 ## Known limitations
 
-- **No transcript text.** PDF-only Plenarprotokolle (`MMP18-{N}.pdf`), no parser
-  → `textContents: []`, no `align`/`ner`. The text is § 5 Abs. 2 UrhG (free to
-  reuse), so this is blocked by tooling, not licensing — a future `docling`-based
-  proceedings parser could re-enable those stages.
+- **Experimental, unvalidated text path.** The Plenarprotokoll PDF
+  (`MMP18-{N}.pdf`) is parsed via `optv.shared.pdf2tei` and joined onto the spine,
+  and `align`/`ner` run on the result. None of this has been validated — there is
+  no Whisper-QC/text-fidelity audit yet, the PDF→TEI extraction and the
+  text↔spine join still need refinement, and known media-spine timing quirks (see
+  below) affect alignment. **Not ready for platform integration.**
 - **Coarse per-speech end + minute display times.** Only the *start* offset is
   exposed precisely (per redner page); `endOffset` is synthesised from the next
   speech's start. The base page's display times are minute-resolution.

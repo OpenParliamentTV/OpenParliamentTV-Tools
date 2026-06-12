@@ -16,8 +16,9 @@ Two input streams *would* be the norm; for DE-SH only one is wired up:
   carrying `b={id}`, speaker, faction (`Gruppe`), TOP, theme, start/end
   time-of-day, duration, plus the derived `videoFileURI` with the
   `#t=start,end` media-fragment URI.
-- **Proceedings stream** — *deferred*. Plenarprotokolle are PDF-only;
-  there is no parser yet. `textContents` is emitted empty.
+- **Proceedings stream** — the Plenarprotokoll PDF is parsed via
+  `optv.shared.pdf2tei` and joined onto the spine in the merger
+  (`join_text_to_spine`); experimental — see Known limitations.
 
 The **m7k AJAX feed is the spine** — it is already per-speech with
 timestamps, IDs and speaker metadata, so no Needleman-Wunsch / fuzzy
@@ -27,8 +28,9 @@ alignment is needed. Sitting-day grouping happens in the merger.
 
 [`merger/merge_session.py`](merger/merge_session.py) groups the
 intermediate media records by `datum` (sitting day) and emits one Stage 2
-record per speech with `textContents: []`. There is no join: the spine
-already carries everything we have. The shared `classify_de_sh()` in
+record per speech; the PDF→TEI proceedings text is then joined onto that spine
+(`join_text_to_spine`), so matched speeches carry verbatim `textContents` and
+unmatched ones keep `[]`. The shared `classify_de_sh()` in
 [`optv/shared/agenda_types.py`](../../shared/agenda_types.py) maps the
 m7k `thema` to a `(nativeType, type)` pair.
 
@@ -77,10 +79,11 @@ under the cap).
 
 ## Known limitations
 
-- **No transcript text.** Plenarprotokolle are PDF-only and no PDF
-  parser exists yet. `textContents` is empty; the platform shows the
-  video clip with speaker / faction / agenda metadata only. Once a PDF
-  spine is built, `align` and `ner` can be added.
+- **Experimental, unvalidated text path.** The Plenarprotokoll PDF is parsed via
+  `optv.shared.pdf2tei` and joined onto the spine, and `align`/`ner` run on the
+  result. None of this has been validated — there is no Whisper-QC/text-fidelity
+  audit yet, and the PDF→TEI extraction and the text↔spine join still need
+  refinement. **Not ready for platform integration.**
 - **Scope: WP 20 only.** WP 18 (from Jan 2014) and WP 19 are available
   on m7k but not yet onboarded. The scraper code is term-agnostic; only
   the manifest needs to be widened.

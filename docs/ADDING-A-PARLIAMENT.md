@@ -106,7 +106,7 @@ python -m optv.shared.validators.cli --file <data_dir>/cache/merged/<session>-me
 └── metadata/                       # NEL entity dumps
 ```
 
-Stage outputs go into `cache/`; `processed/` holds what the platform actually consumes. The `is_newer()` and `status()` helpers (in `BaseConfig`) drive the mtime-based "only run if input is newer than output" behaviour; video-only parliaments set `HAS_TEXT = False` on their `Config` so `status()` skips the align/ner probes. If the parliament needs additional directories or a different session-file glob, override the relevant attributes/methods in your `Config` subclass — don't hardcode paths in stage scripts.
+Stage outputs go into `cache/`; `processed/` holds what the platform actually consumes. The `is_newer()` and `status()` helpers (in `BaseConfig`) drive the mtime-based "only run if input is newer than output" behaviour; parliaments that emit no transcript text set `HAS_TEXT = False` on their `Config` so `status()` skips the align/ner probes (a media-spine parliament that joins a text source onto its spine — e.g. the German state parliaments via `optv.shared.pdf2tei` — keeps `HAS_TEXT = True`). If the parliament needs additional directories or a different session-file glob, override the relevant attributes/methods in your `Config` subclass — don't hardcode paths in stage scripts.
 
 ## 7. Wire the workflow
 

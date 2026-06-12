@@ -1,7 +1,8 @@
 # Sächsischer Landtag (DE-SN)
 
-Pipeline for the Saxony state parliament. Video-only v1: per-speech video +
-speaker/faction/agenda metadata, no transcript text yet. See
+Pipeline for the Saxony state parliament. Built on a per-speech video spine
+(speaker/faction/agenda metadata); the Plenarprotokoll PDF is now joined onto the
+spine via an **experimental** PDF→TEI text path (see Known limitations). See
 [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) for repo-wide
 context. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
@@ -24,19 +25,21 @@ wall-clock time, the daily HLS `<source>` URL
 pagination pass yields every field — there is **no per-speech GET**.
 
 DE-SN is the SE/DE-SH/DE-BW per-speech-offset model (one daily recording,
-per-speech windows via `#t=start,end`), but cleaner: both start and end offsets
-are present (no end-synthesis), and the item's wall-clock time gives a **real**
+per-speech windows via `#t=start,end`): both start and end offsets are present in
+the source (end offsets are clamped to the next speech's start in `media2json` so
+the windows are disjoint), and the item's wall-clock time gives a **real**
 `dateStart`/`dateEnd` (`debug.timesAreVideoRelative = false`, the DE-HH/DE-NI/DE-NW
-sub-class). Verbatim text lives only in PDF Plenarprotokolle (§5 Abs. 2 UrhG, free
-to reuse) — blocked by tooling, not licensing — so `textContents` is empty until a
-PDF parser lands and `align`/`ner` are omitted from `supported_stages`.
+sub-class). The Plenarprotokoll PDF is parsed via `optv.shared.pdf2tei` and joined
+onto the spine in the merger, so matched speeches carry verbatim `textContents`
+and `supported_stages` includes `align`/`ner` (see Known limitations).
 
 ## Merge strategy
 
 Single-source translation — [merger/merge_session.py](merger/merge_session.py).
 The list items already carry per-speech segmentation, so there is no
-cross-source matching (no Needleman-Wunsch): each speech becomes one Stage 2
-record with `textContents: []`. Sessions are keyed `{wp:02d}{sitzung:03d}`
+cross-source matching for the spine itself (no Needleman-Wunsch): each speech
+becomes one Stage 2 record, then the PDF→TEI text is joined on
+(`join_text_to_spine`). Sessions are keyed `{wp:02d}{sitzung:03d}`
 (e.g. `08025`); `electoralPeriod.number = 8`, `session.number = Sitzung`. Pure
 two-level hierarchy (Wahlperiode > Sitzung) — no dropped intra-term level.
 
@@ -60,8 +63,11 @@ Sitzung. `--max-pages` caps the walk.
 
 ## Known limitations
 
-- **Video-only.** `textContents: []`; `align`/`ner` omitted (no PDF parser). The
-  platform shows clips with speaker / faction / agenda metadata, no transcript.
+- **Experimental, unvalidated text path.** The Plenarprotokoll PDF is parsed via
+  `optv.shared.pdf2tei` and joined onto the spine, and `align`/`ner` run on the
+  result. None of this has been validated — there is no Whisper-QC/text-fidelity
+  audit yet, and the PDF→TEI extraction and the text↔spine join still need
+  refinement. **Not ready for platform integration.**
 - **WP 8 only.** The archive also covers WP 7; `periods: [8]` for now.
 - **Thin agenda titles.** The list item carries a TOP number + a short `thema`
   text, not the full Plenarprotokoll TOP title; `agendaItem.title` is that short

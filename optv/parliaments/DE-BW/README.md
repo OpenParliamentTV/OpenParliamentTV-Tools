@@ -1,17 +1,21 @@
 # Landtag von Baden-Württemberg (DE-BW)
 
 This directory implements the OpenParliamentTV pipeline for the Landtag von
-Baden-Württemberg (WP 17). It is a **video-only** onboarding (per-speech video
-spine, no transcript text yet) — see
+Baden-Württemberg (WP 17). It is built on a per-speech video spine; the
+Plenarprotokoll PDF is now joined onto that spine via an **experimental,
+unvalidated** PDF→TEI text path (see below) — see
 [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) for repo-wide
 context and the DE-SH / DE-BY READMEs for the same regime. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 
-One input stream: **media** (the mediathek video pages). There is no
-proceedings stream — Plenarprotokolle are PDF-only and OPTV has no PDF parser
-yet, so DE-BW ships `textContents: []` and `supported_stages:
-[download, parse, merge, nel]` (`align`/`ner` omitted; see `manifest.yaml`).
+The media stream is the spine (the mediathek video pages). The Plenarprotokoll
+PDF is parsed via `optv.shared.pdf2tei` and joined onto that spine in the merger
+(`join_text_to_spine`), so matched speeches carry verbatim `textContents`
+(unmatched keep `[]`) and `supported_stages` now includes `align`/`ner`. NB BW's
+single-debate sessions collapse consecutive same-speaker turns in `parlamint2json`,
+which the per-turn video spine does not — the text↔spine join is the main thing
+still to refine (see Known limitations).
 
 - `scraper/fetch_archive.py` → the candidate session index
   (`metadata/archive-wp{N}.json`): walks the mediathek filterlist widget
@@ -79,10 +83,12 @@ guessable (it 404s on its own), so pagination is the only enumeration path.
 
 ## Known limitations
 
-- **No transcript text.** PDF-only Plenarprotokolle, no parser → `textContents:
-  []`, no `align`/`ner`. The Bavarian-style §5 Abs. 2 UrhG status of the BW
-  texts means this is blocked by tooling, not licensing — a natural future
-  candidate for a `docling`-based proceedings parser.
+- **Experimental, unvalidated text path.** The Plenarprotokoll PDF is parsed via
+  `optv.shared.pdf2tei` and joined onto the spine, and `align`/`ner` run on the
+  result. None of this has been validated — there is no Whisper-QC/text-fidelity
+  audit yet, and the text↔spine join is BW's hardest case (the `parlamint2json`
+  continuation-merge folds same-speaker turns against BW's fine per-turn spine).
+  **Not ready for platform integration.**
 - **Times are video-relative.** The source has no per-speech wall-clock; speech
   `dateStart`/`dateEnd` encode the offset from the session-video origin
   (`debug.timesAreVideoRelative = true`). The real signal is

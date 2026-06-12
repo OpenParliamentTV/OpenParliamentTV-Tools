@@ -28,7 +28,7 @@ python3 -m pip install -r requirements.txt
 - **Align** (`aeneas`) — the system binaries `ffmpeg` and `espeak`.
 - **NER** — a spaCy model (per-parliament `locale.spacy_model`, e.g. `de_core_news_md`, installed via `python -m spacy download <model>`) and a running `entityfishing` service (passed as `--ner-api-endpoint`).
 
-The video-only parliaments (`download, parse, merge, nel`) need none of these.
+Parliaments that stop at `download, parse, merge, nel` need none of these (check each `manifest.yaml`).
 
 ## Layout
 
@@ -68,7 +68,7 @@ optv/
 
 ## Pipeline stages
 
-Each stage produces a side-by-side cache file per session (e.g. `21001-merged.json`, `21001-aligned.json`, `21001-ner.json`) and runs only when its input is newer than its output. Paths below link to DE as the worked example; every parliament directory carries the same shape — see its README for parliament-specific module names and source formats. Which stages a parliament runs is declared in its `manifest.yaml` `supported_stages`; several are video-only and stop after NEL (no align/NER).
+Each stage produces a side-by-side cache file per session (e.g. `21001-merged.json`, `21001-aligned.json`, `21001-ner.json`) and runs only when its input is newer than its output. Paths below link to DE as the worked example; every parliament directory carries the same shape — see its README for parliament-specific module names and source formats. Which stages a parliament runs is declared in its `manifest.yaml` `supported_stages` (some stop after NEL, others run align/NER). Note: the German state parliaments' text/align stages are an experimental, unvalidated prototype — not yet cleared for platform integration (see each parliament's README).
 
 | Stage | Module / script | Input | Output |
 |-------|-----------------|-------|--------|

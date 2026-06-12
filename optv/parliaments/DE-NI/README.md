@@ -9,15 +9,21 @@ unauthenticated REST API** (`api.plenartv.de`) that delivers the agenda, the
 per-speech speaker timings, stable speaker IDs (`abg_id`) and time-aligned WebVTT
 subtitles. There is no scraping and no cross-source alignment. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
-> The v1 onboarding ships **video + speaker + agenda metadata** with
-> `textContents: []` (`supported_stages: [download, parse, merge, nel]`;
-> `align`/`ner` omitted). Unlike DE-HH/DE-SH/DE-BW the text is *not* PDF-locked —
-> VTT subtitles are available via the API and are the obvious next pass.
+> On top of **video + speaker + agenda metadata**, the broadcaster's time-aligned
+> WebVTT subtitles are now parsed (`parsers/vtt2json.py`) and attached as
+> `textContents` (`supported_stages: [download, parse, merge, nel, ner]`). Because
+> the VTT cues are already time-aligned, sentence timings come straight from the
+> subtitles — `align` (aeneas) is **not** needed and is omitted; only `ner` runs.
+> **This VTT text path is experimental and unvalidated** — the per-subject VTT
+> calibration is fragile (it has misaligned on at least one session) and needs
+> refinement before platform integration.
 
 ## Data model
 
-One input stream: **media** (the Plenar-TV REST API). No proceedings stream is
-merged in v1.
+Two sources, both from the Plenar-TV REST API: the **media** spine (agenda +
+per-speech speaker timings) and the broadcaster's **WebVTT subtitles** as the
+proceedings text. There is no fuzzy alignment — the VTT cues are time-aligned and
+attached onto the spine by `speechIndex`.
 
 - `scraper/fetch_archive.py` → the per-Sitzung index
   (`metadata/archive-wp{N}.json`). Discovery walks the Tagungsabschnitt numbers
@@ -30,13 +36,18 @@ merged in v1.
   `original/media/{session_id}-media.json` (one record per speech: `name`+`surname`
   joined to `Firstname Lastname`, `fraktion` kept as faction, speaker `context`
   derived from `speechType`, stream-second offsets, real wall-clock `start`/`end`).
+- `parsers/vtt2json.py` → fetches each subject's WebVTT (`GET /vtt/{subject_id}`),
+  calibrates each subject VTT onto the spine and slices its cues per speech into
+  sentence-level text + timings. The merger's `attach_text_by_index` then attaches
+  these onto each speech by `speechIndex` (the per-subject calibration is fragile;
+  see Known limitations).
 
 API shapes used (all GET, no auth):
 
 - `/session/periode/{wp}/session/{tagungsabschnitt}` → `{ sessionNumber, electionPeriod, meetings:[{id, meetingDate, meetingNumber}] }`
 - `/subject/date/{meetingDate}` → the Sitzung's subjects (without timings)
 - `/subject/{subject_id}` → one subject **with** `speakerTimings:[{abg_id, surname, name, fraktion, speechType, startTimeInStreamSecs, stopTimeInStreamSecs}]`, plus `streamFileName` and `video.startTime`
-- `/vtt/{subject_id}` → `text/vtt` (not wired in v1)
+- `/vtt/{subject_id}` → `text/vtt` (parsed by `parsers/vtt2json.py`, attached as `textContents`)
 
 Per-speech video is a **server-side-clipped HLS playlist**, addressed directly:
 `https://vod.plenartv.de/stream/{streamFileName}/index.m3u8?start={sec}&end={sec}`
@@ -89,11 +100,15 @@ static markup.
 
 ## Known limitations
 
-- **No transcript text in v1.** Ships `textContents: []`, no `align`/`ner`. The
-  source *does* expose machine-readable text — time-aligned WebVTT per subject
-  (`GET /vtt/{subject_id}`) and the verbatim Plenarprotokoll PDF — so a future
-  pass can attach text (and, from VTT, sentence timings without aeneas). The
-  merger already records the VTT URL in `media.additionalInformation.subtitleVttURI`.
+- **Experimental, unvalidated VTT text path.** Text comes from the broadcaster's
+  time-aligned WebVTT per subject (`GET /vtt/{subject_id}`), parsed by
+  `parsers/vtt2json.py` and attached as `textContents` with cue-derived sentence
+  timings (so `align`/aeneas is not needed; only `ner` runs). This is unvalidated:
+  the per-subject VTT↔speech calibration is fragile (it misaligned on at least one
+  audited session) and there is no Whisper-QC/fidelity audit yet. **Not ready for
+  platform integration.** The verbatim Plenarprotokoll PDF is an alternative text
+  source not used here; the merger also records the VTT URL in
+  `media.additionalInformation.subtitleVttURI`.
 - **NEL coverage caveat** (DE-HH class): the entity dump is built from Wikidata
   `P39 wd:Q17521638` ("member of the Landtag of Lower Saxony"); it misses current
   WP-19 members lacking that statement and government members (Ministerinnen/

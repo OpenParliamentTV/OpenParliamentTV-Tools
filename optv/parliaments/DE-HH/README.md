@@ -1,19 +1,21 @@
 # Hamburgische Bürgerschaft (DE-HH)
 
 This directory implements the OpenParliamentTV pipeline for the Hamburgische
-Bürgerschaft (WP 23). It is a **video-only** onboarding (per-speech video spine,
-no transcript text yet) — see
+Bürgerschaft (WP 23). It is built on a per-speech video spine; the Plenarprotokoll
+PDF is now joined onto that spine via an **experimental, unvalidated** PDF→TEI
+text path (see below) — see
 [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) for repo-wide
-context and the DE-SH / DE-BY / DE-BW READMEs for the same regime. Among the
-video-only German Landtage it is the richest source: genuine per-TOP agenda,
+context and the DE-SH / DE-BY / DE-BW READMEs for the same regime. Among these
+German Landtage it is the richest media source: genuine per-TOP agenda,
 **real per-speech wall-clock timestamps**, and source-native per-speech UUIDs. For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 ## Data model
 
-One input stream: **media** (the im-en.com mediathek session pages). There is no
-proceedings stream — Plenarprotokolle are PDF-only (ParlDok) and OPTV has no PDF
-parser yet, so DE-HH ships `textContents: []` and `supported_stages:
-[download, parse, merge, nel]` (`align`/`ner` omitted; see `manifest.yaml`).
+The media stream is the spine (the im-en.com mediathek session pages). The
+Plenarprotokoll PDF (ParlDok) is parsed via `optv.shared.pdf2tei` and joined onto
+that spine in the merger (`join_text_to_spine`), so matched speeches carry
+verbatim `textContents` (unmatched keep `[]`) and `supported_stages` now includes
+`align`/`ner` (see Known limitations).
 
 - `scraper/fetch_archive.py` → the candidate session index
   (`metadata/archive-wp{N}.json`). Session URLs are fully predictable
@@ -91,10 +93,11 @@ search interface serving PDF protocols only and is **not** used here.
 
 ## Known limitations
 
-- **No transcript text.** PDF-only Plenarprotokolle (ParlDok), no parser →
-  `textContents: []`, no `align`/`ner`. A future `docling`-based proceedings
-  parser could re-enable them (ParlDok cross-references text and video, so the
-  per-speech join would be unusually direct).
+- **Experimental, unvalidated text path.** The Plenarprotokoll PDF (ParlDok) is
+  parsed via `optv.shared.pdf2tei` and joined onto the spine, and `align`/`ner`
+  run on the result. None of this has been validated — there is no
+  Whisper-QC/text-fidelity audit yet, and the PDF→TEI extraction and the
+  text↔spine join still need refinement. **Not ready for platform integration.**
 - **NEL coverage caveat** (DE-SH/DE-BY/DE-BW class): the entity dump is built
   from Wikidata `P39 wd:Q19360355` ("member of the Hamburg Parliament"); it
   misses current WP-23 members lacking that statement and government members
