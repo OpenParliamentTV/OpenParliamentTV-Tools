@@ -36,6 +36,7 @@ optv/parliaments/<CODE>/
 ├── scraper/             # fetch raw proceedings + media
 ├── parsers/             # parliament's native format → intermediate JSON
 ├── merger/              # join proceedings + media → Stage 2
+├── align_prep.py        # optional — per-speech audio staging for align (adapter over optv.shared.audio_prep); only when the source needs slicing
 ├── Makefile             # convenience targets driven by file mtimes
 └── update               # shell wrapper baking in default flags
 ```
@@ -173,7 +174,10 @@ Notes for filling in the hooks:
 
 - **`_download` and `_parse`** are parliament-specific because every source publishes differently. `_parse` runs unconditionally after `_download`; gate any expensive work on mtime checks inside the hook.
 - **`_merge`** is the per-session merger call. The shared runner handles the `is_newer` check, the demotion guard, and the publish — your hook just produces the merged cache file and returns its path.
-- **`_align`** receives `(config, session, args)` and returns the aligned cache file path. For per-speech audio (DE's shape) call `align_audiofile`; for per-debate audio that needs slicing first, pre-slice into per-speech MP3s at the paths `align_audio` expects, then call it in-memory and write the result.
+- **`_align`** receives `(config, session, args)` and returns the aligned cache file path. There are three established shapes, in increasing factoring:
+  - **Per-speech audio already cached** (DE's shape): a hand-written `_align` calling `align_audiofile` is enough — nothing to slice.
+  - **Session/debate stream that must be sliced per speech** (SE/EU/FR/NO/PT): put the parliament's field mapping in an `align_prep.py` adapter over `optv.shared.audio_prep` — the shared `prepare_per_speech_audio` driver owns download-once / slice / cache — and build the hook with `make_align_hook(prepare_per_speech_audio)` instead of hand-writing `_align`.
+  - **`#t=start,end` media-fragment family** (the DE state parliaments): the adapter is one line — `prepare_per_speech_audio = make_fragment_prepare(hls=…)` — then `make_align_hook(prepare_per_speech_audio)`.
 - **`session_in_scope=(args, session) -> bool`** is optional; the default is `session.startswith(str(args.period))`. Override only if your session keys don't have that shape (e.g. a parliament whose session strings use a separator that requires more precise prefix matching).
 - **NEL, NER, the publish step, `--update-nel-entities`, the lockfile, validation** — all already shared; you do not re-implement any of them. The publish helper carries already-published wids and per-speech enrichments forward, so a stale worker cannot silently strip data a newer worker had produced.
 
