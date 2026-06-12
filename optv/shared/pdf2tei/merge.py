@@ -6,8 +6,7 @@ incl. Zwischenfragen (DE-BW). To align text to the spine we first group the
 per-``<u>`` turns from :func:`optv.shared.pdf2tei.tei2json.tei_to_turns` into
 redes that match the clip granularity, then the merger does the surname NW join.
 
-The grouping rule (derived from the Whisper diagnostic, see
-``_planning/pdf2tei/join_merge_proto.py``) is per-parliament:
+The grouping rule is per-parliament:
 
 - ``chain=False`` — close the rede at every new non-chair speaker (one clip =
   chair + one speaker turn; DE-BY).
