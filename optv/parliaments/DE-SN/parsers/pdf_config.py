@@ -11,7 +11,7 @@ CONFIG = ParliamentConfig(
     mp_speaker=re.compile(
         r"^(?P<name>[A-ZÄÖÜ][^,:\(\[]+?)\s*,\s*"
         r"(?P<faction>CDU|SPD|AfD|BSW|BÜNDNISGRÜNE|BÜNDNISGRUNEN|BÜNDNIS ?90/DIE GRÜNEN|"
-        r"GRÜNE|DIE LINKE|Die Linke|FDP)\s*:\s*(?P<rest>.*)$"),
+        r"GRÜNE|DIE LINKE|Die Linke|FDP|fraktionslos)\s*:\s*(?P<rest>.*)$"),
     gov_speaker=re.compile(
         r"^(?P<name>[A-ZÄÖÜ][^,:]+?)\s*,\s*"
         r"(?P<role>Staatsministerin|Staatsminister|Staatssekretärin|Staatssekretär|"
