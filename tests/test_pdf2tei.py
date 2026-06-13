@@ -11,7 +11,8 @@ from lxml import etree
 from optv.shared.lang.de import match_key_surname
 from optv.shared.pdf2tei.merge import merge_turns
 from optv.shared.pdf2tei.tei2json import tei_to_turns
-from optv.shared.pdf2tei.spine_join import join_text_to_spine, attach_text_by_index
+from optv.shared.pdf2tei.spine_join import (
+    join_text_to_spine, attach_text_by_index, assign_join_confidence)
 
 TEI_NS = "http://www.tei-c.org/ns/1.0"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
@@ -126,3 +127,39 @@ def test_attach_text_by_index():
     assert n == 1
     assert merged[0]["textContents"] == []
     assert merged[1]["textContents"][0]["textBody"][0]["sentences"][0]["text"] == "Text."
+
+
+def _txt_rec(idx, agenda_type, text, start=0.0, end=100.0):
+    tc = ([{"textBody": [{"sentences": [{"text": text}]}]}] if text else [])
+    return {
+        "speechIndex": idx,
+        "people": [{"label": f"S{idx}"}],
+        "agendaItem": {"type": agenda_type},
+        "media": {"additionalInformation": {"startOffset": start, "endOffset": end}},
+        "textContents": tc,
+        "debug": {},
+    }
+
+
+def test_assign_join_confidence_gates_qa_and_cps():
+    qa = _txt_rec(1, "qa", "x" * 50)                       # qa type -> gated
+    reg_ok = _txt_rec(2, "regular", "x" * 50)              # 0.5 cps, clean
+    reg_cps = _txt_rec(3, "regular", "x" * 600, end=5)     # 120 cps, >=floor -> gated
+    reg_short = _txt_rec(4, "regular", "x" * 200, end=1)   # 200 cps but <500 floor -> clean
+    notext = _txt_rec(5, "regular", "")                    # no text -> untouched
+    gated = assign_join_confidence([qa, reg_ok, reg_cps, reg_short, notext])
+    assert gated == 2
+    assert qa["debug"]["confidence"] == 0.5 and qa["debug"]["confidence_reason"] == "qa-agenda-type"
+    assert reg_cps["debug"]["confidence"] == 0.5 and reg_cps["debug"]["confidence_reason"] == "cps-cap"
+    assert reg_ok["debug"]["confidence"] == 1.0 and "confidence_reason" not in reg_ok["debug"]
+    assert reg_short["debug"]["confidence"] == 1.0
+    assert "confidence" not in notext["debug"]             # video-only speech left alone
+
+
+def test_join_text_to_spine_stamps_clean_confidence():
+    merged = [_rec(1, "Anna Müller")]
+    merged[0]["agendaItem"] = {"type": "regular"}
+    merged[0]["media"] = {"additionalInformation": {"startOffset": 0.0, "endOffset": 100.0}}
+    turns = [{"matchKey": "muller", "index": 1, "sentences": [{"text": "Kurz."}]}]
+    join_text_to_spine(merged, ["muller"], turns, creator="C", license="L")
+    assert merged[0]["debug"]["confidence"] == 1.0

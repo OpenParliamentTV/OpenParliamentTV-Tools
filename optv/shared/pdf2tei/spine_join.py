@@ -15,6 +15,55 @@ from ..sequence_align import align_equal_keys
 
 logger = logging.getLogger(__name__)
 
+# Confidence gate for the text↔spine join, ported from the DE merger's pattern
+# (optv/parliaments/DE/merger/merge_session.py). The surname Needleman-Wunsch
+# mis-attributes text on Q&A-structured items and on gross length mismatches; we
+# can't always *fix* that join, but we can *flag* it so the platform import gate
+# (confidence == 1) drops the unreliable text — "wrong text is worse than none".
+# Only signals that survive without an ASR oracle: the agenda type, and the
+# clip's chars-per-second (text physically too long for the clip = mis-merge).
+QA_TYPES = frozenset({"qa", "questioning_of_the_government"})
+CPS_CAP = 100.0          # chars/sec above this ⇒ text can't fit the clip
+CPS_CAP_CHARS_FLOOR = 500  # don't gate short speeches on cps alone
+
+
+def _text_char_count(text_contents: list) -> int:
+    return sum(len(s.get("text", ""))
+               for c in (text_contents or [])
+               for tb in (c.get("textBody") or [])
+               for s in (tb.get("sentences") or []))
+
+
+def assign_join_confidence(merged: list[dict]) -> int:
+    """Stamp ``debug.confidence`` (+ ``confidence_reason``) on text-bearing spine
+    speeches so the platform can drop unreliable joins. Clean matches get 1.0;
+    Q&A agenda types and cps-cap mis-merges get 0.5. Speeches with no text are
+    left untouched (video-only, nothing to gate). Returns the count gated to 0.5.
+    """
+    gated = 0
+    for sp in merged:
+        if not sp.get("textContents"):
+            continue
+        agenda_type = (sp.get("agendaItem") or {}).get("type") or ""
+        conf, reason = 1.0, None
+        if agenda_type in QA_TYPES:
+            conf, reason = 0.5, "qa-agenda-type"
+        else:
+            ai = (sp.get("media") or {}).get("additionalInformation") or {}
+            start, end = ai.get("startOffset"), ai.get("endOffset")
+            if start is not None and end is not None and end > start:
+                chars = _text_char_count(sp["textContents"])
+                if chars >= CPS_CAP_CHARS_FLOOR and chars / (end - start) >= CPS_CAP:
+                    conf, reason = 0.5, "cps-cap"
+        dbg = sp.setdefault("debug", {})
+        dbg["confidence"] = conf
+        if reason:
+            dbg["confidence_reason"] = reason
+            gated += 1
+        else:
+            dbg.pop("confidence_reason", None)
+    return gated
+
 
 def load_turns(config, session: str) -> list[dict]:
     """Return the parsed proceedings turns for a session, or [] if none."""
@@ -58,6 +107,7 @@ def join_text_to_spine(merged: list[dict], spine_keys: list[str], turns: list[di
         }]
         rec.setdefault("debug", {})["proceedingIndex"] = turn.get("index")
         rec["debug"]["proceedingTextID"] = turn.get("originTextID")
+    assign_join_confidence(merged)
     return len(mapping)
 
 
@@ -88,4 +138,5 @@ def attach_text_by_index(merged: list[dict], turns: list[dict],
         }]
         rec.setdefault("debug", {})["proceedingIndex"] = turn.get("speechIndex")
         matched += 1
+    assign_join_confidence(merged)
     return matched
