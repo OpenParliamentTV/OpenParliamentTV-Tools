@@ -322,7 +322,11 @@ def prepare_per_speech_audio(
             # Per-speech source: transcode the whole clip straight to target.
             download_session(spec.source_url, target)
         else:
-            session_audio = session_dir / f"{spec.session_key}.mp3"
+            # Hash the session key for the on-disk name: session_key is often the
+            # raw stream URL (fragment parliaments), which as a filename would turn
+            # the slashes/`https:` into a nested path tree. md5 gives a flat,
+            # collision-free name (cf. the docstring's "stable id (md5(url))").
+            session_audio = session_dir / f"{md5_key(spec.session_key)}.mp3"
             if spec.session_key not in seen:
                 download_session(spec.source_url, session_audio,
                                  required_duration=required.get(spec.session_key, 0.0))

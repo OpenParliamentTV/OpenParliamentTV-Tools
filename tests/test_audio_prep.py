@@ -62,7 +62,7 @@ def test_slice_path_downloads_session_once(tmp_path):
                                       download_session=download, slice_fn=slice_fn)
     assert counts == (2, 0, 0)
     assert len(dl) == 1                                   # one shared-session download
-    assert dl[0][1] == tmp_path / "audio_session" / "K.mp3"
+    assert dl[0][1] == tmp_path / "audio_session" / f"{md5_key('K')}.mp3"  # hashed, not raw URL/key
     assert [c[1] for c in sl] == [0.0, 10.0]             # per-speech offsets
     assert _target(tmp_path, 0).read_text() == "clip"
     assert _target(tmp_path, 1).exists()
