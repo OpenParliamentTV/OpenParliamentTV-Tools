@@ -22,22 +22,13 @@ from typing import Callable, Optional
 
 from lxml import etree
 
-from ..lang.de import match_key_surname
+from ..lang.de import (match_key_surname, spacy_sentencize, is_non_speech,
+                       join_segments)
 
 TEI_NS = "http://www.tei-c.org/ns/1.0"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
 _T = f"{{{TEI_NS}}}"
 _XMLID = f"{{{XML_NS}}}id"
-
-
-def _regex_sentencize(text: str) -> list[str]:
-    """German sentence split: break after .!?… when followed by an uppercase
-    start. Abbreviation-naive but adequate for matching/alignment."""
-    text = (text or "").strip()
-    if not text:
-        return []
-    return [s.strip() for s in re.split(r"(?<=[.!?…])\s+(?=[A-ZÄÖÜ„\"»])", text)
-            if s.strip()]
 
 
 def _load_registries(person_root, org_root) -> tuple[dict, dict]:
@@ -75,11 +66,43 @@ def _load_registries(person_root, org_root) -> tuple[dict, dict]:
     return persons, org_label
 
 
+def _u_to_bodies(u, sentencize) -> list[dict]:
+    """Walk a ``<u>``'s children in document order into an ordered list of typed
+    textBody dicts (mirrors the DE structure): consecutive ``<seg>`` become a
+    ``speech`` body (joined, sentencized, non-speech-filtered); each
+    ``<incident>`` becomes a ``comment`` body — kept in the JSON for display and
+    excluded from aeneas downstream (``align`` only aligns ``type=="speech"`` and
+    estimates comment timecodes from neighbours)."""
+    bodies: list[dict] = []
+    buf: list[str] = []
+
+    def flush():
+        if not buf:
+            return
+        sents = [{"text": s} for s in sentencize(join_segments(buf))
+                 if not is_non_speech(s)]
+        buf.clear()
+        if sents:
+            bodies.append({"type": "speech", "sentences": sents})
+
+    for child in u:
+        ct = etree.QName(child).localname
+        if ct == "seg":
+            buf.append(child.text or "")
+        elif ct == "incident":
+            flush()
+            desc = (child.findtext(f"{_T}desc") or "").strip()
+            if desc:
+                bodies.append({"type": "comment", "sentences": [{"text": f"({desc})"}]})
+    flush()
+    return bodies
+
+
 def tei_to_turns(data_root, person_root=None, org_root=None, *,
                  sentencize: Optional[Callable[[str], list[str]]] = None
                  ) -> list[dict]:
     """Convert a parsed TEI ``<text>`` tree into proceedings turns."""
-    sentencize = sentencize or _regex_sentencize
+    sentencize = sentencize or spacy_sentencize
     persons, org_label = _load_registries(person_root, org_root)
     turns: list[dict] = []
     idx = 0
@@ -107,8 +130,7 @@ def tei_to_turns(data_root, person_root=None, org_root=None, *,
                     t for t in (pinfo.get("forename"), pinfo.get("surname")) if t) or label
                 slug = pinfo.get("faction_slug")
                 party = org_label.get(slug, slug or "")
-                text = " ".join((seg.text or "").strip()
-                                for seg in el.findall(f"{_T}seg")).strip()
+                bodies = _u_to_bodies(el, sentencize)
                 turns.append({
                     "index": idx,
                     "speaker": label,
@@ -119,7 +141,11 @@ def tei_to_turns(data_root, person_root=None, org_root=None, *,
                     "isChair": is_chair,
                     "originTextID": el.get(_XMLID) or "",
                     "agendaTitle": agenda,
-                    "sentences": [{"text": s} for s in sentencize(text)],
+                    # speech-only sentences (for the join / metrics) + the full
+                    # ordered speech+comment bodies (for the JSON output).
+                    "sentences": [s for b in bodies if b["type"] == "speech"
+                                  for s in b["sentences"]],
+                    "bodies": bodies,
                 })
                 pending_label = None
     return turns

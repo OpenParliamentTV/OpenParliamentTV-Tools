@@ -77,6 +77,24 @@ def load_turns(config, session: str) -> list[dict]:
         return []
 
 
+def _text_body(turn: dict, speaker: str, sentences: list) -> list[dict]:
+    """Ordered textBody for a matched turn: the proceedings turn's typed
+    speech/comment bodies (DE structure — comments kept for display, aligned only
+    if speech), or a single speech body when the turn carries no ``bodies``."""
+    bodies = turn.get("bodies")
+    if not bodies:
+        return [{"type": "speech", "speaker": speaker, "sentences": sentences}]
+    out = []
+    for b in bodies:
+        if b.get("type") == "comment":
+            out.append({"type": "comment", "speaker": None,
+                        "sentences": b.get("sentences", [])})
+        else:
+            out.append({"type": "speech", "speaker": speaker,
+                        "sentences": b.get("sentences", [])})
+    return out
+
+
 def join_text_to_spine(merged: list[dict], spine_keys: list[str], turns: list[dict],
                        *, creator: str, license: str, language: str = "de") -> int:
     """Surname NW join; fill ``textContents`` + ``debug.proceedingIndex`` on
@@ -99,11 +117,7 @@ def join_text_to_spine(merged: list[dict], spine_keys: list[str], turns: list[di
             "language": language,
             "creator": creator,
             "license": license,
-            "textBody": [{
-                "type": "speech",
-                "speaker": speaker,
-                "sentences": sentences,
-            }],
+            "textBody": _text_body(turn, speaker, sentences),
         }]
         rec.setdefault("debug", {})["proceedingIndex"] = turn.get("index")
         rec["debug"]["proceedingTextID"] = turn.get("originTextID")
@@ -134,7 +148,7 @@ def attach_text_by_index(merged: list[dict], turns: list[dict],
             "language": language,
             "creator": creator,
             "license": license,
-            "textBody": [{"type": "speech", "speaker": speaker, "sentences": sentences}],
+            "textBody": _text_body(turn, speaker, sentences),
         }]
         rec.setdefault("debug", {})["proceedingIndex"] = turn.get("speechIndex")
         matched += 1

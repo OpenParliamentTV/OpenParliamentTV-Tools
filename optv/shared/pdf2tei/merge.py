@@ -20,8 +20,15 @@ from __future__ import annotations
 
 
 def _new(turn: dict) -> dict:
-    return {"main": None, "sentences": [], "agendaTitle": turn.get("agendaTitle", ""),
+    return {"main": None, "sentences": [], "bodies": [],
+            "agendaTitle": turn.get("agendaTitle", ""),
             "originTextID": turn.get("originTextID", ""), "speaker": turn.get("speaker", "")}
+
+
+def _absorb(cur: dict, u: dict) -> None:
+    """Append a turn's speech sentences and full typed bodies into the rede."""
+    cur["sentences"] += u.get("sentences", [])
+    cur["bodies"] += u.get("bodies", [])
 
 
 def merge_turns(turns: list[dict], *, chain: bool, K: int = 2) -> list[dict]:
@@ -34,24 +41,24 @@ def merge_turns(turns: list[dict], *, chain: bool, K: int = 2) -> list[dict]:
         if u.get("isChair"):
             if cur is None:
                 cur = _new(u)
-            cur["sentences"] += u.get("sentences", [])
+            _absorb(cur, u)
             continue
         spk = u.get("matchKey", "")
         if cur is None or cur["main"] is None:
             if cur is None:
                 cur = _new(u)
             cur["main"] = spk
-            cur["sentences"] += u.get("sentences", [])
+            _absorb(cur, u)
             cur["agendaTitle"] = cur["agendaTitle"] or u.get("agendaTitle", "")
             cur["originTextID"] = cur["originTextID"] or u.get("originTextID", "")
             cur["speaker"] = u.get("speaker", "")
         elif spk == cur["main"] and chain:
-            cur["sentences"] += u.get("sentences", [])
+            _absorb(cur, u)
         elif not chain:
             redes.append(cur)
             cur = _new(u)
             cur["main"] = spk
-            cur["sentences"] += u.get("sentences", [])
+            _absorb(cur, u)
             cur["speaker"] = u.get("speaker", "")
         else:
             # Absorb as a Zwischenfrage only if the current main resumes within
@@ -67,12 +74,12 @@ def merge_turns(turns: list[dict], *, chain: bool, K: int = 2) -> list[dict]:
                 if cnt >= K:
                     break
             if resumes:
-                cur["sentences"] += u.get("sentences", [])
+                _absorb(cur, u)
             else:
                 redes.append(cur)
                 cur = _new(u)
                 cur["main"] = spk
-                cur["sentences"] += u.get("sentences", [])
+                _absorb(cur, u)
                 cur["speaker"] = u.get("speaker", "")
     if cur and cur["main"]:
         redes.append(cur)
@@ -83,4 +90,5 @@ def merge_turns(turns: list[dict], *, chain: bool, K: int = 2) -> list[dict]:
         "agendaTitle": r["agendaTitle"],
         "originTextID": r["originTextID"],
         "sentences": r["sentences"],
+        "bodies": r["bodies"],
     } for i, r in enumerate(redes)]

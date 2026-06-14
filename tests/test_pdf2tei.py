@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from lxml import etree
 
-from optv.shared.lang.de import match_key_surname
+from optv.shared.lang.de import (
+    match_key_surname, is_running_header, regex_sentencize, spacy_sentencize,
+    is_non_speech, join_segments)
 from optv.shared.pdf2tei.merge import merge_turns
 from optv.shared.pdf2tei.tei2json import tei_to_turns
 from optv.shared.pdf2tei.spine_join import (
@@ -89,6 +91,39 @@ def _tei():
     return root, persons, orgs
 
 
+def test_tei_to_turns_emits_comment_bodies():
+    root = etree.Element(f"{{{TEI_NS}}}text", nsmap={None: TEI_NS, "xml": XML_NS})
+    body = etree.SubElement(root, f"{{{TEI_NS}}}body")
+    div = etree.SubElement(body, f"{{{TEI_NS}}}div", type="debateSection")
+    etree.SubElement(div, f"{{{TEI_NS}}}head").text = "Thema"
+    note = etree.SubElement(div, f"{{{TEI_NS}}}note", type="speaker")
+    note.text = "Anna Müller"
+    u = etree.SubElement(div, f"{{{TEI_NS}}}u", who="#x", ana="#regular")
+    u.set(f"{{{XML_NS}}}id", "u1")
+    etree.SubElement(u, f"{{{TEI_NS}}}seg").text = "Erster Satz."
+    inc = etree.SubElement(u, f"{{{TEI_NS}}}incident")
+    etree.SubElement(inc, f"{{{TEI_NS}}}desc").text = "Beifall bei der SPD"
+    etree.SubElement(u, f"{{{TEI_NS}}}seg").text = "Zweiter Satz."
+    t = tei_to_turns(root)[0]
+    # interleaved typed bodies (mirrors DE); the interjection is kept as a comment
+    assert [b["type"] for b in t["bodies"]] == ["speech", "comment", "speech"]
+    assert t["bodies"][1]["sentences"][0]["text"] == "(Beifall bei der SPD)"
+    # speech-only sentences (for the join / metrics) exclude the comment
+    assert [s["text"] for s in t["sentences"]] == ["Erster Satz.", "Zweiter Satz."]
+
+
+def test_join_text_to_spine_emits_comment_textbody():
+    merged = [_rec(1, "Anna Müller")]
+    turns = [{"matchKey": "muller", "index": 1, "sentences": [{"text": "Hallo."}],
+              "bodies": [{"type": "speech", "sentences": [{"text": "Hallo."}]},
+                         {"type": "comment", "sentences": [{"text": "(Beifall)"}]}]}]
+    join_text_to_spine(merged, ["muller"], turns, creator="C", license="L")
+    tb = merged[0]["textContents"][0]["textBody"]
+    assert [b["type"] for b in tb] == ["speech", "comment"]
+    assert tb[0]["speaker"] == "Anna Müller"
+    assert tb[1]["speaker"] is None and tb[1]["sentences"][0]["text"] == "(Beifall)"
+
+
 def test_tei_to_turns_reads_speaker_text_and_agenda():
     root, persons, orgs = _tei()
     turns = tei_to_turns(root, persons, orgs)
@@ -154,6 +189,57 @@ def test_assign_join_confidence_gates_qa_and_cps():
     assert reg_ok["debug"]["confidence"] == 1.0 and "confidence_reason" not in reg_ok["debug"]
     assert reg_short["debug"]["confidence"] == 1.0
     assert "confidence" not in notext["debug"]             # video-only speech left alone
+
+
+def test_regex_sentencize_protects_abbrev_ordinal_initial():
+    # ordinals/dates and abbreviations must NOT split
+    assert regex_sentencize("Vom 11. August 1919 an gilt das.") == ["Vom 11. August 1919 an gilt das."]
+    assert regex_sentencize("In der 17. Wahlperiode, 119. Sitzung.") == ["In der 17. Wahlperiode, 119. Sitzung."]
+    assert regex_sentencize("Das ist z. B. gut. Der Rest folgt.") == ["Das ist z. B. gut.", "Der Rest folgt."]
+    assert regex_sentencize("Dr. Müller sprach. Dann Pause.") == ["Dr. Müller sprach.", "Dann Pause."]
+    # a year at a real sentence end must STILL split (no under-splitting)
+    assert regex_sentencize("Im Jahr 2026. Der nächste Satz.") == ["Im Jahr 2026.", "Der nächste Satz."]
+    # placeholder never leaks
+    assert "\x00" not in regex_sentencize("z. B. Test.")[0]
+
+
+def test_spacy_sentencize_splits_and_protects():
+    out = spacy_sentencize("Das ist gut. Der Rest folgt.")
+    assert out == ["Das ist gut.", "Der Rest folgt."]
+    # abbreviation / ordinal not split (German tokenizer)
+    assert spacy_sentencize("Vom 11. August 1919 gilt das.") == ["Vom 11. August 1919 gilt das."]
+
+
+def test_is_non_speech_vote_list_and_appendix():
+    names = ", ".join(f"Max Muster{i}" for i in range(30))
+    assert is_non_speech("Mit Ja haben gestimmt: GRÜNE: " + names)
+    assert is_non_speech("Anlage 1 Vorschlag der Fraktion GRÜNE Umbesetzungen in verschiedenen Ausschüssen " + names)
+    # a long unpunctuated name list (table)
+    assert is_non_speech(names + ", " + names)
+    # normal speech (even long) is kept
+    assert not is_non_speech("Sehr geehrter Herr Präsident, ich möchte heute über die Lage der Apotheken sprechen.")
+    assert not is_non_speech("Kurz.")
+
+
+def test_join_segments_cross_block_dehyphenation():
+    # word split across a block boundary -> rejoined
+    assert join_segments(["Das ist eine kontinuier-", "liche Verbesserung."]) == "Das ist eine kontinuierliche Verbesserung."
+    # elided compound -> hyphen + space kept
+    assert join_segments(["die Ein-", "und Ausgänge"]) == "die Ein- und Ausgänge"
+    # normal segments -> space-joined
+    assert join_segments(["Satz eins.", "Satz zwei."]) == "Satz eins. Satz zwei."
+
+
+def test_is_running_header_landtag_formats():
+    # real running headers -> dropped
+    assert is_running_header("Landtag von Baden-Württemberg – 17. Wahlperiode – 119. Sitzung – Mittwoch, 2. April 2025")
+    assert is_running_header("Sächsischer Landtag 8. Wahlperiode – 24. Sitzung 4. Februar 2026")
+    assert is_running_header("Landtag 29.01.2026 Nordrhein-Westfalen 36 Plenarprotokoll 18/116")
+    assert is_running_header("7")
+    # real speech naming the parliament -> NOT dropped
+    assert not is_running_header("Ich eröffne die 119. Sitzung des 17. Landtags von Baden-Württemberg.")
+    assert not is_running_header("In der 17. Wahlperiode haben wir viel erreicht.")
+    assert not is_running_header("Der Landtag von Baden-Württemberg hat entschieden.")
 
 
 def test_join_text_to_spine_stamps_clean_confidence():

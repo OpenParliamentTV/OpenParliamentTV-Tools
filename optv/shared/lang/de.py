@@ -112,6 +112,15 @@ def is_running_header(text: str) -> bool:
         return True
     if re.match(r"^Schleswig-Holsteinischer Landtag", t):
         return True
+    # "<Parliament> – N. Wahlperiode – M. Sitzung – <date>" (BW, SN, …). The
+    # "N. Wahlperiode – M. Sitzung" run is header-specific; real speech that
+    # merely names the parliament ("…des 17. Landtags von Baden-Württemberg")
+    # lacks it, so this does not eat substantive text.
+    if re.search(r"\d+\.\s*Wahlperiode\s*[–-]\s*\d+\.\s*Sitzung\b", t):
+        return True
+    # NW footer "Landtag <date> Nordrhein-Westfalen <page> Plenarprotokoll N/M".
+    if re.search(r"Nordrhein-Westfalen\s+\d+\s+Plenarprotokoll\s+\d+/\d+", t):
+        return True
     if re.fullmatch(r"\d{1,4}", t):          # bare page number
         return True
     return False
@@ -180,3 +189,124 @@ def match_key_surname(name: str) -> str:
     s = "".join(c for c in s if not unicodedata.combining(c))
     toks = re.sub(r"[^0-9A-Za-z \-]", " ", s).split()
     return toks[-1].lower() if toks else ""
+
+
+# --- PDF→TEI German sentence/text heuristics --------------------------------
+# Consumed by the parliament-agnostic core in optv/shared/pdf2tei/tei2json.py:
+# sentence segmentation, non-speech (vote-list/table) detection, and cross-block
+# de-hyphenation. The mechanics are generic; the German knowledge lives here.
+
+ORDINAL_NOUNS = ("Wahlperiode", "Sitzung", "Lesung", "Beratung", "Wahlgang",
+                 "Legislaturperiode", "Tagesordnungspunkt", "Absatz", "Artikel",
+                 "Nummer", "Halbsatz", "Spiegelstrich")
+# Abbreviations that take a trailing period and are never a sentence end (some
+# multi-part: "z. B.", "d. h.").
+SENTENCE_ABBREVIATIONS = (
+    "Abs", "Art", "Bd", "bzw", "ca", "d.h", "Dr", "ebd", "etc", "evtl", "ff",
+    "ggf", "Hrsg", "i.d.R", "inkl", "Mio", "Mrd", "Nr", "Nrn", "Pos", "Prof",
+    "Rn", "sog", "Tz", "u.a", "u.Ä", "usw", "v.a", "vgl", "z.B", "z.T", "Ziff")
+
+_SENT_PH = "\x00"   # placeholder for a protected (non-boundary) period
+_SENT_PROTECT_RES = (
+    [re.compile(r"\b" + r"\.\s*".join(re.escape(p) for p in ab.split(".")) + r"\.")
+     for ab in SENTENCE_ABBREVIATIONS]
+    + [re.compile(r"\b[A-ZÄÖÜ]\.(?=\s+[A-ZÄÖÜ])"),   # single-letter initial
+       re.compile(rf"\b\d+\.(?=\s+(?:{'|'.join(MONTHS)}|{'|'.join(ORDINAL_NOUNS)})\b)")])
+_SENT_SPLIT_RE = re.compile(r"(?<=[.!?…])\s+(?=[A-ZÄÖÜ„\"»])")
+
+
+def regex_sentencize(text: str) -> list[str]:
+    """Deterministic German sentence split (no model): break after .!?… + an
+    uppercase start, but protect abbreviations, single-letter initials, and
+    ordinal/date periods (``11. August``, ``17. Wahlperiode``) first."""
+    text = (text or "").strip()
+    if not text:
+        return []
+    for rx in _SENT_PROTECT_RES:
+        text = rx.sub(lambda m: m.group(0).replace(".", _SENT_PH), text)
+    return [s.replace(_SENT_PH, ".").strip()
+            for s in _SENT_SPLIT_RE.split(text) if s.strip()]
+
+
+_nlp = None
+
+
+def spacy_sentencize(text: str) -> list[str]:
+    """German sentence split via spaCy's deterministic rule-based ``sentencizer``
+    — the same component the DE Bundestag parser uses, so the whole DE tier is
+    consistent. The German tokenizer protects abbreviations/ordinals and it
+    catches ?/!/interjection boundaries the bare regex misses. Loaded once per
+    process; deterministic (no model weights — pin the spaCy version)."""
+    text = (text or "").strip()
+    if not text:
+        return []
+    global _nlp
+    if _nlp is None:
+        from spacy.lang.de import German
+        _nlp = German()
+        _nlp.add_pipe("sentencizer")
+    return [str(s).strip() for s in _nlp(text).sents if str(s).strip()]
+
+
+# Non-speech blocks extracted as flowing text (roll-call vote lists, voter name
+# lists, appendix tables). They have no real sentences, are not spoken in the
+# chair's clip, and would corrupt the per-clip aeneas alignment — so we drop them.
+_FACTION_ALT = "|".join(sorted(
+    {re.escape(f) for f in FACTIONS}
+    | {"BSW", "BÜNDNISGRÜNE", "FREIE WÄHLER", "fraktionslos"}, key=len, reverse=True))
+_VOTE_APPENDIX_RE = re.compile(
+    r"Anlage\s+(\d|zum Protokoll)|Umbesetzungen in (den|verschiedenen) Aussch|"
+    r"\bMit\s+(Ja|Nein)\b[^.]{0,40}\bgestimmt\b|\bhaben\s+gestimmt\b\s*:|"
+    r"namentliche[rn]?\s+Abstimmung|\b(Ja|Nein|Enthaltungs|Gesamt)stimmen\s*:?\s*\d",
+    re.IGNORECASE)
+_ROLLCALL_RE = re.compile(r"\([A-ZÄÖÜ][A-Za-zÄÖÜäöüß]*\)\s*x\b")   # "(CDU) x  Name"
+_FACTION_LIST_RE = re.compile(rf"^({_FACTION_ALT})\s*:")            # "CDU: Name, …"
+_NAME_TOKEN_RE = re.compile(r"\b[A-ZÄÖÜ][a-zäöüß]+\b")
+_SENT_BOUNDARY_RE = re.compile(r"[.!?]\s+[A-ZÄÖÜ]")
+
+
+def is_non_speech(text: str) -> bool:
+    """True for roll-call vote lists / voter lists / appendix tables. Conservative
+    — long blocks only, clear markers or a dense name list with no real sentence
+    boundary (abbreviation periods like ``Dr.`` are not boundaries)."""
+    t = (text or "").strip()
+    if len(t) < 200:                       # never drop normal-length speech
+        return False
+    if _VOTE_APPENDIX_RE.search(t) or len(_ROLLCALL_RE.findall(t)) >= 5:
+        return True
+    if _FACTION_LIST_RE.match(t) and t.count(",") > 12:
+        return True
+    if (not _SENT_BOUNDARY_RE.search(t)
+            and len(_NAME_TOKEN_RE.findall(t)) > 20 and t.count(",") > 10):
+        return True
+    return False
+
+
+# Conjunctions that follow an elided compound ("Ein- und Ausgänge"): a hyphen
+# before one is intentional, not a line-wrap, so keep it.
+ELISION_CONJ = frozenset((
+    "und", "oder", "bzw", "beziehungsweise", "sowie", "wie", "als", "aber",
+    "noch", "samt", "nebst", "bis", "gegen", "respektive", "resp"))
+_TRAILING_HYPHEN_RE = re.compile(r"[a-zäöüß]-$")
+
+
+def join_segments(parts) -> str:
+    """Join block/segment texts with a space, but reconnect a word split across a
+    block boundary (column/page break): a part ending ``<lowercase>-`` then a next
+    part starting lowercase is a wrap (within-block wraps are already handled by
+    ``dehyphenate``). Elided compounds (next token a conjunction) are kept."""
+    out = ""
+    for p in parts:
+        p = (p or "").strip()
+        if not p:
+            continue
+        if not out:
+            out = p
+            continue
+        nxt = p.split(" ", 1)[0]
+        if (_TRAILING_HYPHEN_RE.search(out) and nxt[:1].islower()
+                and nxt.rstrip(",.;:!?").lower() not in ELISION_CONJ):
+            out = out[:-1] + p
+        else:
+            out = out + " " + p
+    return out
