@@ -36,10 +36,15 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.NO.merger"
 
+from optv.parliaments import get_rights as _get_rights
 from optv.parliaments.NO.common import Config, save_if_changed
 from optv.shared.speech_id import normalize_speech_originid
+from optv.shared.meta import build_meta, fill_original_language, now_iso
 
 logger = logging.getLogger(__name__ if __name__ != "__main__" else os.path.basename(sys.argv[0]))
+
+MEDIA_CREATOR = _get_rights("NO", stream="media")["creator"]
+MEDIA_LICENSE = _get_rights("NO", stream="media")["license"]
 
 # Europe/Oslo is CET/CEST: UTC+1 winter, UTC+2 summer. Norway observes DST
 # (last Sunday March → last Sunday October). For dates after 2007 we can use
@@ -157,8 +162,8 @@ def merge_session(config: Config, session: str) -> dict:
             media: dict = {
                 "videoFileURI": mfi,
                 "sourcePage": source_page,
-                "creator": "Stortinget",
-                "license": "https://www.stortinget.no/no/Stottemeny/Hjelp/Nett-TV/",
+                "creator": MEDIA_CREATOR,
+                "license": MEDIA_LICENSE,
                 "aligned": False,
                 "duration": duration,
                 "originMediaID": f"{moteid}_{part['delnr']}_{i}",
@@ -177,7 +182,7 @@ def merge_session(config: Config, session: str) -> dict:
             }
             if part.get("thumbnail_url"):
                 media["thumbnailURI"] = part["thumbnail_url"]
-                media["thumbnailCreator"] = "Stortinget"
+                media["thumbnailCreator"] = MEDIA_CREATOR
                 media["thumbnailLicense"] = media["license"]
             speech["media"] = media
             # Keep dateEnd naive-Oslo to mirror the dateStart format from
@@ -198,8 +203,8 @@ def merge_session(config: Config, session: str) -> dict:
                 "videoFileURI": "",
                 "sourcePage": (f"https://www.stortinget.no/no/Hva-skjer-pa-Stortinget/"
                                f"videoarkiv/Arkiv-TV-sendinger/?meid={moteid}"),
-                "creator": "Stortinget",
-                "license": "https://www.stortinget.no/no/Stottemeny/Hjelp/Nett-TV/",
+                "creator": MEDIA_CREATOR,
+                "license": MEDIA_LICENSE,
                 "aligned": False,
             }
         merged.append(speech)
@@ -211,20 +216,20 @@ def merge_session(config: Config, session: str) -> dict:
     meta_media = media_doc.get("meta", {})
     for _s in merged:
         normalize_speech_originid(_s)
+    fill_original_language(merged, "NO")
     return {
-        "meta": {
-            "session": session,
-            "schemaVersion": "1.0",
-            "dateStart": meta_proc.get("dateStart"),
-            "dateEnd": meta_proc.get("dateEnd"),
-            "lastUpdate": datetime.datetime.utcnow().isoformat(timespec="seconds"),
-            "lastProcessing": "merge",
-            "processing": {
+        "meta": build_meta(
+            "NO",
+            session=session,
+            electoral_period=(merged[0].get("electoralPeriod") if merged else None),
+            date_start=meta_proc.get("dateStart"),
+            date_end=meta_proc.get("dateEnd"),
+            processing={
                 **(meta_proc.get("processing") or {}),
                 **(meta_media.get("processing") or {}),
-                "merge": datetime.datetime.utcnow().isoformat(timespec="seconds"),
+                "merge": now_iso(),
             },
-        },
+        ),
         "data": merged,
     }
 

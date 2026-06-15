@@ -349,9 +349,9 @@ def _build_speech(speech_el: ET._Element,
             }],
         }],
         "debug": {
-            "sak_nummer": sak_nr,
-            "speech_type": speech_type,
-            "clock_time": speaker.get("time"),
+            "sakNummer": sak_nr,
+            "speechType": speech_type,
+            "clockTime": speaker.get("time"),
         },
     }
     if date_start:

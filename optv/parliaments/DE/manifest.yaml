@@ -11,14 +11,16 @@ entity_dump_url: "https://de.openparliament.tv/data/entity-dump/?type=all&wiki=t
 default_retry_count: 20
 default_retry_delay_max: 10
 
-# Rights metadata emitted into Stage 2. Only the literal values that used to be
-# module constants live here; data-driven fields stay in the parsers (media
-# `creator` = feed author, native-proceedings `creator` = TEI <herausgeber>).
+# Rights metadata emitted into Stage 2. All four creator/license fields are
+# sourced here (never from the feed/TEI): the RSS feed author and the native TEI
+# <herausgeber> are both invariably "Deutscher Bundestag".
 media:
   default:
+    creator: "Deutscher Bundestag"
     license: '&lt;a href=&quot;https://www.bundestag.de/nutzungsbedingungen&quot; target=&quot;_blank&quot;&gt;Nutzungsbedingungen&lt;/a&gt;'
 proceedings:
   default:                 # periods 18+ → native Bundestag TEI
+    creator: "Deutscher Bundestag"
     license: "Public Domain"
   overrides:
     - periods: [16, 17]    # ParlaMint-DE_beta corpus

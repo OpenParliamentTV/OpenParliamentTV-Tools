@@ -27,3 +27,7 @@ media:
     license: 'Bayerischer Landtag – Plenarvideos sind urheberrechtlich geschützt; Vervielfältigung oder Verwendung nur mit vorheriger Genehmigung. Quelle: Bayerischer Landtag.'
     creator: Bayerischer Landtag
     sourceURI: https://www.bayern.landtag.de/aktuelles/sitzungen/plenum-videos/
+proceedings:
+  default:
+    creator: Bayerischer Landtag
+    license: Amtliches Werk (§ 5 Abs. 2 UrhG)

@@ -49,6 +49,7 @@ from optv.parliaments import get_rights as _get_rights
 from optv.parliaments import get_language as _get_language
 
 PROCEEDINGS_LICENSE = _get_rights("DE-RP", stream="proceedings")["license"]
+PROCEEDINGS_CREATOR = _get_rights("DE-RP", stream="proceedings")["creator"]
 PROCEEDINGS_LANGUAGE = _get_language("DE-RP")
 
 
@@ -313,7 +314,7 @@ def parse_proceedings_xml(path: Path, source_uri: str = None) -> dict:
                 {
                     "type": "proceedings",
                     "sourceURI": source_uri,
-                    "creator": "Landtag Rheinland-Pfalz",
+                    "creator": PROCEEDINGS_CREATOR,
                     "license": PROCEEDINGS_LICENSE,
                     "language": PROCEEDINGS_LANGUAGE,
                     "originTextID": speech_id,
@@ -322,8 +323,8 @@ def parse_proceedings_xml(path: Path, source_uri: str = None) -> dict:
             ],
             "documents": [],
             "debug": {
-                "proceedings-source": "ePP",
-                "page-range": record["page_range"],
+                "proceedingsSource": "ePP",
+                "pageRange": record["page_range"],
                 "main-speaker-label": record["main_speaker"],
             },
         }

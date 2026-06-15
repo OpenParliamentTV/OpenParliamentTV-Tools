@@ -85,7 +85,7 @@ def _run_pipeline_on(nlp, group: list):
                         logger.error(f"NER Server error: {e}")
         end_time = time.time()
         debug = item.setdefault('debug', {})
-        debug['ner-duration'] = end_time - start_time
+        debug['nerDuration'] = end_time - start_time
 
 
 def extract_entities(source: list, args) -> list:

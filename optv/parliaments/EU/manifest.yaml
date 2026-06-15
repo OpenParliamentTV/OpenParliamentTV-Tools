@@ -15,3 +15,16 @@ default_retry_delay_max: 10
 
 # NLP model installation (one-time, per host):
 #   python -m spacy download en_core_web_md
+
+# Rights/source metadata. EP texts and audiovisual material are reusable under
+# © European Union; the legal notice carries the reuse terms (Decision
+# 2011/833/EU). Proceedings text is the verbatim CRE; its original language is
+# per-speech (multilingual) and stays data-driven in the parser.
+media:
+  default:
+    creator: European Parliament
+    license: https://www.europarl.europa.eu/legal-notice/en/
+proceedings:
+  default:
+    creator: European Parliament
+    license: https://www.europarl.europa.eu/legal-notice/en/

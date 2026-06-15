@@ -209,14 +209,14 @@ def _build_intermediate(blocks: list[dict], session_key: str, period: int,
             "textContents": [],  # filled by merger after transcript fetch
             "documents": [],
             "debug": {
-                "proceedings-source": "landtag-lsa-html",
-                "block-index": b["block_index"],
-                "h3-label": b["h3"],
-                "std-player-id": b["std_player_id"],
-                "sign-player-id": b["sign_player_id"],
-                "transcript-speaker-id": b["transcript_speaker_id"],
-                "transcript-cHash": b["transcript_cHash"],
-                "is-procedural-label": b["is_procedural"],
+                "proceedingsSource": "landtag-lsa-html",
+                "blockIndex": b["block_index"],
+                "h3Label": b["h3"],
+                "stdPlayerId": b["std_player_id"],
+                "signPlayerId": b["sign_player_id"],
+                "transcriptSpeakerId": b["transcript_speaker_id"],
+                "transcriptCHash": b["transcript_cHash"],
+                "isProceduralLabel": b["is_procedural"],
             },
         })
 

@@ -43,6 +43,7 @@ if __package__ is None or __package__ == "":
 
 from optv.parliaments.SE.common import Config, save_if_changed
 from optv.shared.speech_id import normalize_speech_originid
+from optv.shared.meta import build_meta, fill_original_language, now_iso
 
 logger = logging.getLogger(__name__ if __name__ != "__main__" else os.path.basename(sys.argv[0]))
 
@@ -56,7 +57,7 @@ def _index_proceedings(proceedings_data: list[dict]) -> dict[int, dict]:
     index: dict[int, dict] = {}
     for s in proceedings_data:
         try:
-            n = int(s.get("speechIndex") or s.get("debug", {}).get("anforande_nummer") or 0)
+            n = int(s.get("speechIndex") or s.get("debug", {}).get("anforandeNummer") or 0)
         except (TypeError, ValueError):
             continue
         if n <= 0:
@@ -85,11 +86,11 @@ def merge_one(media_record: dict, proceeding: dict | None,
         speech["dateEnd"] = media_record["dateEnd"]
 
     debug: dict = {
-        "anforande_nummer": anf_nummer,
+        "anforandeNummer": anf_nummer,
         "mediaIndex": anf_nummer,
     }
     if media_record.get("debatt_titel"):
-        debug["debatt_titel"] = media_record["debatt_titel"]
+        debug["debattTitel"] = media_record["debatt_titel"]
 
     rel_dok_id = media_record.get("rel_dok_id", "")
 
@@ -198,20 +199,20 @@ def merge_session(config: Config, session: str) -> dict:
 
     for _s in merged:
         normalize_speech_originid(_s)
+    fill_original_language(merged, "SE")
     return {
-        "meta": {
-            "session": session,
-            "schemaVersion": "1.0",
-            "dateStart": date_start,
-            "dateEnd": date_end,
-            "lastUpdate": datetime.datetime.utcnow().isoformat(timespec="seconds"),
-            "lastProcessing": "merge",
-            "processing": {
+        "meta": build_meta(
+            "SE",
+            session=session,
+            electoral_period=(merged[0].get("electoralPeriod") if merged else None),
+            date_start=date_start,
+            date_end=date_end,
+            processing={
                 **(proc_meta.get("processing") or {}),
                 **(media_meta.get("processing") or {}),
-                "merge": datetime.datetime.utcnow().isoformat(timespec="seconds"),
+                "merge": now_iso(),
             },
-        },
+        ),
         "data": merged,
     }
 

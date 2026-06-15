@@ -12,6 +12,10 @@ default_retry_count: 10
 default_retry_delay_max: 10
 
 # Rights/source metadata (moved from code constants).
+media:
+  default:
+    creator: Stortinget
+    license: https://www.stortinget.no/no/Stottemeny/Hjelp/Nett-TV/
 proceedings:
   default:
     creator: Stortinget

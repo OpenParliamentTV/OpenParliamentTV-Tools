@@ -36,11 +36,12 @@ from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
 # present in the source data, then something must have changed and the
 # parser should be checked anyway.
 FEED_SUBTITLE = 'Deutscher Bundestag'
-# Media license = manifest media default; the media `creator` stays data-driven
-# (= the RSS feed item author), so only the license is sourced from config.
+# Media creator + license both come from the manifest media defaults (never from
+# the RSS feed item author, which is invariably "Deutscher Bundestag" anyway).
 from optv.parliaments import get_rights as _get_rights
 
 FEED_LICENSE = _get_rights("DE", stream="media")["license"]
+FEED_CREATOR = _get_rights("DE", stream="media")["creator"]
 FEED_AUTHOR_EMAIL = 'mail@bundestag.de'
 # Note that <faction> may be empty (in the case of Nationalhymne)
 title_data_re = re.compile(r'Redebeitrag\s+von\s+(?P<fullname>.+?)\s+\((?P<faction>.*?)\),?\s+am (?P<title_date>[\d.]+)\s+um\s+(?P<title_time>[\d:]+)\s+Uhr\s+\((?P<session_info>.+)\)')
@@ -196,7 +197,7 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
                 'videoFileURI': links['enclosure']['href'],
                 'sourcePage': e['link'],
                 'duration': delta.total_seconds(),
-                'creator': e['author'],
+                'creator': FEED_CREATOR,
 
                 # Note: commented fields are defined in
                 # https://github.com/OpenParliamentTV/OpenParliamentTV-Platform/issues/2

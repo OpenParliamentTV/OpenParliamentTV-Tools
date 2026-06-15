@@ -33,11 +33,14 @@ _FIXTURES_PLACEHOLDER = "<FIXTURES>"
 
 
 def _normalize(doc: dict) -> dict:
-    """Blank the only non-deterministic field so the snapshot is stable."""
-    processing = doc.get("meta", {}).get("processing")
+    """Blank the non-deterministic timestamp fields so the snapshot is stable."""
+    meta = doc.get("meta", {})
+    processing = meta.get("processing")
     if isinstance(processing, dict):
         for key in processing:
             processing[key] = _TS_PLACEHOLDER
+    if "lastUpdate" in meta:
+        meta["lastUpdate"] = _TS_PLACEHOLDER
     return doc
 
 

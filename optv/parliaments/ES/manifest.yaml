@@ -20,6 +20,7 @@ default_retry_delay_max: 10
 # Rights/source metadata (moved from code constants).
 media:
   default:
+    creator: Congreso de los Diputados
     license: https://www.congreso.es/es/web/guest/cem/aviso-legal
 proceedings:
   default:

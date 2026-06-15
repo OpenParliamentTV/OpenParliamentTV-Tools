@@ -41,14 +41,15 @@ from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
 from ..scraper.common import video_clip_uri, vtt_uri
 from optv.parliaments import get_rights as _get_rights
 from optv.shared.pdf2tei.spine_join import load_turns, attach_text_by_index
+from optv.shared.meta import build_meta, now_iso
 
 logger = logging.getLogger(__name__)
 
 PARLIAMENT_ID = "DE-NI"
 SOURCE_URI = _get_rights("DE-NI", stream="media")["sourceURI"]
 # Broadcaster WebVTT subtitles, time-aligned to the clips by Plenar-TV.
-PROCEEDINGS_CREATOR = "Landtag Niedersachsen (Plenar-TV)"
-PROCEEDINGS_LICENSE = "Plenar-TV (Landtag Niedersachsen)"
+PROCEEDINGS_CREATOR = _get_rights("DE-NI", stream="proceedings")["creator"]
+PROCEEDINGS_LICENSE = _get_rights("DE-NI", stream="proceedings")["license"]
 
 _SLUG_RE = re.compile(r'[^a-z0-9]+')
 
@@ -215,21 +216,21 @@ def merge_session(session: str, config, options=None) -> Path:
         logger.info(f"{session}: attached VTT text to {matched}/{len(merged)} speeches")
 
     doc = {
-        "meta": {
-            "schemaVersion": "1.0",
-            "parliament": PARLIAMENT_ID,
-            "electoralPeriod": {"number": period},
-            "session": session,
-            "tagungsabschnitt": tagungsabschnitt,
-            "dateStart": earliest,
-            "dateEnd": latest,
-            "sourceURI": media_doc["meta"].get("session_page_url") or SOURCE_URI,
-            "processing": {
+        "meta": build_meta(
+            PARLIAMENT_ID,
+            session=session,
+            electoral_period=period,
+            date_start=earliest,
+            date_end=latest,
+            processing={
                 **media_doc["meta"].get("processing", {}),
-                "merge": datetime.now().isoformat("T", "seconds"),
+                "merge": now_iso(),
             },
-            "lastUpdate": datetime.now().isoformat("T", "seconds"),
-        },
+            extra={
+                "tagungsabschnitt": tagungsabschnitt,
+                "sourceURI": media_doc["meta"].get("session_page_url") or SOURCE_URI,
+            },
+        ),
         "data": merged,
     }
     return config.save_data(doc, session, "merged")

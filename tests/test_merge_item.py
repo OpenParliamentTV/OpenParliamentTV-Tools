@@ -135,9 +135,9 @@ def test_merge_item_main_speaker_first_when_media_provides_one():
 
 def test_merge_item_proceedings_source_carried_when_present():
     proc = make_proceeding_item()
-    proc["debug"]["proceedings-source"] = "parlamint-de-beta"
+    proc["debug"]["proceedingsSource"] = "parlamint-de-beta"
     merged = merge_item(make_media_item(), [proc])
-    assert merged["debug"]["proceedings-source"] == "parlamint-de-beta"
+    assert merged["debug"]["proceedingsSource"] == "parlamint-de-beta"
 
 
 def test_merge_item_classifies_agenda_from_media_title():
@@ -201,7 +201,7 @@ def test_merge_item_qa_type_drops_confidence_to_half():
     merged = merge_item(media, [make_proceeding_item()])
     assert merged["agendaItem"]["type"] == "questioning_of_the_government"
     assert merged["debug"]["confidence"] == 0.5
-    assert merged["debug"]["confidence_reason"] == "qa-agenda-type"
+    assert merged["debug"]["confidenceReason"] == "qa-agenda-type"
 
 
 def test_merge_item_qa_type_fragestunde_drops_confidence():
@@ -210,7 +210,7 @@ def test_merge_item_qa_type_fragestunde_drops_confidence():
     merged = merge_item(media, [make_proceeding_item()])
     assert merged["agendaItem"]["type"] == "qa"
     assert merged["debug"]["confidence"] == 0.5
-    assert merged["debug"]["confidence_reason"] == "qa-agenda-type"
+    assert merged["debug"]["confidenceReason"] == "qa-agenda-type"
 
 
 def test_merge_item_qa_type_from_parlamint_classification():
@@ -223,7 +223,7 @@ def test_merge_item_qa_type_from_parlamint_classification():
     proc["agendaItem"]["nativeType"] = "DE-question_time"
     merged = merge_item(media, [proc])
     assert merged["debug"]["confidence"] == 0.5
-    assert merged["debug"]["confidence_reason"] == "qa-agenda-type"
+    assert merged["debug"]["confidenceReason"] == "qa-agenda-type"
 
 
 def test_merge_item_non_qa_type_keeps_confidence():
@@ -233,7 +233,7 @@ def test_merge_item_non_qa_type_keeps_confidence():
     merged = merge_item(media, [make_proceeding_item()])
     assert merged["agendaItem"]["type"] == "current_affairs"
     assert merged["debug"]["confidence"] == 1
-    assert "confidence_reason" not in merged["debug"]
+    assert "confidenceReason" not in merged["debug"]
 
 
 def test_merge_item_length_cap_drops_confidence_above_threshold():
@@ -244,7 +244,7 @@ def test_merge_item_length_cap_drops_confidence_above_threshold():
     merged = merge_item(media, [proc])
     assert len(merged["textContents"]) == 6
     assert merged["debug"]["confidence"] == 0.5
-    assert merged["debug"]["confidence_reason"] == "len-cap"
+    assert merged["debug"]["confidenceReason"] == "len-cap"
 
 
 def test_merge_item_length_cap_threshold_boundary():
@@ -255,7 +255,7 @@ def test_merge_item_length_cap_threshold_boundary():
     merged = merge_item(media, [proc])
     assert len(merged["textContents"]) == 5
     assert merged["debug"]["confidence"] == 1
-    assert "confidence_reason" not in merged["debug"]
+    assert "confidenceReason" not in merged["debug"]
 
 
 def test_merge_item_qa_type_takes_precedence_in_reason():
@@ -267,7 +267,7 @@ def test_merge_item_qa_type_takes_precedence_in_reason():
     proc["textContents"] = [_make_textcontent(f"ID2999990{i}") for i in range(6)]
     merged = merge_item(media, [proc])
     assert merged["debug"]["confidence"] == 0.5
-    assert merged["debug"]["confidence_reason"] == "qa-agenda-type"
+    assert merged["debug"]["confidenceReason"] == "qa-agenda-type"
 
 
 def test_merge_item_speaker_mismatch_combines_with_new_rules():
@@ -294,7 +294,7 @@ def test_merge_item_chair_transition_type_drops_confidence():
     merged = merge_item(media, [proc])
     assert merged["agendaItem"]["type"] == "procedural"
     assert merged["debug"]["confidence"] == 0.5
-    assert merged["debug"]["confidence_reason"] == "chair-transition"
+    assert merged["debug"]["confidenceReason"] == "chair-transition"
 
 
 def test_merge_item_chair_transition_overrides_media_regular_type():
@@ -313,7 +313,7 @@ def test_merge_item_chair_transition_overrides_media_regular_type():
     assert merged["agendaItem"]["type"] == "procedural"
     assert merged["agendaItem"]["nativeType"] == "DE-chair_transition"
     assert merged["debug"]["confidence"] == 0.5
-    assert merged["debug"]["confidence_reason"] == "chair-transition"
+    assert merged["debug"]["confidenceReason"] == "chair-transition"
 
 
 def test_merge_item_expands_noble_title_abbreviation():
@@ -340,7 +340,7 @@ def test_merge_item_qa_type_distinct_reason_from_chair_transition():
     proc = make_proceeding_item()
     proc["agendaItem"]["type"] = "qa"
     merged = merge_item(media, [proc])
-    assert merged["debug"]["confidence_reason"] == "qa-agenda-type"
+    assert merged["debug"]["confidenceReason"] == "qa-agenda-type"
 
 
 def _proceeding_with_text(total_chars, agenda_type="regular"):
@@ -361,7 +361,7 @@ def test_merge_item_cps_cap_drops_confidence_huge_text_short_clip():
     media["media"]["duration"] = 100.0    # 30000 chars / 100s = 300 cps
     merged = merge_item(media, [_proceeding_with_text(30000)])
     assert merged["debug"]["confidence"] == 0.5
-    assert merged["debug"]["confidence_reason"] == "cps-cap"
+    assert merged["debug"]["confidenceReason"] == "cps-cap"
 
 
 def test_merge_item_cps_cap_spares_correct_text_below_18_21_floor():
@@ -371,7 +371,7 @@ def test_merge_item_cps_cap_spares_correct_text_below_18_21_floor():
     media["media"]["duration"] = 50.0     # 10000 chars / 50s = 200 cps (>100)
     merged = merge_item(media, [_proceeding_with_text(10000)])
     assert merged["debug"]["confidence"] == 1
-    assert "confidence_reason" not in merged["debug"]
+    assert "confidenceReason" not in merged["debug"]
 
 
 def test_merge_item_cps_cap_period17_uses_lower_char_floor():
@@ -382,7 +382,7 @@ def test_merge_item_cps_cap_period17_uses_lower_char_floor():
     media["media"]["duration"] = 50.0     # 10000 / 50 = 200 cps
     merged = merge_item(media, [_proceeding_with_text(10000)])
     assert merged["debug"]["confidence"] == 0.5
-    assert merged["debug"]["confidence_reason"] == "cps-cap"
+    assert merged["debug"]["confidenceReason"] == "cps-cap"
 
 
 def test_merge_item_cps_cap_excludes_procedural_opening_types():
@@ -392,4 +392,4 @@ def test_merge_item_cps_cap_excludes_procedural_opening_types():
     media["media"]["duration"] = 100.0    # 30000 / 100 = 300 cps
     merged = merge_item(media, [_proceeding_with_text(30000, agenda_type="opening")])
     assert merged["debug"]["confidence"] == 1
-    assert "confidence_reason" not in merged["debug"]
+    assert "confidenceReason" not in merged["debug"]

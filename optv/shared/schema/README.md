@@ -129,3 +129,33 @@ Mergers call `optv.shared.speech_id.normalize_speech_originid` at finalization:
 it promotes a legacy speech-level `originTextID` to `originID`, then drops
 `originID` when it merely repeats the media or a text id. The platform does not
 read the speech-level id at all (media identity = `sourcePage`).
+
+## `debug` field contract
+
+`debug` is an open object (`additionalProperties: true`) — parlers may stash
+arbitrary provenance there. Only a small set is **load-bearing** (read
+downstream); everything else is write-only breadcrumbs that aid auditing a bad
+merge and are cheap to keep.
+
+Load-bearing keys — never drop or rename without updating every reader in
+lockstep:
+
+| Key | Reader |
+| --- | --- |
+| `debug.confidence`, `debug.linkedMediaIndexes` | Platform import gate (`media.php`) + Conductor |
+| `debug.confidenceReason` | `publish.carry_forward_enrichments` |
+| `debug.alignDuration` | `Config.status` / `publish.data_has_timing` / Conductor |
+| `debug.nerDuration` | `Config.status` / `publish.data_has_ner` / Conductor |
+| `debug.proceedingIndex` | `Config.status` (text-merged signal) |
+| `debug.mediaIndex`, `debug.proceedingIndexes` | intra-merge linking |
+| `debug.transcriptSpeakerId`, `debug.transcriptCHash` | DE-ST merger (transcript fetch) |
+
+Everything else (`rednerRaw`/`gruppeRaw`/… raw speaker/faction strings,
+`originalTitle`, `proceedingsSource`, `alignError`, per-source ids, …) is
+**provenance**: not read by the pipeline or platform, retained deliberately
+because (a) raw speaker/faction strings are the documented way to audit a wrong
+NEL/merge join and (b) `alignError` is a real per-speech alignment-failure
+diagnostic. A blanket strip was considered and rejected — the keys are unread
+but harmless, and several are conditionally useful. New stages should add a
+distinguishing `debug.*` key and, if it gates a status, teach `Config.status`
+about it.

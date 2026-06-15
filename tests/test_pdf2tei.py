@@ -184,9 +184,9 @@ def test_assign_join_confidence_gates_qa_and_cps():
     notext = _txt_rec(5, "regular", "")                    # no text -> untouched
     gated = assign_join_confidence([qa, reg_ok, reg_cps, reg_short, notext])
     assert gated == 2
-    assert qa["debug"]["confidence"] == 0.5 and qa["debug"]["confidence_reason"] == "qa-agenda-type"
-    assert reg_cps["debug"]["confidence"] == 0.5 and reg_cps["debug"]["confidence_reason"] == "cps-cap"
-    assert reg_ok["debug"]["confidence"] == 1.0 and "confidence_reason" not in reg_ok["debug"]
+    assert qa["debug"]["confidence"] == 0.5 and qa["debug"]["confidenceReason"] == "qa-agenda-type"
+    assert reg_cps["debug"]["confidence"] == 0.5 and reg_cps["debug"]["confidenceReason"] == "cps-cap"
+    assert reg_ok["debug"]["confidence"] == 1.0 and "confidenceReason" not in reg_ok["debug"]
     assert reg_short["debug"]["confidence"] == 1.0
     assert "confidence" not in notext["debug"]             # video-only speech left alone
 

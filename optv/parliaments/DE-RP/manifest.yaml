@@ -17,7 +17,9 @@ default_retry_delay_max: 10
 # Rights/source metadata (moved from code constants).
 media:
   default:
+    creator: Landtag Rheinland-Pfalz
     license: Landtag Rheinland-Pfalz - non-commercial use for political reporting permitted
 proceedings:
   default:
+    creator: Landtag Rheinland-Pfalz
     license: Public Domain

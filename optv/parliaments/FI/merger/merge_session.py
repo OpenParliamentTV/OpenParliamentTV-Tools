@@ -39,6 +39,7 @@ from optv.parliaments.FI.common import (
 )
 from optv.shared.agenda_types import annotate_agenda_item, classify_fi
 from optv.shared.speech_id import normalize_speech_originid
+from optv.shared.meta import build_meta, now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -218,20 +219,20 @@ def merge_session(config: Config, session: str, period: int = 2023) -> dict:
     for _s in merged:
         normalize_speech_originid(_s)
     return {
-        "meta": {
-            "session": session,
-            "schemaVersion": "1.0",
-            "sourceLabel": meta_proc.get("sourceLabel", f"PTK {number}/{year} vp"),
-            "dateStart": meta_proc.get("dateStart"),
-            "dateEnd": meta_proc.get("dateEnd"),
-            "lastUpdate": now,
-            "lastProcessing": "merge",
-            "processing": {
+        "meta": build_meta(
+            "FI",
+            session=session,
+            electoral_period=period_number,
+            date_start=meta_proc.get("dateStart"),
+            date_end=meta_proc.get("dateEnd"),
+            last_update=now,
+            processing={
                 **(meta_proc.get("processing") or {}),
                 **((media_doc.get("meta") or {}).get("processing") or {}),
                 "merge": now,
             },
-        },
+            extra={"sourceLabel": meta_proc.get("sourceLabel", f"PTK {number}/{year} vp")},
+        ),
         "data": merged,
     }
 

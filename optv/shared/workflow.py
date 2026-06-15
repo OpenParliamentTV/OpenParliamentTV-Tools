@@ -24,6 +24,7 @@ from optv.shared.publish import (
     carry_forward_wids,
     data_signature,
     is_demotion,
+    strip_legacy_textbody_ids,
 )
 from optv.shared.session_status import SessionStatus
 from optv.shared.validators import validate_stage2
@@ -90,6 +91,7 @@ def _publish_as_processed(config, args, session: str, filepath: Path) -> Path:
     if processed_file.exists():
         published_data = json.loads(processed_file.read_text())
     new_doc = json.loads(filepath.read_text())
+    strip_legacy_textbody_ids(new_doc['data'])
 
     if is_demotion(new_doc['data'], published_data['data']):
         logger.warning(f"Not publishing {session} from {filepath.name}: "

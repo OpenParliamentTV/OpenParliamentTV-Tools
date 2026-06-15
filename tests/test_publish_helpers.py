@@ -18,15 +18,15 @@ def _speech(origin, people=None, debug=None, agendaItem=None):
 
 
 def test_data_has_timing_and_ner_read_debug_durations():
-    assert data_has_timing([_speech("A", debug={"align-duration": 12.0})])
-    assert not data_has_timing([_speech("A", debug={"ner-duration": 3.0})])
-    assert data_has_ner([_speech("A", debug={"ner-duration": 3.0})])
+    assert data_has_timing([_speech("A", debug={"alignDuration": 12.0})])
+    assert not data_has_timing([_speech("A", debug={"nerDuration": 3.0})])
+    assert data_has_ner([_speech("A", debug={"nerDuration": 3.0})])
     assert not data_has_ner([_speech("A")])
 
 
 def test_is_demotion_blocks_dropping_alignment_or_ner():
-    aligned = [_speech("A", debug={"align-duration": 9.0})]
-    nered = [_speech("A", debug={"align-duration": 9.0, "ner-duration": 3.0})]
+    aligned = [_speech("A", debug={"alignDuration": 9.0})]
+    nered = [_speech("A", debug={"alignDuration": 9.0, "nerDuration": 3.0})]
     bare = [_speech("A")]
     # bare file would drop the published alignment -> demotion
     assert is_demotion(bare, aligned)
@@ -35,8 +35,8 @@ def test_is_demotion_blocks_dropping_alignment_or_ner():
 
 
 def test_is_demotion_allows_equal_or_richer_publish():
-    aligned = [_speech("A", debug={"align-duration": 9.0})]
-    nered = [_speech("A", debug={"align-duration": 9.0, "ner-duration": 3.0})]
+    aligned = [_speech("A", debug={"alignDuration": 9.0})]
+    nered = [_speech("A", debug={"alignDuration": 9.0, "nerDuration": 3.0})]
     assert not is_demotion(aligned, aligned)       # same richness
     assert not is_demotion(nered, aligned)          # richer is fine
     assert not is_demotion(aligned, [])             # nothing published yet
@@ -97,12 +97,12 @@ def test_enrichments_fill_missing_agenda_item_type():
 
 def test_enrichments_fill_missing_debug_confidence():
     published = [_speech("A", debug={"confidence": 0.5,
-                                     "confidence_reason": "qa-agenda-type"})]
+                                     "confidenceReason": "qa-agenda-type"})]
     new = [_speech("A", debug={"originalTitle": "..."})]
     carried = carry_forward_enrichments(new, published)
     assert carried == 2
     assert new[0]["debug"]["confidence"] == 0.5
-    assert new[0]["debug"]["confidence_reason"] == "qa-agenda-type"
+    assert new[0]["debug"]["confidenceReason"] == "qa-agenda-type"
 
 
 def test_enrichments_never_overwrite_when_new_data_has_value():

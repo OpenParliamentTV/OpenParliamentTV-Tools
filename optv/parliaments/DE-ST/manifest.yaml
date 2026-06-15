@@ -21,4 +21,7 @@ media:
     creator: Landtag von Sachsen-Anhalt
 proceedings:
   default:
-    license: © Landtag von Sachsen-Anhalt
+    creator: Landtag von Sachsen-Anhalt
+    # The proceedings text is the live captioning (Schriftdolmetschung), not the
+    # stenographic record — its rights string differs from the media license.
+    license: © Landtag von Sachsen-Anhalt — Schriftdolmetschung

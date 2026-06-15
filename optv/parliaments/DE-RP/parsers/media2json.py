@@ -28,6 +28,7 @@ from optv.parliaments import get_rights as _get_rights
 logger = logging.getLogger(__name__)
 
 MEDIA_LICENSE = _get_rights("DE-RP", stream="media")["license"]
+MEDIA_CREATOR = _get_rights("DE-RP", stream="media")["creator"]
 
 
 def _session_date_from_proceedings(media_dir: Path, session_id: str) -> tuple[str, str]:
@@ -105,13 +106,13 @@ def parse_media_session(raw_path: Path) -> dict:
                 "sourcePage": r.get("source_page", "https://opal.rlp.de/"),
                 "originMediaID": r["origin_media_id"],
                 "license": MEDIA_LICENSE,
-                "creator": "Landtag Rheinland-Pfalz",
+                "creator": MEDIA_CREATOR,
             },
             "people": [person],
             "documents": [],
             "debug": {
-                "media-source": "OPAL",
-                "page-range": r.get("page_range", ""),
+                "mediaSource": "OPAL",
+                "pageRange": r.get("page_range", ""),
                 "function": function,
             },
         }

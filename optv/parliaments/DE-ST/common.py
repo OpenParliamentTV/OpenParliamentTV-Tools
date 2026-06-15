@@ -100,8 +100,8 @@ class Config(BaseConfig):
                 if s.get('debug', {}).get('proceedingIndex') is None:
                     status.add(SessionStatus.no_text)
                     return status
-                if s.get('debug', {}).get('align-duration'):
+                if s.get('debug', {}).get('alignDuration'):
                     status.add(SessionStatus.aligned)
-                if s.get('debug', {}).get('ner-duration'):
+                if s.get('debug', {}).get('nerDuration'):
                     status.add(SessionStatus.ner)
         return status
