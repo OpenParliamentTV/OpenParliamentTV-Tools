@@ -848,7 +848,7 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
                     "speechIndex": speech_index,
                     "originID": first_speech_id,
                     "agendaItem": agenda_item,
-                    "debug": {"proceedings-source": PROCEEDINGS_SOURCE},
+                    "debug": {"proceedingsSource": PROCEEDINGS_SOURCE},
                     "people": people_list,
                     "textContents": [{
                         "type": "proceedings",
@@ -875,7 +875,7 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
                     "originID": open_origin_id,
                     "agendaItem": open_agenda,
                     "debug": {
-                        "proceedings-source": PROCEEDINGS_SOURCE,
+                        "proceedingsSource": PROCEEDINGS_SOURCE,
                         "chair_intro_split": True,
                     },
                     "people": people_list,
@@ -898,7 +898,7 @@ def parse_transcript(filename: str, sourceUri: str | None = None, args=None):
                 "speechIndex": speech_index,
                 "originID": first_speech_id,
                 "agendaItem": agenda_item,
-                "debug": {"proceedings-source": PROCEEDINGS_SOURCE},
+                "debug": {"proceedingsSource": PROCEEDINGS_SOURCE},
                 "people": people_list,
                 "textContents": [{
                     "type": "proceedings",

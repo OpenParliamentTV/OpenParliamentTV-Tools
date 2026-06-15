@@ -248,7 +248,7 @@ def align_audio(source: list, language: str, cachedir: Path = None,
                 f"exceeds --align-max-audio-seconds={max_audio_seconds}"
             )
             debug = speech.setdefault('debug', {})
-            debug['align-error'] = f"audio too long ({duration:.0f}s > {max_audio_seconds}s)"
+            debug['alignError'] = f"audio too long ({duration:.0f}s > {max_audio_seconds}s)"
             continue
 
         # Generate parsed text format file with identifier + sentence
@@ -326,7 +326,7 @@ def align_audio(source: list, language: str, cachedir: Path = None,
 
         if timed_out or exit_code != 0 or not sync_out.exists():
             debug = speech.setdefault('debug', {})
-            debug['align-error'] = (
+            debug['alignError'] = (
                 'timeout' if timed_out else f'exit {exit_code}'
             )
             if sync_out.exists():
@@ -350,7 +350,7 @@ def align_audio(source: list, language: str, cachedir: Path = None,
             sentence['timeStart'], sentence['timeEnd'] = pair
 
         debug = speech.setdefault('debug', {})
-        debug['align-duration'] = time.time() - start_time
+        debug['alignDuration'] = time.time() - start_time
 
         # Store 'aligned' state in 'media'
         aligned_sentences = [1

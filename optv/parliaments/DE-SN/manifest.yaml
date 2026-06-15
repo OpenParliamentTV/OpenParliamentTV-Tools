@@ -29,3 +29,7 @@ media:
     license: 'Sächsischer Landtag – die Aufzeichnungen dürfen zu nicht kommerziellen Zwecken (parlamentarische Berichterstattung, Bildung) genutzt werden; keine kommerzielle Verwendung. Quelle: Sächsischer Landtag. https://www.landtag.sachsen.de/de/mediathek-und-publikationen/nutzungsbedingungen-23697.cshtml'
     creator: Sächsischer Landtag
     sourceURI: https://www.landtag.sachsen.de/de/mediathek-und-publikationen/videos/plenarvideos/
+proceedings:
+  default:
+    creator: Sächsischer Landtag
+    license: Amtliches Werk (§ 5 Abs. 2 UrhG)

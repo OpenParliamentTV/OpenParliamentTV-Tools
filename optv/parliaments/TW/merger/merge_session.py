@@ -33,6 +33,7 @@ from optv.parliaments.TW.common import Config, decode_session
 from optv.shared.agenda_types import CORE_REGULAR
 from optv.shared.speech_id import normalize_speech_originid
 from optv.shared.publish import save_if_changed
+from optv.shared.meta import build_meta, fill_original_language, now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ def merge_one(media_record: dict, proceeding: dict | None,
     meeting_name = media_record.get("meetingName") or ""
 
     debug: dict = {
-        "ivod_id": ivod_id,
+        "ivodId": ivod_id,
         "mediaIndex": speech_index,
     }
 
@@ -160,21 +161,21 @@ def merge_session(session: str, config: Config, args=None) -> Path:
 
     for _s in merged:
         normalize_speech_originid(_s)
+    fill_original_language(merged, "TW")
     doc = {
-        "meta": {
-            "session": session,
-            "schemaVersion": "1.0",
-            "meetingCode": media_meta.get("meetingCode") or proc_meta.get("meetingCode"),
-            "dateStart": date_start,
-            "dateEnd": date_end,
-            "lastUpdate": datetime.datetime.utcnow().isoformat(timespec="seconds"),
-            "lastProcessing": "merge",
-            "processing": {
+        "meta": build_meta(
+            "TW",
+            session=session,
+            electoral_period=(merged[0].get("electoralPeriod") if merged else None),
+            date_start=date_start,
+            date_end=date_end,
+            processing={
                 **(proc_meta.get("processing") or {}),
                 **(media_meta.get("processing") or {}),
-                "merge": datetime.datetime.utcnow().isoformat(timespec="seconds"),
+                "merge": now_iso(),
             },
-        },
+            extra={"meetingCode": media_meta.get("meetingCode") or proc_meta.get("meetingCode")},
+        ),
         "data": merged,
     }
     out = config.file(session, "merged", create=True)

@@ -27,6 +27,7 @@ if __package__ is None or __package__ == "":
     __package__ = _module_dir.name
 
 from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
+from optv.shared.meta import build_meta, fill_original_language, now_iso
 from optv.shared.speech_id import normalize_speech_originid
 
 # Q&A agenda types — Bundestag cuts one video per ministerial Q&A block while
@@ -269,8 +270,8 @@ def merge_item(mediaitem, proceedingitems):
     output['debug']['proceedingIndex'] = first_proceeding['speechIndex']
     output['debug']['proceedingIndexes'] = [ p['speechIndex'] for p in proceedingitems ]
     output['debug']['mediaIndex'] = mediaitem['speechIndex']
-    if first_proceeding.get('debug', {}).get('proceedings-source'):
-        output['debug']['proceedings-source'] = first_proceeding['debug']['proceedings-source']
+    if first_proceeding.get('debug', {}).get('proceedingsSource'):
+        output['debug']['proceedingsSource'] = first_proceeding['debug']['proceedingsSource']
 
     # Merge people in case of multiple proceedings. We use a dict for
     # de-duplication (instead of a set) so that we preserve order.  We
@@ -405,7 +406,7 @@ def merge_item(mediaitem, proceedingitems):
 
     output['debug']['confidence'] = confidence
     if confidence_reason:
-        output['debug']['confidence_reason'] = confidence_reason
+        output['debug']['confidenceReason'] = confidence_reason
     return output
 
 def speaker_cleanup(item, default_value):
@@ -652,16 +653,20 @@ def merge_data(proceedings, media, options) -> list:
     for sp in speeches:
         normalize_speech_originid(sp)
 
-    return { "meta": { **proceedings['meta'],
-                       "schemaVersion": "1.0",
-                       "dateStart": dateStart,
-                       "dateEnd": dateEnd,
-                       "processing": {
+    fill_original_language(speeches, "DE")
+    return { "meta": build_meta(
+                       "DE",
+                       session=proceedings['meta'].get('session'),
+                       date_start=dateStart,
+                       date_end=dateEnd,
+                       electoral_period=(speeches[0].get('electoralPeriod') if speeches else None),
+                       processing={
                            **proceedings['meta'].get('processing', {}),
                            **media['meta'].get('processing', {}),
-                           "merge": datetime.now().isoformat('T', 'seconds'),
+                           "merge": now_iso(),
                        },
-                      },
+                       inherit=proceedings['meta'],
+                      ),
              "data": speeches
             }
 

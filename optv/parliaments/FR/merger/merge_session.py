@@ -40,6 +40,7 @@ if __package__ is None or __package__ == "":
 from optv.parliaments.FR.common import Config, save_if_changed, session_number_int
 from optv.parliaments import get_rights as _get_rights
 from optv.shared.speech_id import normalize_speech_originid
+from optv.shared.meta import build_meta, now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -150,21 +151,20 @@ def merge_session(session: str, config: Config, args=None) -> Path:
     for _s in records:
         normalize_speech_originid(_s)
     out_doc = {
-        "meta": {
-            "session": session,
-            "parliament": PARLIAMENT,
-            "electoralPeriod": int(period),
-            "sourceLabel": meta.get("sourceLabel", f"Compte rendu {session}"),
-            "dateStart": session_start,
-            "dateEnd": session_end,
-            "lastUpdate": now,
-            "lastProcessing": "merge",
-            "processing": {
+        "meta": build_meta(
+            PARLIAMENT,
+            session=session,
+            electoral_period=int(period),
+            date_start=session_start,
+            date_end=session_end,
+            last_update=now,
+            processing={
                 **(meta.get("processing") or {}),
                 **((media_doc.get("meta") or {}).get("processing") or {}),
                 "merge": now,
             },
-        },
+            extra={"sourceLabel": meta.get("sourceLabel", f"Compte rendu {session}")},
+        ),
         "data": records,
     }
     out_path = config.file(session, "merged", create=True)

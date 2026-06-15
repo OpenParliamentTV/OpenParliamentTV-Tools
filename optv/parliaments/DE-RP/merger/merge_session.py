@@ -10,6 +10,7 @@ logger = logging.getLogger('merge_session' if __name__ == '__main__' else __name
 import argparse
 from copy import deepcopy
 from optv.shared.speech_id import normalize_speech_originid
+from optv.shared.meta import build_meta, fill_original_language, now_iso
 from datetime import datetime
 import itertools
 import json
@@ -48,8 +49,8 @@ def merge_item(mediaitem, proceedingitems):
     output['debug']['proceedingIndex'] = first_proceeding['speechIndex']
     output['debug']['proceedingIndexes'] = [ p['speechIndex'] for p in proceedingitems ]
     output['debug']['mediaIndex'] = mediaitem['speechIndex']
-    if first_proceeding.get('debug', {}).get('proceedings-source'):
-        output['debug']['proceedings-source'] = first_proceeding['debug']['proceedings-source']
+    if first_proceeding.get('debug', {}).get('proceedingsSource'):
+        output['debug']['proceedingsSource'] = first_proceeding['debug']['proceedingsSource']
 
     # Merge people in case of multiple proceedings. We use a dict for
     # de-duplication (instead of a set) so that we preserve order.  We
@@ -302,16 +303,20 @@ def merge_data(proceedings, media, options) -> list:
     for speech in speeches:
         normalize_speech_originid(speech)
 
-    return { "meta": { **proceedings['meta'],
-                       "schemaVersion": "1.0",
-                       "dateStart": dateStart,
-                       "dateEnd": dateEnd,
-                       "processing": {
+    fill_original_language(speeches, "DE-RP")
+    return { "meta": build_meta(
+                       "DE-RP",
+                       session=proceedings['meta'].get('session'),
+                       date_start=dateStart,
+                       date_end=dateEnd,
+                       electoral_period=(speeches[0].get('electoralPeriod') if speeches else None),
+                       processing={
                            **proceedings['meta'].get('processing', {}),
                            **media['meta'].get('processing', {}),
-                           "merge": datetime.now().isoformat('T', 'seconds'),
+                           "merge": now_iso(),
                        },
-                      },
+                       inherit=proceedings['meta'],
+                      ),
              "data": speeches
             }
 

@@ -27,3 +27,7 @@ media:
     license: 'Landtag von Baden-Württemberg – die Aufzeichnungen dürfen zu nicht kommerziellen Zwecken (politische Berichterstattung, Bildung) genutzt werden; keine kommerzielle Verwendung/Werbung. Quelle: Landtag von Baden-Württemberg. https://www.landtag-bw.de/de/mediathek/nutzungsbedingungen-fuer-die-mediathek'
     creator: Landtag von Baden-Württemberg
     sourceURI: https://www.landtag-bw.de/de/mediathek/videos
+proceedings:
+  default:
+    creator: Landtag von Baden-Württemberg
+    license: Amtliches Werk (§ 5 Abs. 2 UrhG)

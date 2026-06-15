@@ -17,8 +17,13 @@ entity_dump_url: ""             # built locally via scraper/build_entity_dump.py
 default_retry_count: 10
 default_retry_delay_max: 10
 
-# Rights/source metadata (moved from code constants).
+# Rights/source metadata (moved from code constants). One terms page covers both
+# the video and the proceedings text.
 media:
+  default:
+    creator: Assembleia da República
+    license: https://www.parlamento.pt/
+proceedings:
   default:
     creator: Assembleia da República
     license: https://www.parlamento.pt/

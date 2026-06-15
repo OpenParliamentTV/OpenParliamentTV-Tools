@@ -262,7 +262,7 @@ def speech_record(anf: dict, prot: dict, speech_index: int, nlp) -> dict:
             "textBody": text_body,
         }],
         "debug": {
-            "anforande_nummer": anf.get("anforande_nummer") or "",
+            "anforandeNummer": anf.get("anforande_nummer") or "",
         },
     }
 

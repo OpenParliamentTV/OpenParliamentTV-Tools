@@ -46,12 +46,15 @@ from optv.shared.agenda_types import annotate_agenda_item, classify_pt
 from optv.shared.sequence_align import align_equal_keys
 from optv.shared.speech_id import normalize_speech_originid
 from optv.parliaments import get_rights as _get_rights
+from optv.shared.meta import build_meta, now_iso
 
 logger = logging.getLogger(__name__)
 
 PARLIAMENT = "PT"
 CREATOR = _get_rights("PT", stream="media")["creator"]
 LICENSE = _get_rights("PT", stream="media")["license"]
+PROCEEDINGS_CREATOR = _get_rights("PT", stream="proceedings")["creator"]
+PROCEEDINGS_LICENSE = _get_rights("PT", stream="proceedings")["license"]
 _WS_RE = re.compile(r"\s+")
 
 # av roles that map to a canonical chair/officer/government match key (so they
@@ -169,8 +172,8 @@ def _text_contents(turn: Optional[dict], person_label: str) -> list[dict]:
     return [{
         "type": "proceedings",
         "language": "pt",
-        "creator": CREATOR,
-        "license": LICENSE,
+        "creator": PROCEEDINGS_CREATOR,
+        "license": PROCEEDINGS_LICENSE,
         "textBody": [{
             "type": "speech",
             "speaker": person_label,
@@ -252,20 +255,19 @@ def merge_session(session: str, config: Config, args=None) -> Path:
     for _s in records:
         normalize_speech_originid(_s)
     out_doc = {
-        "meta": {
-            "session": session,
-            "parliament": PARLIAMENT,
-            "electoralPeriod": leg,
-            "sourceLabel": source_label(session),
-            "dateStart": session_start,
-            "dateEnd": last_date,
-            "lastUpdate": now,
-            "lastProcessing": "merge",
-            "processing": {
+        "meta": build_meta(
+            PARLIAMENT,
+            session=session,
+            electoral_period=leg,
+            date_start=session_start,
+            date_end=last_date,
+            last_update=now,
+            processing={
                 **(media_meta.get("processing") or {}),
                 "merge": now,
             },
-        },
+            extra={"sourceLabel": source_label(session)},
+        ),
         "data": records,
     }
     out_path = config.file(session, "merged", create=True)

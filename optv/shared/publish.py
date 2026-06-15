@@ -20,6 +20,21 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+def strip_legacy_textbody_ids(data: list) -> None:
+    """Drop the legacy per-paragraph ``speech_id`` from every textBody item.
+
+    It is redundant with ``textContents[].originTextID`` (the speech's text id)
+    and read by no consumer (platform, Conductor, validators). Parsers still use
+    it internally to derive ``originID``; this removes it from the *published*
+    output only. Mutates ``data`` in place.
+    """
+    for speech in data:
+        for tc in speech.get("textContents") or []:
+            for item in tc.get("textBody") or []:
+                if isinstance(item, dict):
+                    item.pop("speech_id", None)
+
+
 def data_signature(data: list) -> str:
     """Return a signature (as a string) for the given data.
     """
@@ -54,13 +69,21 @@ def save_if_changed(data: dict, output_file: Path) -> bool:
 
 
 def data_has_timing(data: list) -> bool:
-    """True if any speech carries time-alignment output."""
-    return any(s.get('debug', {}).get('align-duration') for s in data)
+    """True if any speech carries time-alignment output.
+
+    Accepts the legacy kebab key too, so the demotion guard still protects an
+    already-published (not-yet-migrated) file during the camelCase transition —
+    otherwise a bare re-merge would look like a non-aligned doc and overwrite it.
+    """
+    return any((s.get('debug') or {}).get('alignDuration')
+               or (s.get('debug') or {}).get('align-duration') for s in data)
 
 
 def data_has_ner(data: list) -> bool:
-    """True if any speech carries named-entity-recognition output."""
-    return any(s.get('debug', {}).get('ner-duration') for s in data)
+    """True if any speech carries named-entity-recognition output (legacy key
+    accepted too — see ``data_has_timing``)."""
+    return any((s.get('debug') or {}).get('nerDuration')
+               or (s.get('debug') or {}).get('ner-duration') for s in data)
 
 
 def is_demotion(new_data: list, published_data: list) -> bool:
@@ -103,7 +126,7 @@ _ENRICHMENT_FIELDS = (
     ('agendaItem', 'type'),
     ('agendaItem', 'nativeType'),
     ('debug', 'confidence'),
-    ('debug', 'confidence_reason'),
+    ('debug', 'confidenceReason'),
 )
 
 

@@ -56,7 +56,65 @@ def validate_semantic(doc):
     findings.extend(_rule_sentence_times(doc))
     findings.extend(_rule_speech_origin_text_id_deprecated(doc))
     findings.extend(_rule_original_language_consistency(doc))
+    findings.extend(_rule_meta_no_per_speech_duplicates(doc))
+    findings.extend(_rule_text_speech_proceeding_index(doc))
+    findings.extend(_rule_origin_media_id_placement(doc))
     return findings
+
+
+def _rule_origin_media_id_placement(doc):
+    """The media source id belongs in ``media.originMediaID`` only. A
+    speech-level ``originMediaID`` is a stale/regressed emission (the joint id
+    slot is ``originID``); warn so a re-run/migration relocates it."""
+    out = []
+    for i, sp in enumerate(doc.get("data") or []):
+        if "originMediaID" in sp:
+            out.append(_warn(
+                "semantic.speech.originMediaID_misplaced",
+                f"data/{i}/originMediaID",
+                "Speech-level 'originMediaID' is misplaced; the media source id "
+                "belongs in media.originMediaID. Speech identity uses 'originID' "
+                "(joint id) or speechIndex.",
+            ))
+    return out
+
+
+def _rule_meta_no_per_speech_duplicates(doc):
+    """``meta`` must not carry ``parliament`` / ``electoralPeriod``: those live on
+    every speech (``data[].parliament`` / ``data[].electoralPeriod``) and the
+    platform keys off the per-item values, so a meta-level copy is duplication.
+    Warning-only; a migration/re-run drops them."""
+    out = []
+    meta = doc.get("meta") or {}
+    for key in ("parliament", "electoralPeriod"):
+        if key in meta:
+            out.append(_warn(
+                "semantic.meta.duplicatesPerSpeech",
+                f"meta/{key}",
+                f"meta.{key} duplicates the per-speech data[].{key}; drop it from "
+                "meta (the platform reads the per-item value).",
+            ))
+    return out
+
+
+def _rule_text_speech_proceeding_index(doc):
+    """A speech carrying ``textContents`` was joined from proceedings, so it
+    should record ``debug.proceedingIndex`` — the key ``Config.status`` reads to
+    decide a session has merged text. Warning-only; video-only speeches (no
+    textContents) are exempt."""
+    out = []
+    for i, sp in enumerate(doc.get("data") or []):
+        if not (sp.get("textContents") or []):
+            continue
+        debug = sp.get("debug")
+        if not isinstance(debug, dict) or "proceedingIndex" not in debug:
+            out.append(_warn(
+                "semantic.debug.proceedingIndex.missing",
+                f"data/{i}/debug/proceedingIndex",
+                "Speech has textContents but no debug.proceedingIndex; "
+                "Config.status() relies on this key to detect merged text.",
+            ))
+    return out
 
 
 def _rule_speech_origin_text_id_deprecated(doc):

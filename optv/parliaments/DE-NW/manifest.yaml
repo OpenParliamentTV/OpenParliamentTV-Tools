@@ -28,3 +28,7 @@ media:
     license: Landtag Nordrhein-Westfalen – die Aufzeichnungen dürfen zu nicht kommerziellen Zwecken (politische Berichterstattung, Bildung) genutzt werden; Quellenangabe "Landtag Nordrhein-Westfalen". https://www.landtag.nrw.de/home/footer/impressum.html
     creator: Landtag Nordrhein-Westfalen
     sourceURI: https://www.landtag.nrw.de/home/mediathek.html
+proceedings:
+  default:
+    creator: Landtag Nordrhein-Westfalen
+    license: Amtliches Werk (§ 5 Abs. 2 UrhG)

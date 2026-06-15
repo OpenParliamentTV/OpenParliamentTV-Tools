@@ -29,7 +29,7 @@ def _extract(speech: dict) -> Optional[SpeechAudio]:
         # Procedural interventions (talman calls) come through with
         # anf_sekunder=0 despite carrying text — slicing 0s yields an empty mp3.
         if duration == 0:
-            speech.setdefault("debug", {})["align-skip"] = "zero-duration-from-source"
+            speech.setdefault("debug", {})["alignSkip"] = "zero-duration-from-source"
         return None
     key = media.get("originMediaID") or md5_key(audio_url)
     return SpeechAudio(source_url=audio_url, start=float(start_offset),

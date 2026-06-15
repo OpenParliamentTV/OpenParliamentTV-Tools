@@ -38,7 +38,7 @@ def _extract(speech: dict) -> Optional[SpeechAudio]:
     duration = media.get("duration")
     if not audio_url or start_offset is None or not duration:
         if duration == 0:
-            speech.setdefault("debug", {})["align-skip"] = "zero-duration-from-source"
+            speech.setdefault("debug", {})["alignSkip"] = "zero-duration-from-source"
         return None
     return SpeechAudio(source_url=audio_url, start=float(start_offset),
                        duration=float(duration), session_key=md5_key(audio_url))

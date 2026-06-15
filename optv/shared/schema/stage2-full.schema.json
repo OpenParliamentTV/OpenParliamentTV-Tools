@@ -105,14 +105,15 @@
     },
     "textContent": {
       "type": "object",
+      "required": ["creator", "license"],
       "additionalProperties": true,
       "properties": {
         "type": {"type": "string"},
         "language": {"type": "string"},
         "originTextID": {"type": "string"},
         "sourceURI": {"type": "string"},
-        "creator": {"type": "string"},
-        "license": {"type": "string"},
+        "creator": {"type": "string", "minLength": 1},
+        "license": {"type": "string", "minLength": 1},
         "textBody": {
           "type": "array",
           "items": {"$ref": "#/definitions/textBodyItem"}
@@ -121,15 +122,15 @@
     },
     "mediaItem": {
       "type": "object",
-      "required": ["videoFileURI", "sourcePage"],
+      "required": ["videoFileURI", "sourcePage", "creator", "license"],
       "additionalProperties": true,
       "properties": {
         "videoFileURI": {"type": "string", "minLength": 1},
         "sourcePage": {"type": "string", "minLength": 1},
         "audioFileURI": {"type": "string"},
         "duration": {"type": "number", "minimum": 0},
-        "creator": {"type": "string"},
-        "license": {"type": "string"},
+        "creator": {"type": "string", "minLength": 1},
+        "license": {"type": "string", "minLength": 1},
         "originMediaID": {"type": "string"},
         "aligned": {"type": "boolean"},
         "videoStreamURI": {"type": ["string", "null"]},

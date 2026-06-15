@@ -25,6 +25,7 @@ import sys
 import unicodedata
 from optv.shared.sequence_align import align_equal_keys
 from optv.shared.speech_id import normalize_speech_originid
+from optv.shared.meta import build_meta, fill_original_language, now_iso
 
 if __package__ is None or __package__ == "":
     _module_dir = Path(__file__).resolve().parent
@@ -166,7 +167,7 @@ def merge_item(media_item: dict, proc_items: list, session_id: str) -> dict:
         output['debug']['proceedingIndex'] = None
         output['debug']['proceedingIndexes'] = []
         output['debug']['confidence'] = 0.5
-        output['debug']['confidence_reason'] = 'no-matched-text'
+        output['debug']['confidenceReason'] = 'no-matched-text'
 
     output.setdefault('documents', [])
     return output
@@ -195,18 +196,20 @@ def merge_data(proceedings: dict, media: dict, options=None) -> dict:
 
     for _s in speeches:
         normalize_speech_originid(_s)
+    fill_original_language(speeches, "ES")
     return {
-        "meta": {
-            "session": session_id,
-            "schemaVersion": "1.0",
-            "dateStart": media.get('meta', {}).get('dateStart'),
-            "dateEnd": media.get('meta', {}).get('dateEnd'),
-            "processing": {
+        "meta": build_meta(
+            "ES",
+            session=session_id,
+            electoral_period=(speeches[0].get('electoralPeriod') if speeches else None),
+            date_start=media.get('meta', {}).get('dateStart'),
+            date_end=media.get('meta', {}).get('dateEnd'),
+            processing={
                 **((proceedings.get('meta', {}).get('processing', {})) if proceedings else {}),
                 **media.get('meta', {}).get('processing', {}),
-                "merge": datetime.now().isoformat('T', 'seconds'),
+                "merge": now_iso(),
             },
-        },
+        ),
         "data": speeches,
     }
 

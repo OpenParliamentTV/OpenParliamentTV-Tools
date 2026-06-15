@@ -31,3 +31,7 @@ media:
     creator: Niedersächsischer Landtag
     license: 'Niedersächsischer Landtag – Plenar-TV. Die Aufzeichnungen dürfen unter Angabe der Quelle "Niedersächsischer Landtag" genutzt werden; Nutzungsbedingungen: https://www.landtag-niedersachsen.de/plenar-tv-nutzungsbedingungen/'
     sourceURI: https://plenartv.de/
+proceedings:
+  default:
+    creator: Landtag Niedersachsen (Plenar-TV)
+    license: Plenar-TV (Landtag Niedersachsen)

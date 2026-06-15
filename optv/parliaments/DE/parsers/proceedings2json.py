@@ -37,6 +37,7 @@ from optv.parliaments import get_rights as _get_rights
 from optv.parliaments import get_language as _get_language
 
 PROCEEDINGS_LICENSE = _get_rights("DE", stream="proceedings")["license"]
+PROCEEDINGS_CREATOR = _get_rights("DE", stream="proceedings")["creator"]
 PROCEEDINGS_LANGUAGE = _get_language("DE")
 
 SPEECH_CLASSES = set(('J', 'J_1', 'O', 'T_NaS', 'T_fett', 'Z'))
@@ -499,7 +500,7 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
                     {
                         "type": "proceedings",
                         "sourceURI": sourceUri,
-                        "creator": metadata.findtext('.//herausgeber'),
+                        "creator": PROCEEDINGS_CREATOR,
                         "license": PROCEEDINGS_LICENSE,
                         "language": PROCEEDINGS_LANGUAGE,
                         "originTextID": speech_id,

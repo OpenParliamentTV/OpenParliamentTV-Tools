@@ -39,6 +39,7 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = module_dir.name
 
+from optv.parliaments import get_rights as _get_rights
 from optv.shared.workflow import WorkflowHooks, run_main
 
 from .common import Config
@@ -52,6 +53,9 @@ from .scraper.fetch_proceedings import download_proceedings
 logger = logging.getLogger(__name__ if __name__ != "__main__" else os.path.basename(sys.argv[0]))
 
 PARLIAMENT_ID = Path(__file__).parent.name
+
+PROCEEDINGS_CREATOR = _get_rights(PARLIAMENT_ID, stream="proceedings")["creator"]
+PROCEEDINGS_LICENSE = _get_rights(PARLIAMENT_ID, stream="proceedings")["license"]
 
 
 def _download(config: Config, args):
@@ -137,8 +141,8 @@ def _align(config: Config, session: str, args):
                 "language": "zh-TW",
                 "originTextID": str(ivod_id),
                 "sourceURI": (speech.get("media") or {}).get("sourcePage") or "",
-                "creator": "立法院 (Legislative Yuan)",
-                "license": "https://data.gov.tw/license",
+                "creator": PROCEEDINGS_CREATOR,
+                "license": PROCEEDINGS_LICENSE,
                 "textBody": [],
             }]
             speech["textContents"] = tcs
@@ -156,8 +160,8 @@ def _align(config: Config, session: str, args):
         tb[0]["sentences"] = sentences
 
         speech.setdefault("debug", {})
-        speech["debug"]["align-duration"] = round(whisperx_max_time(wx), 3)
-        speech["debug"]["align-source"] = "whisperx"
+        speech["debug"]["alignDuration"] = round(whisperx_max_time(wx), 3)
+        speech["debug"]["alignSource"] = "whisperx"
         media = speech.setdefault("media", {})
         media["aligned"] = True
         aligned_count += 1

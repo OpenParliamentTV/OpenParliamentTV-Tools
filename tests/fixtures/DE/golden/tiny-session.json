@@ -1,13 +1,15 @@
 {
   "meta": {
+    "schemaVersion": "1.0",
     "session": "21999",
     "dateStart": "2025-01-01T10:00:00+01:00",
     "dateEnd": "2025-01-01T11:00:00+01:00",
+    "lastProcessing": "merge",
+    "lastUpdate": "<timestamp>",
     "processing": {
       "parse_media": "<timestamp>",
       "merge": "<timestamp>"
-    },
-    "schemaVersion": "1.0"
+    }
   },
   "data": [
     {
@@ -88,7 +90,8 @@
           ]
         }
       ],
-      "documents": []
+      "documents": [],
+      "originalLanguage": "de"
     }
   ]
 }

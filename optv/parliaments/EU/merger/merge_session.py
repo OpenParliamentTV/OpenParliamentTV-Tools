@@ -31,13 +31,20 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from optv.parliaments import get_rights as _get_rights
 from optv.shared.agenda_types import classify_eu_native, annotate_agenda_item
 from optv.shared.speech_id import normalize_speech_originid
+from optv.shared.meta import build_meta, now_iso
 
 logger = logging.getLogger(__name__)
 
 PARLIAMENT = "EU"
 ELECTORAL_PERIOD = 10
+
+MEDIA_CREATOR = _get_rights(PARLIAMENT, stream="media")["creator"]
+MEDIA_LICENSE = _get_rights(PARLIAMENT, stream="media")["license"]
+PROCEEDINGS_CREATOR = _get_rights(PARLIAMENT, stream="proceedings")["creator"]
+PROCEEDINGS_LICENSE = _get_rights(PARLIAMENT, stream="proceedings")["license"]
 
 
 def _epoch(iso_str: str | None) -> int | None:
@@ -101,6 +108,8 @@ def _speech_record(
         "language": "en",
         "originTextID": speech.get("speechId") or "",
         "sourceURI": speech.get("debug", {}).get("vodURL") or "",
+        "creator": PROCEEDINGS_CREATOR,
+        "license": PROCEEDINGS_LICENSE,
         "textBody": [{
             "type": "speech",
             "sentences": sentences,
@@ -129,7 +138,8 @@ def _speech_record(
         "audioFileURI": media_audio,
         "duration": float(duration),
         "aligned": False,
-        "creator": "European Parliament",
+        "creator": MEDIA_CREATOR,
+        "license": MEDIA_LICENSE,
         "originMediaID": sitting.get("eventRef") or "",
         "additionalInformation": {
             "startOffset": start_offset,
@@ -246,16 +256,12 @@ def merge_session(session: str, config, args=None) -> Path:
     for _s in records:
         normalize_speech_originid(_s)
     out_doc = {
-        "meta": {
-            "session": session,
-            "parliament": PARLIAMENT,
-            "electoralPeriod": ELECTORAL_PERIOD,
-            "lastUpdate": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "lastProcessing": "merge",
-            "processing": {
-                "merge": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            },
-        },
+        "meta": build_meta(
+            PARLIAMENT,
+            session=session,
+            electoral_period=ELECTORAL_PERIOD,
+            processing={"merge": now_iso()},
+        ),
         "data": records,
     }
     out_path.write_text(json.dumps(out_doc, indent=2, ensure_ascii=False))

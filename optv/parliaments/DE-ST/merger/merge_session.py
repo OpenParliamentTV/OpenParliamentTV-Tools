@@ -35,9 +35,16 @@ if __package__ is None or __package__ == "":
 
 from ..parsers.common import normalize_ws, role_to_context, strip_honorifics
 from ..scraper.common import LANDTAG_BASE, fetch_text
+from optv.parliaments import get_rights as _get_rights
 from optv.shared.speech_id import normalize_speech_originid
+from optv.shared.meta import build_meta, now_iso
 
 logger = logging.getLogger(__name__)
+
+MEDIA_CREATOR = _get_rights("DE-ST", stream="media")["creator"]
+MEDIA_LICENSE = _get_rights("DE-ST", stream="media")["license"]
+PROCEEDINGS_CREATOR = _get_rights("DE-ST", stream="proceedings")["creator"]
+PROCEEDINGS_LICENSE = _get_rights("DE-ST", stream="proceedings")["license"]
 
 _nlp = German()
 _nlp.add_pipe("sentencizer")
@@ -204,7 +211,7 @@ def merge_session(session: str, config, options) -> Path:
 
     merged_speeches: list[dict] = []
     for speech in proceedings_data:
-        pid = (speech.get("debug") or {}).get("std-player-id")
+        pid = (speech.get("debug") or {}).get("stdPlayerId")
         if not pid or pid not in media_by_pid:
             logger.warning(f"{session} speech {speech.get('speechIndex')}: "
                            f"no media for player-id {pid!r}; skipping")
@@ -215,8 +222,8 @@ def merge_session(session: str, config, options) -> Path:
         date_end = (cursor + timedelta(seconds=max(duration, 1))).isoformat("T", "seconds")
         cursor += timedelta(seconds=max(duration, 1))
 
-        speaker_id = (speech.get("debug") or {}).get("transcript-speaker-id", "")
-        c_hash = (speech.get("debug") or {}).get("transcript-cHash", "")
+        speaker_id = (speech.get("debug") or {}).get("transcriptSpeakerId", "")
+        c_hash = (speech.get("debug") or {}).get("transcriptCHash", "")
         transcript_html = _fetch_transcript(
             sp_number=sp_number,
             speaker_id=speaker_id,
@@ -248,7 +255,7 @@ def merge_session(session: str, config, options) -> Path:
         if not person.get("label"):
             # Still no speaker — emit a placeholder so the schema is satisfied;
             # NEL will fail to link but the speech is at least visible.
-            person["label"] = speech.get("debug", {}).get("h3-label") or "Unbekannt"
+            person["label"] = speech.get("debug", {}).get("h3Label") or "Unbekannt"
 
         speech_id = speech["originID"]
         text_body = build_textbody(paragraphs, person["label"], speech_id)
@@ -258,8 +265,8 @@ def merge_session(session: str, config, options) -> Path:
             "language": "de",
             "originTextID": speech_id,
             "sourceURI": speech["meta"]["sourceURI"] if "sourceURI" in speech else proceedings_doc["meta"].get("sourceURI", ""),
-            "creator": "Landtag von Sachsen-Anhalt",
-            "license": "© Landtag von Sachsen-Anhalt — Schriftdolmetschung",
+            "creator": PROCEEDINGS_CREATOR,
+            "license": PROCEEDINGS_LICENSE,
             "textBody": text_body,
         }]
 
@@ -270,17 +277,14 @@ def merge_session(session: str, config, options) -> Path:
             # sourcePage and a session-constant value would collapse all
             # speeches into one at import.
             "sourcePage": f"{LANDTAG_BASE}/{sp_number}-sitzungsperiode?player={pid}#section-video-1-1",
-            "creator": "Landtag von Sachsen-Anhalt",
-            "license": (
-                "Landtag von Sachsen-Anhalt - social sharing and private use permitted; "
-                "commercial use requires written consent"
-            ),
+            "creator": MEDIA_CREATOR,
+            "license": MEDIA_LICENSE,
             "originMediaID": str(media_entry.get("video_id") or pid),
             "duration": duration,
         }
         if media_entry.get("preview_image_url"):
             media["thumbnailURI"] = media_entry["preview_image_url"]
-            media["thumbnailCreator"] = "Landtag von Sachsen-Anhalt"
+            media["thumbnailCreator"] = MEDIA_CREATOR
             media["thumbnailLicense"] = media["license"]
         if media_entry.get("sources_by_quality"):
             media["additionalInformation"] = {
@@ -309,7 +313,7 @@ def merge_session(session: str, config, options) -> Path:
                 "proceedingIndexes": [speech["speechIndex"]],
                 "mediaIndex": speech["speechIndex"],
                 "confidence": 1.0,
-                "transcript-paragraph-count": len(paragraphs),
+                "transcriptParagraphCount": len(paragraphs),
             },
         }
         merged_speeches.append(merged)
@@ -317,22 +321,22 @@ def merge_session(session: str, config, options) -> Path:
     for _s in merged_speeches:
         normalize_speech_originid(_s)
     doc = {
-        "meta": {
-            "schemaVersion": "1.0",
-            "parliament": "DE-ST",
-            "electoralPeriod": proceedings_doc["data"][0]["electoralPeriod"] if proceedings_doc["data"] else {"number": 8},
-            "session": session,
-            "sitzungsperiode": sp_number,
-            "dateStart": proceedings_doc["meta"]["dateStart"],
-            "dateEnd": proceedings_doc["meta"]["dateEnd"],
-            "sourceURI": proceedings_doc["meta"].get("sourceURI", ""),
-            "processing": {
+        "meta": build_meta(
+            "DE-ST",
+            session=session,
+            electoral_period=(proceedings_doc["data"][0]["electoralPeriod"] if proceedings_doc["data"] else {"number": 8}),
+            date_start=proceedings_doc["meta"]["dateStart"],
+            date_end=proceedings_doc["meta"]["dateEnd"],
+            processing={
                 **proceedings_doc["meta"].get("processing", {}),
                 **media_doc["meta"].get("processing", {}),
-                "merge": datetime.now().isoformat("T", "seconds"),
+                "merge": now_iso(),
             },
-            "lastUpdate": datetime.now().isoformat("T", "seconds"),
-        },
+            extra={
+                "sitzungsperiode": sp_number,
+                "sourceURI": proceedings_doc["meta"].get("sourceURI", ""),
+            },
+        ),
         "data": merged_speeches,
     }
     return config.save_data(doc, session, "merged")

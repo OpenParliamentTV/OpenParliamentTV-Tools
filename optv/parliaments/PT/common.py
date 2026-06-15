@@ -162,9 +162,9 @@ class Config(BaseConfig):
                 if not tcs or not any((tc.get('textBody') or []) for tc in tcs):
                     status.add(SessionStatus.no_text)
                     continue
-                if s.get('debug', {}).get('align-duration'):
+                if s.get('debug', {}).get('alignDuration'):
                     status.add(SessionStatus.aligned)
-                if s.get('debug', {}).get('ner-duration'):
+                if s.get('debug', {}).get('nerDuration'):
                     status.add(SessionStatus.ner)
         return status
 

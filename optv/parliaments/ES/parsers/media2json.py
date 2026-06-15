@@ -34,6 +34,7 @@ MADRID = ZoneInfo("Europe/Madrid")
 PARLIAMENT = "ES"
 # Single Aviso Legal covers both video and proceedings reuse.
 MEDIA_LICENSE = _get_rights("ES", stream="media")["license"]
+MEDIA_CREATOR = _get_rights("ES", stream="media")["creator"]
 
 
 def _parse_dt(sesion: str, hhmm: str):
@@ -107,7 +108,7 @@ def parse_intervention(rec: dict, period: int, number: int) -> dict:
         end_dt, have_end_time = start_dt, False
     duration = (end_dt - start_dt).total_seconds()
     # HH:MM resolution only — flag it so downstream knows timing is coarse.
-    debug["coarse-timing"] = True
+    debug["coarseTiming"] = True
 
     objeto = (rec.get("OBJETOINICIATIVA") or "").strip()
     fase = (rec.get("FASE") or "").strip()
@@ -134,7 +135,7 @@ def parse_intervention(rec: dict, period: int, number: int) -> dict:
             "duration": duration,
             "license": MEDIA_LICENSE,
             "originMediaID": media_id,
-            "creator": "Congreso de los Diputados",
+            "creator": MEDIA_CREATOR,
         },
         "people": [person] if person.get("label") else [],
         "debug": debug,

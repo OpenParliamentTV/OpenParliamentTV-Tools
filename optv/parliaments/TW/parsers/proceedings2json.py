@@ -148,9 +148,9 @@ def speech_record(ivod_detail: dict, *, term: int, session_period: int,
         "textContents": text_contents,
         "documents": [],
         "debug": {
-            "ivod_id": ivod_id,
-            "whisperx_segments": len(whisperx),
-            "has_gazette": bool(gazette),
+            "ivodId": ivod_id,
+            "whisperxSegments": len(whisperx),
+            "hasGazette": bool(gazette),
         },
     }
 
@@ -162,7 +162,7 @@ def speech_record(ivod_detail: dict, *, term: int, session_period: int,
         record["dateEnd"] = date_end
     # Carry the whisperx audio length on the record so the merger can
     # emit `debug.align-duration` deterministically.
-    record["debug"]["whisperx_last_end"] = whisperx_max_time(whisperx)
+    record["debug"]["whisperxLastEnd"] = whisperx_max_time(whisperx)
     return record
 
 

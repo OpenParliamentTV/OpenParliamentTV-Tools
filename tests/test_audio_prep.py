@@ -183,7 +183,7 @@ def test_se_adapter(monkeypatch):
     sp0 = {"media": {"audioFileURI": "u", "additionalInformation": {"startOffset": 1},
                      "duration": 0}}
     assert se._extract(sp0) is None
-    assert sp0["debug"]["align-skip"] == "zero-duration-from-source"
+    assert sp0["debug"]["alignSkip"] == "zero-duration-from-source"
 
     kw = _capture_kwargs(monkeypatch, se)
     se.prepare_per_speech_audio([], "x")
@@ -247,7 +247,7 @@ def test_fr_adapter(monkeypatch):
     sub = {"media": {"audioFileURI": "u", "additionalInformation": {"startOffset": 1.0},
                      "duration": 0.05}}
     assert fr._extract(sub) is None
-    assert sub["debug"]["align-skip"] == "sub-100ms-duration"
+    assert sub["debug"]["alignSkip"] == "sub-100ms-duration"
 
     kw = _capture_kwargs(monkeypatch, fr)
     fr.prepare_per_speech_audio([], "x")

@@ -31,13 +31,15 @@ from optv.shared.lang.de import strip_honorifics as _strip_honorifics
 from optv.shared.lang.de import match_key_surname as _match_key
 from optv.shared.pdf2tei.spine_join import load_turns, join_text_to_spine
 
+from optv.parliaments import get_rights as _get_rights
+from optv.shared.meta import build_meta, now_iso
 from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
 
 logger = logging.getLogger(__name__)
 
 PARLIAMENT_ID = "DE-SH"
-PROCEEDINGS_CREATOR = "Schleswig-Holsteinischer Landtag"
-PROCEEDINGS_LICENSE = "Amtliches Werk (§ 5 Abs. 2 UrhG)"
+PROCEEDINGS_CREATOR = _get_rights(PARLIAMENT_ID, stream="proceedings")["creator"]
+PROCEEDINGS_LICENSE = _get_rights(PARLIAMENT_ID, stream="proceedings")["license"]
 SOURCE_PAGE_TEMPLATE = "https://m7k.ltsh.de/iframe.php?b={speech_id}"
 
 # Map the m7k ``gruppe`` field to (faction_label_or_None, speakerContext).
@@ -265,21 +267,18 @@ def merge_session(session: str, config, options) -> Path:
                     f"{len(turns)} proceedings turns")
 
     doc = {
-        "meta": {
-            "schemaVersion": "1.0",
-            "parliament": PARLIAMENT_ID,
-            "electoralPeriod": {"number": wp},
-            "session": session,
-            "tagung": tagung_no,
-            "dateStart": earliest_iso,
-            "dateEnd": latest_iso,
-            "sourceURI": f"https://m7k.ltsh.de/",
-            "processing": {
+        "meta": build_meta(
+            PARLIAMENT_ID,
+            session=session,
+            electoral_period=wp,
+            date_start=earliest_iso,
+            date_end=latest_iso,
+            processing={
                 **media_doc["meta"].get("processing", {}),
-                "merge": datetime.now().isoformat("T", "seconds"),
+                "merge": now_iso(),
             },
-            "lastUpdate": datetime.now().isoformat("T", "seconds"),
-        },
+            extra={"tagung": tagung_no, "sourceURI": "https://m7k.ltsh.de/"},
+        ),
         "data": merged,
     }
     return config.save_data(doc, session, "merged")

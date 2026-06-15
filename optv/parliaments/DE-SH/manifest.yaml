@@ -25,3 +25,7 @@ media:
   default:
     license: 'Landtag Schleswig-Holstein – political reporting and private use permitted; commercial / advertising use requires written consent. Attribution: Schleswig-Holsteinischer Landtag.'
     creator: Schleswig-Holsteinischer Landtag
+proceedings:
+  default:
+    creator: Schleswig-Holsteinischer Landtag
+    license: Amtliches Werk (§ 5 Abs. 2 UrhG)

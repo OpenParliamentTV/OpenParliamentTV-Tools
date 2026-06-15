@@ -58,10 +58,10 @@ def assign_join_confidence(merged: list[dict]) -> int:
         dbg = sp.setdefault("debug", {})
         dbg["confidence"] = conf
         if reason:
-            dbg["confidence_reason"] = reason
+            dbg["confidenceReason"] = reason
             gated += 1
         else:
-            dbg.pop("confidence_reason", None)
+            dbg.pop("confidenceReason", None)
     return gated
 
 
