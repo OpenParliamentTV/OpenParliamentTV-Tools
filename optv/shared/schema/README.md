@@ -85,6 +85,11 @@ Schema validation is structural. Cross-field, cross-item, and cross-source invar
 9. Warning when two speeches in a session share a `media.sourcePage` (`semantic.media.sourcePage.duplicate`). The platform's media.php import keys speech identity on `sourcePage`, so duplicates collapse distinct speeches at import. Parliaments serving one video per session/debate/part must make it unique per speech — e.g. appending the per-speech start offset (SE `?pos=`, NO `&t=`, FI `?start=`) or a per-speech id (DE-SH, DE-ST `?player=`).
 10. Warning on a deprecated speech-level `originTextID` (`semantic.speech.originTextID_deprecated`) — the speech id belongs in `originID` (joint id) or `textContents[].originTextID`. See [Speech identity model](#speech-identity-model-originid--originmediaid--origintextid).
 11. Warning when `originalLanguage` matches no `textContents[].language` (`semantic.speech.originalLanguage_mismatch`) — they must share the same code standard so `originalLanguage` can select the original text.
+12. Warning when `meta` carries `parliament` or `electoralPeriod` (`semantic.meta.duplicatesPerSpeech`) — those live per-speech in `data[]`; a meta-level copy is redundant.
+13. Warning on a speech-level `originMediaID` (`semantic.speech.originMediaID_misplaced`) — the media source id belongs in `media.originMediaID`. See [Speech identity model](#speech-identity-model-originid--originmediaid--origintextid).
+14. Warning when a speech with `textContents` lacks `debug.proceedingIndex` (`semantic.debug.proceedingIndex.missing`) — `Config.status()` reads that key to detect merged text.
+
+The merger sources all four rights fields (`media`/`textContents` `creator`+`license`) from the parliament's `manifest.yaml` via `optv.parliaments.get_rights()` — never from the source document or a code constant. `meta` is assembled by `optv.shared.meta.build_meta()`; `debug.*` keys are camelCase.
 
 ---
 

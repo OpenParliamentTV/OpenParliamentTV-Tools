@@ -41,7 +41,7 @@
         "linkedMediaIndexes": [
           1
         ],
-        "align-duration": 5.228546380996704
+        "alignDuration": 5.228546380996704
       },
       "media": {
         "videoFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/7630688/7630688_h264_1280_720_3000kb_baseline_de_3000.mp4",
@@ -75,7 +75,6 @@
           "originTextID": "begin-intro",
           "textBody": [
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -99,7 +98,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -123,7 +121,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -142,7 +139,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -166,7 +162,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -190,7 +185,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -209,7 +203,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -223,7 +216,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -237,7 +229,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -251,7 +242,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -265,7 +255,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -279,7 +268,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -293,7 +281,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -307,7 +294,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -321,7 +307,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -360,7 +345,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -407,7 +391,7 @@
         "linkedMediaIndexes": [
           2
         ],
-        "align-duration": 47.89896273612976
+        "alignDuration": 47.89896273612976
       },
       "media": {
         "videoFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/7630691/7630691_h264_1280_720_3000kb_baseline_de_3000.mp4",
@@ -441,7 +425,6 @@
           "originTextID": "begin-intro-post-intro",
           "textBody": [
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -455,7 +438,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -469,7 +451,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -483,7 +464,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -497,7 +477,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -511,7 +490,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -550,7 +528,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -574,7 +551,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -608,7 +584,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -632,7 +607,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -646,7 +620,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -665,7 +638,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -689,7 +661,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -703,7 +674,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -727,7 +697,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -741,7 +710,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -765,7 +733,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -779,7 +746,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -798,7 +764,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -817,7 +782,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -836,7 +800,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -855,7 +818,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -869,7 +831,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -888,7 +849,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -907,7 +867,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -921,7 +880,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -940,7 +898,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -964,7 +921,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -983,7 +939,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",
@@ -997,7 +952,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro-post-intro",
               "type": "speech",
               "speaker": "Julia Klöckner",
               "speakerstatus": "president",

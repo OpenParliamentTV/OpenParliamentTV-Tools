@@ -16,7 +16,7 @@ Two streams, both pulled from the same third-party aggregator [ly.govapi.tw/v2](
 
 ## Alignment (whisperx, not aeneas)
 
-[`workflow.py:_align`](workflow.py) skips aeneas/espeak entirely and reads the WhisperX segments back out of the raw IVOD detail bundle. Each segment becomes one `sentence` with `timeStart`/`timeEnd` already populated (formatted as the numeric strings the Stage 2 schema requires). Speeches with no whisperx data pass through unaligned. `debug.align-source: "whisperx"` records the provenance and `debug.align-duration` carries the last segment's `end` for the shared status detector.
+[`workflow.py:_align`](workflow.py) skips aeneas/espeak entirely and reads the WhisperX segments back out of the raw IVOD detail bundle. Each segment becomes one `sentence` with `timeStart`/`timeEnd` already populated (formatted as the numeric strings the Stage 2 schema requires). Speeches with no whisperx data pass through unaligned. `debug.alignSource: "whisperx"` records the provenance and `debug.alignDuration` carries the last segment's `end` for the shared status detector.
 
 aeneas with espeak's `cmn` voice produces poor-quality Mandarin alignment, and the API already gives us higher-quality Whisper output for free — there is no point in running aeneas as well.
 

@@ -62,13 +62,14 @@ default_retry_count: 20
 default_retry_delay_max: 10
 
 # Rights metadata emitted into Stage 2 (resolved by optv.parliaments.get_rights).
-# Only the literal values that would otherwise be code constants; data-driven
-# fields (e.g. a creator pulled from the source document) stay in the parser.
-# Per-period overrides cover sources that change across electoral terms.
+# ALL FOUR rights fields — media.creator / media.license and the proceedings
+# (textContents) creator / license — come from here, never from the source
+# document or a code constant. Per-period overrides cover sources that change
+# across electoral terms (e.g. a different corpus for older periods).
 media:
   default: { creator: "Deutscher Bundestag", license: "…" }
 proceedings:
-  default: { license: "Public Domain" }              # periods 18+ (native TEI)
+  default: { creator: "Deutscher Bundestag", license: "Public Domain" }   # periods 18+ (native TEI)
   overrides:
     - periods: [16, 17]                               # ParlaMint-DE corpus
       creator: "PolMine ParlaMint-DE_beta"
@@ -87,7 +88,7 @@ These three packages are where most of the parliament-specific work lives:
 
 - **`scraper/`** — Download proceedings and media into `<data_dir>/original/{proceedings,media}/`. Handle pagination, rate limits, and transient failures (the DE implementation uses `--retry-count` because the Bundestag media server returns frequent 503s). Idempotent: only fetch what's missing.
 - **`parsers/`** — Convert the parliament's native format into intermediate per-session JSON. Two streams (proceedings and media) are kept separate at this point because they often need different cleanup logic.
-- **`merger/`** — Join the two streams into Stage 2 JSON, one record per speech. The DE merger uses Needleman-Wunsch alignment to match transcript speech entries against media items; new parliaments can use whatever join logic the source data permits. Follow the id model: put the media id in `media.originMediaID`, the text id in `textContents[].originTextID`, and set a speech-level `originID` only for a genuine joint id — call `optv.shared.speech_id.normalize_speech_originid(speech)` at finalization to enforce this. Generic formatting helpers live in `optv.shared.merge_format`; language-specific ones (honorifics, chair→context) in `optv.shared.lang.<code>`.
+- **`merger/`** — Join the two streams into Stage 2 JSON, one record per speech. The DE merger uses Needleman-Wunsch alignment to match transcript speech entries against media items; new parliaments can use whatever join logic the source data permits. Follow the id model: put the media id in `media.originMediaID`, the text id in `textContents[].originTextID`, and set a speech-level `originID` only for a genuine joint id — call `optv.shared.speech_id.normalize_speech_originid(speech)` at finalization to enforce this (and never put `originMediaID` at the speech top level). Build the envelope's `meta` block with `optv.shared.meta.build_meta(...)` rather than hand-assembling it: it emits the canonical, uniform meta (`schemaVersion`, `session`, dates, `processing`, `lastProcessing`/`lastUpdate`) and deliberately omits `parliament` and `electoralPeriod`, which live on every speech — not in `meta`. Set `originalLanguage` on every speech with `optv.shared.meta.fill_original_language(speeches, parliament_id)`. Emit `debug.*` keys in **camelCase** (e.g. `alignDuration`, never `align-duration`). Generic formatting helpers live in `optv.shared.merge_format`; language-specific ones (honorifics, chair→context) in `optv.shared.lang.<code>`.
 
 The merger's output must validate against [stage2-full.schema.json](../optv/shared/schema/stage2-full.schema.json). Run the validator early and often:
 

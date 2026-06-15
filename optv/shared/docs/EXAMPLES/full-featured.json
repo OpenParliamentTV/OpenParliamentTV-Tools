@@ -36,12 +36,12 @@
           1001
         ],
         "mediaIndex": 1,
-        "align-duration": 0.7094850540161133,
         "linkedMediaIndexes": [
           1
         ],
         "confidence": 1,
-        "ner-duration": 0.19514155387878418
+        "alignDuration": 0.7094850540161133,
+        "nerDuration": 0.19514155387878418
       },
       "media": {
         "videoFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/7209636/7209636_h264_720_400_2000kb_baseline_de_2192.mp4",
@@ -82,7 +82,6 @@
           "originTextID": "begin-intro",
           "textBody": [
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -109,7 +108,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -131,7 +129,6 @@
               ]
             },
             {
-              "speech_id": "begin-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -182,12 +179,12 @@
           1002
         ],
         "mediaIndex": 2,
-        "align-duration": 12.810896396636963,
         "linkedMediaIndexes": [
           2
         ],
         "confidence": 1,
-        "ner-duration": 1.534973382949829
+        "alignDuration": 12.810896396636963,
+        "nerDuration": 1.534973382949829
       },
       "media": {
         "videoFileURI": "https://cldf-od.r53.cdn.tv1.eu/1000153copo/ondemand/app144277506/145293313/7209646/7209646_h264_720_400_2000kb_baseline_de_2192.mp4",
@@ -228,7 +225,6 @@
           "originTextID": "ID191900100-intro",
           "textBody": [
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -250,7 +246,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -272,7 +267,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -306,7 +300,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -347,7 +340,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -407,7 +399,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -428,7 +419,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -456,7 +446,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -490,7 +479,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -511,7 +499,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -526,7 +513,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -553,7 +539,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
@@ -581,7 +566,6 @@
               ]
             },
             {
-              "speech_id": "ID191900100-intro",
               "type": "speech",
               "speaker": "Wolfgang Schäuble",
               "speakerstatus": "president",
