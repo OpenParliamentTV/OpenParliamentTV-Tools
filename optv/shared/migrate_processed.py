@@ -37,7 +37,9 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
+import time
 from pathlib import Path
 
 if __package__ in (None, ""):
@@ -188,6 +190,27 @@ def _stage_files(directory: Path) -> list[Path]:
     return sorted(set(out))
 
 
+def _normalize_stage_mtimes(directory: Path) -> int:
+    """Stamp every stage file with one common mtime.
+
+    The workflow re-runs a stage when its input file is newer than its output
+    (``Config.is_newer``, strict ``>``). Rewriting files leaves them with their
+    write-order mtimes — e.g. ``merged`` ends up newer than ``aligned`` — which
+    would make the next cron needlessly re-run align/ner over already-migrated
+    sessions. Setting merged/aligned/ner/processed to the *same* timestamp makes
+    every ``is_newer`` comparison False (no re-run), and they all end up newer
+    than the untouched (earlier-pulled) ``original/`` parsed files (so merge
+    doesn't re-run either). Idempotent and runs even on a no-content-change pass,
+    so re-applying repairs a previously mis-ordered migration. Returns the count.
+    """
+    now = time.time()
+    n = 0
+    for path in _stage_files(directory):
+        os.utime(path, (now, now))
+        n += 1
+    return n
+
+
 def run(directory: Path, apply: bool) -> int:
     files = _stage_files(directory)
     if not files:
@@ -216,6 +239,9 @@ def run(directory: Path, apply: bool) -> int:
             path.write_text(json.dumps(new_doc, indent=2, ensure_ascii=False))
     verb = "rewrote" if apply else "would change"
     logger.info("%s %d / %d files", verb, changed, len(files))
+    if apply:
+        stamped = _normalize_stage_mtimes(directory)
+        logger.info("normalized mtimes on %d stage files (no spurious stage re-runs)", stamped)
     return changed
 
 
