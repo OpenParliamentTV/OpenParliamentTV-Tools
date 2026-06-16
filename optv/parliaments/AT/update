@@ -1,0 +1,17 @@
+#! /bin/sh
+
+# Main update script — expects the data directory as its only argument.
+# Parliament-specific options (period, retry-count) are baked in here.
+#
+# This wrapper does NOT download: pass --download-original to workflow.py
+# directly to fetch sittings, e.g.
+#   ./workflow.py --period=27 <data_dir> --download-original --sitting 144
+#   ./workflow.py --period=27 <data_dir> --download-original   # discover the whole period
+# Once raw files exist under original/, this wrapper merges → links → aligns → NERs them.
+
+OUTPUT=${1?Missing output directory parameter (data base directory)}
+
+CALLDIR="$(dirname "$(readlink "$0" 2>/dev/null || echo "$0")")"
+
+python3 "${CALLDIR}/workflow.py" --period=27 --retry-count=10 "$OUTPUT" \
+    --merge-speeches --link-entities --align-sentences --extract-entities

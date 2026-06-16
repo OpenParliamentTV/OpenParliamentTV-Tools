@@ -1,0 +1,24 @@
+name: "Österreichischer Nationalrat"
+language: deu                   # ISO 639-3 (locale stack)
+language_code: "de"            # ISO 639-1 lowercase — Stage-2 emission code (SHORTCODES.md §3)
+locale:                         # consumed by optv.shared.{align,ner}
+  spacy_model: de_core_news_md          # same model the DE Bundestag uses
+  aeneas_language: deu                  # ISO 639-3 for aeneas/espeak
+  entityfishing_language: de            # 2-letter for entityfishing
+periods: [27]                   # XXVII. Gesetzgebungsperiode (the test corpus)
+supported_stages: [download, parse, merge, nel, align, ner]
+entity_dump_url: ""             # local metadata/entities.json (built from Wikidata SPARQL); set if/when hosted
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# Rights metadata emitted into Stage 2 (resolved by optv.parliaments.get_rights).
+# Both media (creator/license) and proceedings (textContents creator/license)
+# come from here, never from the source document or a code constant.
+media:
+  default:
+    creator: "Parlamentsdirektion / Parlament Österreich"
+    license: "https://www.parlament.gv.at/en/services/help/terms-of-use"   # © Parlament, non-commercial use with attribution
+proceedings:
+  default:
+    creator: "Parlamentsdirektion / Parlament Österreich"
+    license: "CC-BY-4.0"   # Open Data: https://www.parlament.gv.at/recherchieren/open-data/daten-und-lizenz/index.html
