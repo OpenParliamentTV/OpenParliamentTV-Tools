@@ -46,6 +46,11 @@ optv/
 │       ├── update           # shell wrapper with parliament-specific defaults
 │       └── Makefile         # download + merge targets driven by file mtimes
 └── shared/                  # cross-parliament infrastructure
+    ├── schema/              # Stage 2 JSON schemas + reference doc
+    ├── docs/EXAMPLES/       # example Stage 2 documents
+    ├── validators/          # structural + semantic validators, CLI
+    ├── pdf2tei/             # PDF proceedings → ParlaMint TEI → text (joined onto the spine by media-spine parliaments)
+    ├── lang/                # language-specific text helpers, keyed by ISO 639-1 (de, …)
     ├── workflow.py          # run_main + stage orchestrator + WorkflowHooks + shared argparser
     ├── config.py            # BaseConfig (on-disk layout, status/mtime helpers)
     ├── publish.py           # non-destructive publish helpers (demotion guard, carry-forward)
@@ -53,17 +58,12 @@ optv/
     ├── speech_id.py         # speech-id model normalizer (originID/originMediaID/originTextID)
     ├── merge_format.py      # generic merge formatting helpers (slug, offsets, name split)
     ├── sequence_align.py    # generic Needleman-Wunsch (shared by the PT/ES/DE-family mergers)
-    ├── lang/                # language-specific text helpers, keyed by ISO 639-1 (de, …)
     ├── align.py             # forced sentence alignment (aeneas)
     ├── audio_prep.py        # per-speech audio staging for align: download-once/slice driver + align-hook factory
-    ├── pdf2tei/             # PDF proceedings → ParlaMint TEI → text (joined onto the spine by media-spine parliaments)
     ├── nel.py               # named-entity linking (Wikidata)
     ├── ner.py               # named-entity recognition (spaCy + entity-fishing)
     ├── agenda_types.py      # cross-parliament agenda-type vocabulary + classifier registry
     ├── entity_dump_bootstrap.py  # temporary pre-platform Wikidata entity-dump builder
-    ├── schema/              # Stage 2 JSON schemas + reference doc
-    ├── validators/          # structural + semantic validators, CLI
-    ├── docs/EXAMPLES/       # example Stage 2 documents
     ├── whisper_diff.py      # QC: faster-whisper transcription vs proceedings text (opt-in, not in the pipeline)
     ├── whisper_qc.py        # QC: faster-whisper + Resemblyzer worker library (used by whisper_diff)
     └── merge_audit.py       # QC: read-only sweep flagging text-accumulation anomalies in merger output
