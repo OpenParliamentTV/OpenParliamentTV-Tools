@@ -250,6 +250,14 @@ def _run_align_stage(config, args, hooks: WorkflowHooks, in_scope, publish) -> N
         if not in_scope(args, session):
             continue
         status = config.status(session)
+        if SessionStatus.no_text in status and not args.force:
+            # Media-only session (no merged proceedings transcript): align has
+            # no sentences to feed aeneas, so it would only rewrite an empty
+            # aligned cache and re-publish. Skip the no-op. A no_text session
+            # also never gains the `aligned` flag, so this is the only thing
+            # that stops a cache-mtime bump from re-triggering the pass.
+            logger.debug(f"Session {session} has no merged proceedings text - skipping alignment")
+            continue
         if SessionStatus.aligned in status and not args.force:
             logger.debug(f"Session {session} already aligned - not redoing")
             continue
@@ -272,6 +280,11 @@ def _run_ner_stage(config, args, in_scope, publish) -> None:
         if not in_scope(args, session):
             continue
         status = config.status(session)
+        if SessionStatus.no_text in status and not args.force:
+            # No merged proceedings transcript to run NER over (media-only
+            # session) — same rationale as the align stage above.
+            logger.debug(f"Session {session} has no merged proceedings text - skipping NER")
+            continue
         if SessionStatus.ner in status and not args.force:
             logger.debug(f"Session {session} already NERed - not redoing")
             continue
