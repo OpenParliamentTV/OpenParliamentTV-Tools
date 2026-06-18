@@ -145,8 +145,16 @@ class BaseConfig:
                 if s.get('debug', {}).get('proceedingIndex') is None:
                     status.add(SessionStatus.no_text)
                     return status
-                if s.get('debug', {}).get('alignDuration'):
+                # Accept the legacy kebab keys too, mirroring data_has_timing /
+                # data_has_ner in publish.py. Legacy-pipeline sessions carry
+                # align-duration / ner-duration; checking only the camelCase
+                # spelling here left them without the aligned/ner flag, so the
+                # align and ner stages re-ran them from scratch on every job even
+                # though the merge demotion guard (which does accept both keys)
+                # already recognized them as enriched.
+                debug = s.get('debug') or {}
+                if debug.get('alignDuration') or debug.get('align-duration'):
                     status.add(SessionStatus.aligned)
-                if s.get('debug', {}).get('nerDuration'):
+                if debug.get('nerDuration') or debug.get('ner-duration'):
                     status.add(SessionStatus.ner)
         return status
