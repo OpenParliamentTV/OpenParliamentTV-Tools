@@ -575,7 +575,17 @@ def parse_proceedings_directory(directory: Path, args):
     so it re-parses and re-crashes forever. parse_parlamint_directory owns
     ``*-data.xml``; keep this one to ``*-proceedings.xml``.
     """
-    for source in sorted(directory.glob('*-proceedings.xml')):
+    # When the run is period-scoped (--limit-to-period), only sweep that
+    # period's protocols. The proceedings directory is shared across all
+    # electoral periods, so an unscoped glob otherwise re-stats every old
+    # period on every job and re-attempts the handful of permanently
+    # mislabeled files (no JSON ever gets written, so they never cache-hit)
+    # — pure noise for a period-21 run. getattr keeps the standalone CLI
+    # (no --period/--limit-to-period) sweeping everything.
+    pattern = '*-proceedings.xml'
+    if getattr(args, 'limit_to_period', False) and getattr(args, 'period', None) is not None:
+        pattern = f'{args.period}*-proceedings.xml'
+    for source in sorted(directory.glob(pattern)):
         output_file = get_parsed_proceedings_filename(source, directory)
         # If the output file does not exist, or is older than source file:
         if not output_file.exists() or output_file.stat().st_mtime < source.stat().st_mtime:
