@@ -388,6 +388,12 @@ def parse_transcript(filename: str, sourceUri: str = None, args=None):
 
     period = metadata.findtext('.//wahlperiode')
     session = metadata.findtext('.//sitzungsnr')
+    # Revised protocols carry a "(neu)" suffix in <sitzungsnr> (e.g. "48 (neu)").
+    # Keep only the leading digits, otherwise session_id becomes "2148 (neu)"
+    # instead of "21048" — corrupting every speech id and tripping the
+    # session-id guard in parse_proceedings (which drops the whole session).
+    m = re.search(r'\d+', session or '')
+    session = m.group() if m else session
 
     # Generate a session id that will be prefixed to rede ids to generate speech_id
     session_id = f"{period}{session.zfill(3)}"
