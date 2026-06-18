@@ -86,14 +86,30 @@ def data_has_ner(data: list) -> bool:
                or (s.get('debug') or {}).get('ner-duration') for s in data)
 
 
+def data_has_text(data: list) -> bool:
+    """True if any speech carries merged proceedings transcript text.
+
+    The transcript (``textContents``) is the most valuable, hardest-to-recover
+    payload — far more so than the timing/NER enrichment derived from it. A
+    media-only re-merge (proceedings temporarily unavailable / unparseable that
+    run) produces speeches with no ``textContents``; without this guard it would
+    silently overwrite a fully-transcribed published session with a bare stub.
+    This is exactly how 21074 lost its 185-speech transcript in 2026-05 before
+    any demotion guard existed.
+    """
+    return any(s.get('textContents') for s in data)
+
+
 def is_demotion(new_data: list, published_data: list) -> bool:
-    """True if publishing new_data over published_data would drop alignment
-    or NER enrichment the published file already has.
+    """True if publishing new_data over published_data would drop transcript
+    text, alignment, or NER enrichment the published file already has.
 
     Keeps processed/ monotonic: a bare merged file (or any less-processed file
     produced from a stale cache) must never overwrite a richer published
     session.
     """
+    if data_has_text(published_data) and not data_has_text(new_data):
+        return True
     if data_has_timing(published_data) and not data_has_timing(new_data):
         return True
     if data_has_ner(published_data) and not data_has_ner(new_data):

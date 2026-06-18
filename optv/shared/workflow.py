@@ -95,7 +95,7 @@ def _publish_as_processed(config, args, session: str, filepath: Path) -> Path:
 
     if is_demotion(new_doc['data'], published_data['data']):
         logger.warning(f"Not publishing {session} from {filepath.name}: "
-                       f"would drop alignment/NER already in processed/")
+                       f"would drop transcript/alignment/NER already in processed/")
         return processed_file
 
     carried = carry_forward_wids(new_doc['data'], published_data['data'])
