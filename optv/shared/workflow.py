@@ -115,38 +115,49 @@ def _publish_as_processed(config, args, session: str, filepath: Path) -> Path:
     return processed_file
 
 
-def _nel_source(config, session: str) -> Path:
-    """Richest existing file to run NEL on, so re-linking never demotes.
+def _enrichment_source(config, session: str) -> Path:
+    """Richest file to re-run an in-place enrichment (NEL / NER) over.
 
-    NEL only mutates ``people[]``, so linking an aligned/NER'd file preserves
-    all timing and entity data. Fallback order: ner → aligned → processed →
-    merged.
+    ``processed/`` is the published high-water mark: the demotion guard in
+    publish.py keeps it at least as rich as any local stage cache, and it is
+    the only state that travels between machines via git. So prefer it, and
+    fall back to the freshest cache (ner → aligned → merged) only before the
+    first publish exists.
+
+    Sourcing from the cache instead let a stale media-only ``aligned`` stub
+    (produced when proceedings were briefly unavailable) shadow a fully
+    transcribed published session: NER then ran over text-less input and the
+    publish guard correctly refused the demoted result, so the stage silently
+    no-op'd on every run while ``processed/`` already held the real transcript.
     """
-    for stage in ('ner', 'aligned'):
-        stage_file = config.file(session, stage)
-        if stage_file.exists():
-            return stage_file
     processed_file = config.file(session, 'processed')
     if processed_file.exists():
         return processed_file
+    for stage in ('ner', 'aligned', 'merged'):
+        stage_file = config.file(session, stage)
+        if stage_file.exists():
+            return stage_file
     return config.file(session, 'merged')
 
 
-def _nel_is_current(source_file: Path) -> bool:
-    """True if NEL has already processed the current state of ``source_file``.
+def _enrichment_is_current(source_file: Path, stage: str,
+                           upstream: tuple = ('merge', 'align')) -> bool:
+    """True if ``stage`` (``nel`` / ``ner``) has already processed the current
+    state of ``source_file``.
 
-    Compares the file's own ``meta.processing.nel`` against its ``merge`` and
-    ``align`` timestamps -- NEL re-runs whenever an upstream stage has
-    advanced past its last pass. This catches new speeches added by a
-    re-merge during a live broadcast (the old SessionStatus.linked gate
-    treated the whole session as done once any one speaker had a wid, so
-    the bulk of a partially-published session never got linked). Empty or
-    fully-unmatched sessions still settle after one pass: link_entities_from_file
-    always writes a ``nel`` timestamp on first run even when nothing was
-    linked, so the gate flips to current and the loop stops.
+    Reads the file's own ``meta.processing`` -- these timestamps travel inside
+    the published JSON, so the gate is identical on every machine, unlike a
+    comparison of local cache mtimes (the old ``is_newer(aligned, ner)`` gate,
+    which let a leftover cache file on one machine silently suppress a stage
+    that had never actually published). The stage re-runs whenever it has no
+    recorded pass yet, or an upstream stage advanced past its last pass (e.g. a
+    re-merge added speeches mid-broadcast).
 
-    An entity-registry refresh (new wid for a previously-unmatchable label)
-    is not auto-detected; use --force to re-propagate.
+    Empty or fully-unmatched sessions still settle after one pass: the
+    enrichment writers always stamp their timestamp on first run even when
+    nothing changed, so the gate flips to current and the loop stops. An
+    entity-registry refresh (new wid for a previously-unmatchable label) is
+    not auto-detected; use --force to re-propagate.
     """
     try:
         with open(source_file) as f:
@@ -154,14 +165,19 @@ def _nel_is_current(source_file: Path) -> bool:
     except (OSError, json.JSONDecodeError):
         return False
     proc = doc.get('meta', {}).get('processing', {})
-    nel_ts = proc.get('nel')
-    if not nel_ts:
+    stage_ts = proc.get(stage)
+    if not stage_ts:
         return False
-    upstream = max(
-        (proc[k] for k in ('merge', 'align') if k in proc),
+    upstream_ts = max(
+        (proc[k] for k in upstream if k in proc),
         default=None,
     )
-    return upstream is None or nel_ts >= upstream
+    return upstream_ts is None or stage_ts >= upstream_ts
+
+
+def _nel_is_current(source_file: Path) -> bool:
+    """Back-compat wrapper -- see ``_enrichment_is_current``."""
+    return _enrichment_is_current(source_file, 'nel')
 
 
 def _default_session_in_scope(args, session: str) -> bool:
@@ -234,10 +250,10 @@ def _run_nel_stage(config, args, in_scope, publish) -> None:
     for session in config.sessions():
         if not in_scope(args, session):
             continue
-        source_file = _nel_source(config, session)
+        source_file = _enrichment_source(config, session)
         if not source_file.exists():
             continue
-        if not args.force and _nel_is_current(source_file):
+        if not args.force and _enrichment_is_current(source_file, 'nel'):
             continue
         logger.warning(f"Linking entities for {session} from {source_file.name}")
         link_entities_from_file(source_file, source_file, persons, factions)
@@ -275,7 +291,7 @@ def _run_align_stage(config, args, hooks: WorkflowHooks, in_scope, publish) -> N
 
 
 def _run_ner_stage(config, args, in_scope, publish) -> None:
-    logger.info("Updating NER for aligned files")
+    logger.info("Updating NER for published sessions")
     for session in config.sessions():
         if not in_scope(args, session):
             continue
@@ -285,17 +301,16 @@ def _run_ner_stage(config, args, in_scope, publish) -> None:
             # session) — same rationale as the align stage above.
             logger.debug(f"Session {session} has no merged proceedings text - skipping NER")
             continue
-        if SessionStatus.ner in status and not args.force:
-            logger.debug(f"Session {session} already NERed - not redoing")
-            continue
-        if not (config.is_newer(session, "aligned", "ner") or args.force):
-            continue
-        logger.warning(f"Extracting Named Entities for {session}")
-        source_file = config.file(session, 'aligned')
+        source_file = _enrichment_source(config, session)
         if not source_file.exists():
-            # No aligned cache locally — use the published file as the
-            # NER source instead (it is at least as rich as merged).
-            source_file = config.file(session, 'processed')
+            continue
+        # Gate on the file's own meta.processing.ner (travels via git), not on
+        # SessionStatus / cache mtimes — those keyed off whichever stale local
+        # cache happened to exist and silently skipped sessions whose published
+        # file had no NER. See _enrichment_is_current / _enrichment_source.
+        if not args.force and _enrichment_is_current(source_file, 'ner'):
+            continue
+        logger.warning(f"Extracting Named Entities for {session} from {source_file.name}")
         ner_file = config.file(session, 'ner', create=True)
         extract_entities_from_file(source_file, ner_file, args)
         publish(session, ner_file)
