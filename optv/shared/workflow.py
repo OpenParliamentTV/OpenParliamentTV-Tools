@@ -175,9 +175,65 @@ def _enrichment_is_current(source_file: Path, stage: str,
     return upstream_ts is None or stage_ts >= upstream_ts
 
 
+# NEL only mutates people[] (wids/factions), which only a *merge* can change --
+# align (sentence timing) and ner never touch it. So merge is NEL's only
+# upstream. Counting align here (as the default ('merge', 'align') does) re-ran
+# NEL on every cron for any aligned session: the workflow always runs nel before
+# align, so the align timestamp is permanently newer than the nel timestamp, and
+# the gate never settled. It was write-guarded (no commit), but it redid the
+# linking work and logged a spurious "Linking entities for ..." every run.
+_NEL_UPSTREAM = ('merge',)
+
+
 def _nel_is_current(source_file: Path) -> bool:
     """Back-compat wrapper -- see ``_enrichment_is_current``."""
-    return _enrichment_is_current(source_file, 'nel')
+    return _enrichment_is_current(source_file, 'nel', upstream=_NEL_UPSTREAM)
+
+
+def _processing_ts(path: Path, key: str):
+    """Return ``meta.processing[key]`` from a JSON file, or None if the file is
+    absent/unreadable or the key isn't set."""
+    try:
+        with open(path) as f:
+            return json.load(f).get('meta', {}).get('processing', {}).get(key)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _align_is_current(config, session: str, status: set) -> bool:
+    """True if ``session``'s alignment already covers the current merged content.
+
+    Replaces the old ``is_newer(merged, aligned)`` cache-*mtime* gate with a
+    comparison of the in-file ``meta.processing`` *timestamps*, which describe
+    the content rather than when a file happened to be touched. The mtime gate
+    re-aligned on every cron whenever the merged cache had a newer mtime than the
+    aligned cache -- which was true unconditionally when the aligned cache was
+    absent (it lives under gitignored ``cache/``, so a checkout that pulled only
+    ``processed/`` never has it: ``is_newer`` treats a missing ``than`` file as
+    "newer") and again on every no-op re-merge (``merge`` rewrites the merged
+    cache with a fresh mtime regardless of content). Both forced a full,
+    expensive re-align each run even though nothing had changed.
+
+    Alignment high-water mark: prefer ``processed/`` (git-tracked, so a session
+    aligned+published elsewhere counts even without a local aligned cache), then
+    the local aligned cache. Newest merge: the merged cache (the actual align
+    input -- the DE hook aligns ``cache/merged`` -- whose ``merge`` stamp only
+    advances when the sources changed) and ``processed/``. Re-align only when a
+    merge is strictly newer than the recorded alignment, so a steady-state cron
+    is a no-op. Legacy/debug-only alignment with no ``align`` stamp falls back to
+    the ``aligned`` flag so it isn't re-run from scratch. Use ``--force``.
+    """
+    align_ts = (_processing_ts(config.file(session, 'processed'), 'align')
+                or _processing_ts(config.file(session, 'aligned'), 'align'))
+    if align_ts is None:
+        return SessionStatus.aligned in status
+    merge_ts = max(
+        (t for t in (_processing_ts(config.file(session, 'merged'), 'merge'),
+                     _processing_ts(config.file(session, 'processed'), 'merge'))
+         if t is not None),
+        default=None,
+    )
+    return merge_ts is None or align_ts >= merge_ts
 
 
 def _default_session_in_scope(args, session: str) -> bool:
@@ -253,7 +309,7 @@ def _run_nel_stage(config, args, in_scope, publish) -> None:
         source_file = _enrichment_source(config, session)
         if not source_file.exists():
             continue
-        if not args.force and _enrichment_is_current(source_file, 'nel'):
+        if not args.force and _enrichment_is_current(source_file, 'nel', upstream=_NEL_UPSTREAM):
             continue
         logger.warning(f"Linking entities for {session} from {source_file.name}")
         link_entities_from_file(source_file, source_file, persons, factions)
@@ -274,10 +330,8 @@ def _run_align_stage(config, args, hooks: WorkflowHooks, in_scope, publish) -> N
             # that stops a cache-mtime bump from re-triggering the pass.
             logger.debug(f"Session {session} has no merged proceedings text - skipping alignment")
             continue
-        if SessionStatus.aligned in status and not args.force:
+        if not args.force and _align_is_current(config, session, status):
             logger.debug(f"Session {session} already aligned - not redoing")
-            continue
-        if not (config.is_newer(session, "merged", "aligned") or args.force):
             continue
         logger.warning(f"Time-aligning {session}")
         try:
