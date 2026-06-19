@@ -190,52 +190,6 @@ def _nel_is_current(source_file: Path) -> bool:
     return _enrichment_is_current(source_file, 'nel', upstream=_NEL_UPSTREAM)
 
 
-def _processing_ts(path: Path, key: str):
-    """Return ``meta.processing[key]`` from a JSON file, or None if the file is
-    absent/unreadable or the key isn't set."""
-    try:
-        with open(path) as f:
-            return json.load(f).get('meta', {}).get('processing', {}).get(key)
-    except (OSError, json.JSONDecodeError):
-        return None
-
-
-def _align_is_current(config, session: str, status: set) -> bool:
-    """True if ``session``'s alignment already covers the current merged content.
-
-    Replaces the old ``is_newer(merged, aligned)`` cache-*mtime* gate with a
-    comparison of the in-file ``meta.processing`` *timestamps*, which describe
-    the content rather than when a file happened to be touched. The mtime gate
-    re-aligned on every cron whenever the merged cache had a newer mtime than the
-    aligned cache -- which was true unconditionally when the aligned cache was
-    absent (it lives under gitignored ``cache/``, so a checkout that pulled only
-    ``processed/`` never has it: ``is_newer`` treats a missing ``than`` file as
-    "newer") and again on every no-op re-merge (``merge`` rewrites the merged
-    cache with a fresh mtime regardless of content). Both forced a full,
-    expensive re-align each run even though nothing had changed.
-
-    Alignment high-water mark: prefer ``processed/`` (git-tracked, so a session
-    aligned+published elsewhere counts even without a local aligned cache), then
-    the local aligned cache. Newest merge: the merged cache (the actual align
-    input -- the DE hook aligns ``cache/merged`` -- whose ``merge`` stamp only
-    advances when the sources changed) and ``processed/``. Re-align only when a
-    merge is strictly newer than the recorded alignment, so a steady-state cron
-    is a no-op. Legacy/debug-only alignment with no ``align`` stamp falls back to
-    the ``aligned`` flag so it isn't re-run from scratch. Use ``--force``.
-    """
-    align_ts = (_processing_ts(config.file(session, 'processed'), 'align')
-                or _processing_ts(config.file(session, 'aligned'), 'align'))
-    if align_ts is None:
-        return SessionStatus.aligned in status
-    merge_ts = max(
-        (t for t in (_processing_ts(config.file(session, 'merged'), 'merge'),
-                     _processing_ts(config.file(session, 'processed'), 'merge'))
-         if t is not None),
-        default=None,
-    )
-    return merge_ts is None or align_ts >= merge_ts
-
-
 def _default_session_in_scope(args, session: str) -> bool:
     if args.limit_to_period and not session.startswith(str(args.period)):
         return False
@@ -330,8 +284,10 @@ def _run_align_stage(config, args, hooks: WorkflowHooks, in_scope, publish) -> N
             # that stops a cache-mtime bump from re-triggering the pass.
             logger.debug(f"Session {session} has no merged proceedings text - skipping alignment")
             continue
-        if not args.force and _align_is_current(config, session, status):
+        if SessionStatus.aligned in status and not args.force:
             logger.debug(f"Session {session} already aligned - not redoing")
+            continue
+        if not (config.is_newer(session, "merged", "aligned") or args.force):
             continue
         logger.warning(f"Time-aligning {session}")
         try:

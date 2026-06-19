@@ -11,9 +11,7 @@ local cache mtimes.
 
 import json
 
-from optv.shared.session_status import SessionStatus
 from optv.shared.workflow import (
-    _align_is_current,
     _enrichment_is_current,
     _enrichment_source,
     _nel_is_current,
@@ -104,69 +102,3 @@ def test_nel_reruns_when_remerge_advances_past_pass(tmp_path):
         "align": "2025-12-01T09:15:34",
     })
     assert _nel_is_current(src) is False
-
-
-# ---- align gate (_align_is_current) ----------------------------------------
-#
-# These lock in the fix for the "re-aligns every cron" bug: the old
-# is_newer(merged, aligned) cache-mtime gate re-ran the (expensive) alignment
-# whenever the aligned cache was absent (it lives under gitignored cache/, so a
-# checkout that pulled only processed/ never has it) or whenever a no-op
-# re-merge bumped the merged cache's mtime. The gate now compares in-file
-# meta.processing timestamps instead.
-
-
-def test_align_skipped_when_processed_align_newer_than_merge(tmp_path):
-    """Steady state: published file is aligned past its merge -> no work."""
-    cfg = _FakeConfig(tmp_path)
-    _touch(cfg.file("21045", "processed"),
-           {"merge": "2026-06-19T09:25:23", "align": "2026-06-19T09:40:00"})
-    assert _align_is_current(cfg, "21045", {SessionStatus.aligned}) is True
-
-
-def test_align_skipped_when_aligned_cache_absent_but_processed_fresh(tmp_path):
-    """The gitignored-cache case: only processed/ was pulled. The old mtime
-    gate saw no aligned cache and re-aligned every run; now it's a no-op."""
-    cfg = _FakeConfig(tmp_path)
-    _touch(cfg.file("21045", "merged"), {"merge": "2026-06-19T09:25:23"})
-    _touch(cfg.file("21045", "processed"),
-           {"merge": "2026-06-19T09:25:23", "align": "2026-06-19T09:40:00"})
-    # no aligned cache on disk
-    assert _align_is_current(cfg, "21045", {SessionStatus.aligned}) is True
-
-
-def test_align_reruns_when_merged_cache_advances_past_alignment(tmp_path):
-    """A genuine re-merge (new merged cache) the demotion guard kept out of
-    processed/ must still re-align."""
-    cfg = _FakeConfig(tmp_path)
-    _touch(cfg.file("21045", "merged"), {"merge": "2026-06-19T10:00:00"})
-    _touch(cfg.file("21045", "processed"),
-           {"merge": "2026-06-19T09:25:23", "align": "2026-06-19T09:40:00"})
-    assert _align_is_current(cfg, "21045", {SessionStatus.aligned}) is False
-
-
-def test_align_reruns_when_never_aligned(tmp_path):
-    """Merged but no alignment anywhere -> align once (then it settles)."""
-    cfg = _FakeConfig(tmp_path)
-    _touch(cfg.file("21045", "merged"), {"merge": "2026-06-19T09:25:23"})
-    _touch(cfg.file("21045", "processed"), {"merge": "2026-06-19T09:25:23"})
-    assert _align_is_current(cfg, "21045", set()) is False
-
-
-def test_align_uses_aligned_cache_stamp_when_processed_has_none(tmp_path):
-    """Aligned locally but not yet published: the aligned cache carries the
-    align stamp."""
-    cfg = _FakeConfig(tmp_path)
-    _touch(cfg.file("21045", "merged"), {"merge": "2026-06-19T09:25:23"})
-    _touch(cfg.file("21045", "aligned"),
-           {"merge": "2026-06-19T09:25:23", "align": "2026-06-19T09:40:00"})
-    assert _align_is_current(cfg, "21045", {SessionStatus.aligned}) is True
-
-
-def test_align_legacy_alignment_without_stamp_not_redone(tmp_path):
-    """Legacy/debug-only alignment (aligned flag set, no meta.processing.align
-    anywhere) must not be re-aligned from scratch."""
-    cfg = _FakeConfig(tmp_path)
-    _touch(cfg.file("21045", "merged"), {"merge": "2026-06-19T09:25:23"})
-    _touch(cfg.file("21045", "processed"), {"merge": "2026-06-19T09:25:23"})
-    assert _align_is_current(cfg, "21045", {SessionStatus.aligned}) is True
