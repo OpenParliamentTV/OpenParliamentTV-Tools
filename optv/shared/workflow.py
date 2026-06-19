@@ -7,6 +7,7 @@ parsers, merge call shape, align call shape). Each parliament's
 """
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -198,20 +199,127 @@ def _default_session_in_scope(args, session: str) -> bool:
     return True
 
 
-# ---- stage runners ----
+# ---- machine-local per-period stage state (watermarks + NEL dump marker) ----
+#
+# Optimization only: lets a stage skip its (JSON-parsing) worklist scan when no
+# in-scope input file has changed since the last all-clear pass, so a run that
+# processes nothing collapses each stage to one line instead of a multi-second
+# scan. The state file lives under cache/ (gitignored, machine-local) so it
+# never travels between machines; git pull stamps any updated file with the
+# local current mtime, so a change another machine pushed always reads as
+# "newer than the watermark" here and forces a scan. The authoritative
+# per-session gates (is_newer / meta.processing stamps) still decide real work
+# whenever a scan runs -- the watermark only decides *whether* to scan.
+#
+# Keyed by scope (the period when --limit-to-period is set, else "all") so a
+# period-21 run can never mark period-20 as up to date.
 
-def _run_merge_stage(config, args, hooks: WorkflowHooks, in_scope, publish) -> None:
-    logger.info(
-        f"Merging data from {config.dir('media')} and {config.dir('proceedings')} "
-        f"into {config.dir('merged')}"
-    )
+def _state_path(config) -> Path:
+    return config.dir('cache', create=True) / '.stage-state.json'
+
+
+def _load_state(config) -> dict:
+    try:
+        with open(_state_path(config)) as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_state(config, state: dict) -> None:
+    try:
+        with open(_state_path(config), 'w') as f:
+            json.dump(state, f, indent=2, sort_keys=True)
+    except OSError as e:
+        logger.debug(f"Could not persist stage state: {type(e).__name__}: {e}")
+
+
+def _scope_key(args) -> str:
+    return str(args.period) if getattr(args, 'limit_to_period', False) else 'all'
+
+
+def _get_state(state: dict, scope_key: str, key: str):
+    return state.get(scope_key, {}).get(key)
+
+
+def _set_state(state: dict, scope_key: str, key: str, value) -> None:
+    state.setdefault(scope_key, {})[key] = value
+
+
+def _max_inscope_mtime(config, args, in_scope, stages) -> float:
+    """Newest mtime among the in-scope ``stages`` files (stat only, no parse)."""
+    newest = 0.0
     for session in config.sessions():
         if not in_scope(args, session):
             continue
-        if not (config.is_newer(session, 'media', 'merged')
-                or config.is_newer(session, 'proceedings', 'merged')
-                or args.force):
-            continue
+        for stage in stages:
+            try:
+                m = config.file(session, stage).stat().st_mtime
+            except OSError:
+                continue
+            if m > newest:
+                newest = m
+    return newest
+
+
+def _watermark_skips(config, args, in_scope, state, scope_key, stage, inputs):
+    """(skip, current_mtime) for ``stage``: skip the scan iff no in-scope input
+    file is newer than the recorded all-clear watermark. ``--force`` never
+    skips. Returns the freshly-computed mtime so the caller can record it after
+    an all-clear scan."""
+    current = _max_inscope_mtime(config, args, in_scope, inputs)
+    if getattr(args, 'force', False):
+        return False, current
+    recorded = _get_state(state, scope_key, stage)
+    return (recorded is not None and current <= recorded), current
+
+
+def _entities_canonical_sha(config):
+    """sha256 over a serialization-independent projection of entities.json, or
+    None if absent/unreadable. Stable across writers and JSON serialization, so
+    it changes only when the entity *content* changes -- the Part B re-link
+    trigger, identical whether entities.json arrived via a platform fetch or a
+    committed-and-pulled edit."""
+    path = config.dir('nel_data') / 'entities.json'
+    try:
+        with open(path) as f:
+            doc = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    proj = [
+        [e.get('id'), e.get('label'),
+         sorted(e.get('labelAlternative') or []), e.get('subType')]
+        for e in doc.get('data', [])
+    ]
+    proj.sort(key=lambda x: json.dumps(x, ensure_ascii=False, sort_keys=True))
+    blob = json.dumps(proj, ensure_ascii=False).encode('utf-8')
+    return hashlib.sha256(blob).hexdigest()
+
+
+# ---- stage runners ----
+
+def _run_merge_stage(config, args, hooks: WorkflowHooks, in_scope, publish,
+                     state, scope_key) -> None:
+    skip, current_mtime = _watermark_skips(
+        config, args, in_scope, state, scope_key, 'merge', ['media', 'proceedings'])
+    if skip:
+        logger.info("Merge: all in-scope sessions up to date, nothing to merge")
+        return
+    force = bool(getattr(args, 'force', False))
+    todo = [s for s in config.sessions()
+            if in_scope(args, s)
+            and (force
+                 or config.is_newer(s, 'media', 'merged')
+                 or config.is_newer(s, 'proceedings', 'merged'))]
+    if not todo:
+        logger.info("Merge: all in-scope sessions up to date, nothing to merge")
+        _set_state(state, scope_key, 'merge', current_mtime)
+        return
+    logger.info(
+        f"Merging data from {config.dir('media')} and {config.dir('proceedings')} "
+        f"into {config.dir('merged')} ({len(todo)} session(s))"
+    )
+    for session in todo:
         merged_file = hooks.merge_session_to_file(config, session, args)
         status = config.status(session)
         # Don't publish a bare merge over an aligned/NER'd published file.
@@ -231,64 +339,145 @@ def _run_update_nel_entities_stage(args, parliament_id: str) -> None:
             logger.warning(f"Cannot read manifest entity_dump_url: {type(e).__name__}: {e}")
             url = ""
     if not url:
-        logger.warning("No NEL entity URL configured (no --nel-entity-url, "
-                       "no entity_dump_url in manifest) - skipping")
+        # Supported mode, not an error: a parliament whose platform isn't set up
+        # yet has no dump URL, so the committed entities.json (arriving via git)
+        # is the source of truth. Part B's re-link trigger still fires when that
+        # file changes (it hashes the on-disk dump, source-agnostic).
+        logger.info(f"No entity-dump platform configured for {parliament_id} — "
+                    f"using committed entities.json")
         return
     metadata_dir = args.data_dir / "metadata"
     metadata_dir.mkdir(parents=True, exist_ok=True)
     target = metadata_dir / "entities.json"
-    logger.info(f"Downloading NEL entities from {url}")
+    force = bool(getattr(args, "force", False))
+    logger.info(f"Fetching NEL entity dump from {url}")
     try:
         with urllib.request.urlopen(url, timeout=120) as resp:
             data = resp.read()
-        target.write_bytes(data)
-        persons, factions = get_nel_data(metadata_dir)
-        logger.info(f"NEL entities updated: {len(data)} bytes, "
-                    f"{len(persons)} persons, {len(factions)} factions")
     except Exception as e:
-        logger.warning(f"Could not download NEL entities from {url}: "
-                       f"{type(e).__name__}: {e}")
+        logger.warning(f"Could not fetch NEL entity dump from {url}: "
+                       f"{type(e).__name__}: {e} — keeping existing entities.json")
+        return
+    # Sanity-check the fetched dump before trusting it. The platform is
+    # authoritative, so a legitimate shrink (entity removed) must propagate --
+    # we reject only a *transient glitch*: invalid JSON, empty, or an
+    # implausible collapse vs the committed dump. --force overrides every guard.
+    try:
+        new_count = len(json.loads(data).get("data", []))
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.warning(f"Fetched NEL entity dump is not valid JSON "
+                       f"({type(e).__name__}) — keeping existing entities.json")
+        return
+    if new_count == 0 and not force:
+        logger.warning("Fetched NEL entity dump is empty — keeping existing "
+                       "entities.json (use --force to override)")
+        return
+    old_count = None
+    if target.exists():
+        try:
+            old_count = len(json.loads(target.read_text()).get("data", []))
+        except (OSError, json.JSONDecodeError):
+            old_count = None
+    if old_count and not force and new_count < old_count * 0.5:
+        logger.warning(
+            f"Fetched NEL entity dump collapsed implausibly ({new_count} entities "
+            f"vs {old_count} committed) — keeping existing entities.json "
+            f"(use --force to override)")
+        return
+    if target.exists() and target.read_bytes() == data:
+        logger.info(f"NEL entity dump unchanged ({new_count} entities)")
+        return
+    target.write_bytes(data)
+    persons, factions = get_nel_data(metadata_dir)
+    logger.info(f"NEL entity dump updated: {len(data)} bytes, "
+                f"{len(persons)} persons, {len(factions)} factions")
 
 
-def _run_nel_stage(config, args, in_scope, publish) -> None:
+def _run_nel_stage(config, args, in_scope, publish, state, scope_key) -> None:
     nel_data_dir = config.dir('nel_data')
     if nel_data_dir is None or not nel_data_dir.is_dir():
         logger.error(f"Cannot do NEL - {nel_data_dir} does not exist")
         return
+    force = bool(getattr(args, 'force', False))
+    dump_sha = _entities_canonical_sha(config)
+    if dump_sha is None:
+        # get_nel_data would log "Cannot read entities" and return empty dicts;
+        # there is nothing to link against, so don't claim to link.
+        logger.info("NEL link: no entities.json available, nothing to link")
+        return
+    # Part B: a changed entity dump re-links the whole (in-scope) corpus, even
+    # when no session's own merge stamp advanced. The marker is machine-local
+    # and per-scope (see the state helpers above).
+    dump_changed = _get_state(state, scope_key, 'nel_entities_sha') != dump_sha
+    # Part A: skip the per-session JSON scan only when nothing changed *and* the
+    # dump is the one we already linked against.
+    skip, current_mtime = _watermark_skips(
+        config, args, in_scope, state, scope_key, 'nel', ['processed'])
+    if skip and not dump_changed:
+        logger.info("NEL link: all sessions current, nothing to link")
+        return
     persons, factions = get_nel_data(nel_data_dir)
-    logger.info("Linking entities with wikidata IDs")
+    todo = []
     for session in config.sessions():
         if not in_scope(args, session):
             continue
         source_file = _enrichment_source(config, session)
         if not source_file.exists():
             continue
-        if not args.force and _enrichment_is_current(source_file, 'nel', upstream=_NEL_UPSTREAM):
+        if (not force and not dump_changed
+                and _enrichment_is_current(source_file, 'nel', upstream=_NEL_UPSTREAM)):
             continue
+        todo.append((session, source_file))
+    if not todo:
+        logger.info("NEL link: all sessions current, nothing to link")
+        _set_state(state, scope_key, 'nel', current_mtime)
+        _set_state(state, scope_key, 'nel_entities_sha', dump_sha)
+        return
+    logger.info(f"Linking entities with wikidata IDs ({len(todo)} session(s))")
+    for session, source_file in todo:
         logger.warning(f"Linking entities for {session} from {source_file.name}")
         link_entities_from_file(source_file, source_file, persons, factions)
         publish(session, source_file)
+    # Corpus is now linked against this dump for this scope; record so the next
+    # run doesn't re-link on the same dump (the watermark settles a run later,
+    # once the just-written files stop reading as "newer").
+    _set_state(state, scope_key, 'nel_entities_sha', dump_sha)
 
 
-def _run_align_stage(config, args, hooks: WorkflowHooks, in_scope, publish) -> None:
-    logger.info("Updating time-alignment for merged files")
+def _run_align_stage(config, args, hooks: WorkflowHooks, in_scope, publish,
+                     state, scope_key) -> None:
+    # The merged cache (align's only work source) is gitignored and only ever
+    # produced locally, so its mtime reliably tracks "new content to align".
+    skip, current_mtime = _watermark_skips(
+        config, args, in_scope, state, scope_key, 'align', ['merged'])
+    if skip:
+        logger.info("Time-alignment: all sessions current, nothing to align")
+        return
+    force = bool(getattr(args, 'force', False))
+    todo = []
     for session in config.sessions():
         if not in_scope(args, session):
             continue
-        status = config.status(session)
-        if SessionStatus.no_text in status and not args.force:
+        if not force:
+            status = config.status(session)
             # Media-only session (no merged proceedings transcript): align has
-            # no sentences to feed aeneas, so it would only rewrite an empty
-            # aligned cache and re-publish. Skip the no-op. A no_text session
-            # also never gains the `aligned` flag, so this is the only thing
-            # that stops a cache-mtime bump from re-triggering the pass.
-            logger.debug(f"Session {session} has no merged proceedings text - skipping alignment")
-            continue
-        if SessionStatus.aligned in status and not args.force:
-            logger.debug(f"Session {session} already aligned - not redoing")
-            continue
-        if not (config.is_newer(session, "merged", "aligned") or args.force):
-            continue
+            # no sentences to feed aeneas; it would only rewrite an empty
+            # aligned cache and re-publish. A no_text session also never gains
+            # the `aligned` flag, so this is the only thing that stops a
+            # cache-mtime bump from re-triggering the pass.
+            if SessionStatus.no_text in status:
+                continue
+            if SessionStatus.aligned in status:
+                continue
+            if not config.is_newer(session, "merged", "aligned"):
+                continue
+        todo.append(session)
+    if not todo:
+        logger.info("Time-alignment: all sessions current, nothing to align")
+        _set_state(state, scope_key, 'align', current_mtime)
+        return
+    logger.info(f"Updating time-alignment for merged files ({len(todo)} session(s))")
+    for session in todo:
         logger.warning(f"Time-aligning {session}")
         try:
             aligned_file = hooks.align_session_to_file(config, session, args)
@@ -300,17 +489,23 @@ def _run_align_stage(config, args, hooks: WorkflowHooks, in_scope, publish) -> N
             )
 
 
-def _run_ner_stage(config, args, in_scope, publish) -> None:
-    logger.info("Updating NER for published sessions")
+def _run_ner_stage(config, args, in_scope, publish, state, scope_key) -> None:
+    skip, current_mtime = _watermark_skips(
+        config, args, in_scope, state, scope_key, 'ner', ['processed'])
+    if skip:
+        logger.info("NER: all sessions current, nothing to extract")
+        return
+    force = bool(getattr(args, 'force', False))
+    todo = []
     for session in config.sessions():
         if not in_scope(args, session):
             continue
-        status = config.status(session)
-        if SessionStatus.no_text in status and not args.force:
-            # No merged proceedings transcript to run NER over (media-only
-            # session) — same rationale as the align stage above.
-            logger.debug(f"Session {session} has no merged proceedings text - skipping NER")
-            continue
+        if not force:
+            status = config.status(session)
+            if SessionStatus.no_text in status:
+                # No merged proceedings transcript to run NER over (media-only
+                # session) — same rationale as the align stage above.
+                continue
         source_file = _enrichment_source(config, session)
         if not source_file.exists():
             continue
@@ -318,8 +513,15 @@ def _run_ner_stage(config, args, in_scope, publish) -> None:
         # SessionStatus / cache mtimes — those keyed off whichever stale local
         # cache happened to exist and silently skipped sessions whose published
         # file had no NER. See _enrichment_is_current / _enrichment_source.
-        if not args.force and _enrichment_is_current(source_file, 'ner'):
+        if not force and _enrichment_is_current(source_file, 'ner'):
             continue
+        todo.append((session, source_file))
+    if not todo:
+        logger.info("NER: all sessions current, nothing to extract")
+        _set_state(state, scope_key, 'ner', current_mtime)
+        return
+    logger.info(f"Updating NER for published sessions ({len(todo)} session(s))")
+    for session, source_file in todo:
         logger.warning(f"Extracting Named Entities for {session} from {source_file.name}")
         ner_file = config.file(session, 'ner', create=True)
         extract_entities_from_file(source_file, ner_file, args)
@@ -333,6 +535,8 @@ def run_workflow(config, args, hooks: WorkflowHooks) -> None:
     parliament-specific work."""
     publish = lambda s, f: _publish_as_processed(config, args, s, f)
     in_scope = hooks.session_in_scope or _default_session_in_scope
+    state = _load_state(config)
+    scope_key = _scope_key(args)
 
     if args.download_original and hooks.download_originals:
         hooks.download_originals(config, args)
@@ -341,20 +545,21 @@ def run_workflow(config, args, hooks: WorkflowHooks) -> None:
         hooks.parse_originals(config, args)
 
     if args.merge_speeches:
-        _run_merge_stage(config, args, hooks, in_scope, publish)
+        _run_merge_stage(config, args, hooks, in_scope, publish, state, scope_key)
 
     if args.update_nel_entities:
         _run_update_nel_entities_stage(args, hooks.parliament_id)
 
     if args.link_entities:
-        _run_nel_stage(config, args, in_scope, publish)
+        _run_nel_stage(config, args, in_scope, publish, state, scope_key)
 
     if args.align_sentences:
-        _run_align_stage(config, args, hooks, in_scope, publish)
+        _run_align_stage(config, args, hooks, in_scope, publish, state, scope_key)
 
     if args.extract_entities:
-        _run_ner_stage(config, args, in_scope, publish)
+        _run_ner_stage(config, args, in_scope, publish, state, scope_key)
 
+    _save_state(config, state)
     logger.info("Workflow done")
 
 
