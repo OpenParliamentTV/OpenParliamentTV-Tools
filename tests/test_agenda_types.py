@@ -4,17 +4,20 @@ import pytest
 
 from optv.shared.agenda_types import (
     CORE_CLOSING,
+    CORE_CONDOLENCE,
     CORE_CURRENT_AFFAIRS,
     CORE_ELECTION,
     CORE_GOVERNMENT_DECLARATION,
     CORE_GOVERNMENT_QUESTIONING,
     CORE_OATH,
     CORE_OPENING,
+    CORE_OTHER,
     CORE_QA,
     CORE_REGULAR,
     CORE_PROCEDURAL,
     CORE_VOTING,
     annotate_agenda_item,
+    classify_at,
     classify_de_bw,
     classify_de_native,
     classify_de_rp,
@@ -170,6 +173,66 @@ def test_classify_de_bw_budget():
     native, core = classify_de_bw("TOP 2 Zweite Beratung Staatshaushaltsplan 2025")
     assert native == "DE-BW-budget"
     assert core == "budget"
+
+
+@pytest.mark.parametrize("title,expected_native,expected_core", [
+    # Voting (prefix match also catches "Abstimmungsvorgang")
+    ("Abstimmung über die Tagesordnungspunkte 1 bis 6", "AT-voting", CORE_VOTING),
+    ("Abstimmungsvorgang", "AT-voting", CORE_VOTING),
+    ("Fragestunde", "AT-question_time", CORE_QA),
+    ("Fragestunde mit Bundeskanzler Karl Nehammer", "AT-question_time", CORE_QA),
+    ("Aktuelle Stunde zur Teuerung", "AT-current_affairs", CORE_CURRENT_AFFAIRS),
+    ("Aktuelle Europastunde", "AT-current_affairs", CORE_CURRENT_AFFAIRS),
+    ("Dringliche Anfrage an den Finanzminister", "AT-urgent_question",
+     CORE_GOVERNMENT_QUESTIONING),
+    ("Dringl Anfrage der Abg. Krainer an den BK", "AT-urgent_question",
+     CORE_GOVERNMENT_QUESTIONING),
+    ("Dringlicher Antrag: Pflege", "AT-urgent_motion", CORE_REGULAR),
+    ("Mandatsverzicht und Angelobung", "AT-oath", CORE_OATH),
+    ("Trauerkundgebung anlässlich des Ablebens", "AT-condolence", CORE_CONDOLENCE),
+    ("Sitzungsunterbrechung zur Stimmenauszählung", "AT-session_break", CORE_PROCEDURAL),
+    ("Präsidium", "AT-presidency", CORE_PROCEDURAL),
+    ("Ordnungsruf", "AT-procedural", CORE_PROCEDURAL),
+    # Plural must match (prefix, no trailing word boundary)
+    ("Wortmeldungen zur Geschäftsbehandlung", "AT-procedural", CORE_PROCEDURAL),
+    ("Einwendungen gegen die Tagesordnung", "AT-procedural", CORE_PROCEDURAL),
+    # Anchored tail procedural stubs
+    ("Verlesung eines Teiles des Amtlichen Protokolls", "AT-procedural", CORE_PROCEDURAL),
+    ("Zuweisung", "AT-procedural", CORE_PROCEDURAL),
+    ("Einberufung der ordentlichen Tagung 2020/2021", "AT-session_convocation",
+     CORE_PROCEDURAL),
+    ("Schlussansprache des Präsidenten", "AT-closing_address", CORE_CLOSING),
+    # Chair statement must NOT become a government declaration
+    ("Ansprache des Präsidenten anlässlich des Angriffs Russlands",
+     "AT-presidential_statement", CORE_OTHER),
+    ("Erklärung des Präsidenten anlässlich der Vorfälle",
+     "AT-presidential_statement", CORE_OTHER),
+    # Budget keys on Budgetrede/Bundesfinanzgesetz, NOT a bare "Budget" mention
+    ("TOP 1 Budgetrede von Finanzminister Magnus Brunner", "AT-budget", None),
+    ("TOP 5 COVID-19: Mehrbelastung von 8,1 Mrd. € im Budget 2021-2024", "AT-top",
+     CORE_REGULAR),
+    # Government declaration inside a TOP (excludes "des Präsidenten")
+    ("TOP 1 Erklärung der Bundesregierung zum Anschlag", "AT-government_declaration",
+     CORE_GOVERNMENT_DECLARATION),
+    # Election gated to "Wahl eines/des …" — not a "Wahlrecht" debate
+    ("TOP 11 Wahl der Mitglieder der Kontrollkommission", "AT-election", CORE_ELECTION),
+    ("TOP 9 Wahlrechtspaket: Auszählung von Briefwahlstimmen", "AT-top", CORE_REGULAR),
+    ("Kurze Debatte über einen Fristsetzungsantrag", "AT-short_debate", CORE_REGULAR),
+    # Generic substantive TOP falls through to regular
+    ("TOP 7 Nächtliche Dauerbeleuchtung von Windrädern", "AT-top", CORE_REGULAR),
+    # Tail that legitimately stays regular
+    ("Debatte gemäß § 59 Abs. 3 GOG", None, CORE_REGULAR),
+    ("", None, CORE_REGULAR),
+    (None, None, CORE_REGULAR),
+])
+def test_classify_at(title, expected_native, expected_core):
+    native, core = classify_at(title)
+    assert native == expected_native
+    # CORE_BUDGET not imported above; assert positionally for the budget case.
+    if expected_native == "AT-budget":
+        assert core == "budget"
+    else:
+        assert core == expected_core
 
 
 def test_classify_se_falls_through():

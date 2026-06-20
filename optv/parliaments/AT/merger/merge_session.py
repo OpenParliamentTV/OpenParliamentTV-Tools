@@ -40,7 +40,9 @@ from optv.parliaments.AT.common import Config, save_if_changed
 from optv.parliaments.AT.parsers.media2json import parse_session as parse_media_session
 from optv.parliaments.AT.parsers.proceedings2json import (
     parse_session as parse_proceedings_session, clean_person_name)
+from optv.parliaments.AT.parsers.agenda_title import split_agenda_title
 from optv.parliaments.AT.scraper.fetch_session import to_roman
+from optv.shared.agenda_types import classify_at, annotate_agenda_item
 from optv.shared.meta import build_meta, fill_original_language, now_iso
 from optv.shared.merge_format import split_first_last
 from optv.shared.speech_id import normalize_speech_originid
@@ -49,8 +51,14 @@ logger = logging.getLogger(__name__ if __name__ != "__main__" else os.path.basen
 
 
 def _agenda_item(title: str) -> dict:
-    title = (title or "").strip()
-    return {"officialTitle": title, "title": title}
+    raw = (title or "").strip()
+    official, display = split_agenda_title(raw)
+    item = {"officialTitle": official, "title": display}
+    # Classify on the raw Mediathek title (pre-split) so signals like
+    # "TOP 1 Budgetrede …" or "Erklärung der Bundesregierung" still match.
+    native, core = classify_at(raw)
+    annotate_agenda_item(item, native, core)
+    return item
 
 
 def _order_people(people: list[dict], pad_intern: str, speaker_name: str) -> list[dict]:

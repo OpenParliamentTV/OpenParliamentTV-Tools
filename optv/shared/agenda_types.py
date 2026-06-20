@@ -699,6 +699,76 @@ def classify_no(saktittel: Optional[str]) -> tuple[Optional[str], str]:
 
 
 # ---------------------------------------------------------------------------
+# AT — Nationalrat (Mediathek ``debatte.content`` titles)
+# ---------------------------------------------------------------------------
+
+# Matched case-insensitively against the raw Mediathek agenda title (e.g.
+# "TOP 7 Nächtliche Dauerbeleuchtung von Windrädern", "Abstimmung über die
+# Tagesordnungspunkte 1 bis 5", "Dringliche Anfrage an den Innenminister").
+# First match wins. The bulk are "TOP N …" substantive debate items that fall
+# through to AT-top / CORE_REGULAR.
+#
+# Tuning note: patterns must NOT misfire on substantive "TOP N …" titles that
+# merely mention a keyword. Confirmed collisions on the live corpus drove the
+# narrow forms here — bare "Budget" appears in debate titles ("… im Budget
+# 2021-2024") so we key on "Budgetrede"/"Bundesfinanzgesetz"; bare "Gedenken"
+# appears substantively ("Gedenken an den Völkermord") so condolence keys on
+# "Gedenkminute"/"Trauerkundgebung"/"Schweigeminute"; "Wahl" is gated to
+# "Wahl eines/einer/des/der …"; and the government-declaration "Erklärung der/
+# des …" excludes "… des Präsidenten" (a chair statement, not a declaration).
+_AT_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"\bAbstimmung", re.I),  # also "Abstimmungsvorgang"
+     "AT-voting", CORE_VOTING),
+    (re.compile(r"\bFragestunde\b", re.I),
+     "AT-question_time", CORE_QA),
+    (re.compile(r"\bAktuelle\s+(?:Europa)?stunde\b", re.I),
+     "AT-current_affairs", CORE_CURRENT_AFFAIRS),
+    # Urgent interpellation to a minister/the government.
+    (re.compile(r"\bDringliche?\s+Anfrage\b|\bDringl\.?\s+Anfrage\b", re.I),
+     "AT-urgent_question", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"\bDringlicher\s+Antrag\b", re.I),
+     "AT-urgent_motion", CORE_REGULAR),
+    (re.compile(r"\bAngelobung\b", re.I),
+     "AT-oath", CORE_OATH),
+    (re.compile(r"\b(?:Trauerkundgebung|Gedenkminute|Gedenkstunde|Schweigeminute)\b", re.I),
+     "AT-condolence", CORE_CONDOLENCE),
+    (re.compile(r"\bSitzungsunterbrechung\b", re.I),
+     "AT-session_break", CORE_PROCEDURAL),
+    (re.compile(r"\bPräsidium\b", re.I),
+     "AT-presidency", CORE_PROCEDURAL),
+    # Prefix match (no trailing \b) so plurals are caught: "Wortmeldungen",
+    # "Einwendungen". Anchored tail (^…) covers the rare procedural stubs that
+    # would otherwise collide inside a TOP subject (e.g. "ÖH-Vertretungen").
+    (re.compile(r"\b(?:Ordnungsruf|Mandatsverzicht|Einwendung|Wortmeldung)", re.I),
+     "AT-procedural", CORE_PROCEDURAL),
+    (re.compile(r"^(?:Verlesung|Verlangen|Zuweisung|Vertretung|Anträge\s+gemäß)", re.I),
+     "AT-procedural", CORE_PROCEDURAL),
+    (re.compile(r"\bEinberufung\b|\bBeschluss\s+auf\s+Beendigung\b", re.I),
+     "AT-session_convocation", CORE_PROCEDURAL),
+    (re.compile(r"\bSchlussansprache\b", re.I),
+     "AT-closing_address", CORE_CLOSING),
+    # Chair statement/address (kept distinct from a government declaration).
+    (re.compile(r"\b(?:Ansprache|Erklärung)\s+(?:des|der)\s+Präsident", re.I),
+     "AT-presidential_statement", CORE_OTHER),
+    (re.compile(r"\bBudgetrede\b|\bBundesfinanz(?:rahmen)?gesetz\b", re.I),
+     "AT-budget", CORE_BUDGET),
+    (re.compile(r"\bErklärung(?:en)?\s+(?:der|des)\s+(?!Präsident)", re.I),
+     "AT-government_declaration", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"\bWahl\s+(?:eines|einer|des|der)\b", re.I),
+     "AT-election", CORE_ELECTION),
+    (re.compile(r"\bKurze\s+Debatte\b|\bKurzdebatte\b", re.I),
+     "AT-short_debate", CORE_REGULAR),
+    (re.compile(r"^TOP\s+\d", re.I),
+     "AT-top", CORE_REGULAR),
+]
+
+
+def classify_at(title: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify a Nationalrat agenda by its Mediathek ``debatte.content`` title."""
+    return _match_title(title, _AT_PATTERNS)
+
+
+# ---------------------------------------------------------------------------
 # FI — Eduskunta (PTK agenda-item titles / käsittely vocabulary)
 # ---------------------------------------------------------------------------
 
