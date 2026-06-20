@@ -349,6 +349,21 @@ def compute_metrics(speech: dict, whisper_entry: dict | None) -> dict:
     if sid_n > 1:
         suspect_score += (sid_n - 1) * 0.5
 
+    # Text-inflation: the proceedings text is far larger than the Whisper
+    # transcript of the same clip (the merger over-attached neighbouring turns).
+    # The DE rubric only caught this via n_speech_ids_attached, which AT never
+    # sets — so trigger on the chars ratio directly. When there is no Whisper
+    # transcript to compare against, fall back to an extreme proceedings cps.
+    # Gated on a substantial proceedings text so a high ratio on a tiny chair
+    # micro-utterance (already caught by the sim/boundary signals) doesn't read
+    # as inflation — this targets a real block of neighbouring turns.
+    inflation = (chars_p / chars_w) if chars_w > 0 else None
+    if chars_p > 800:
+        if inflation is not None and inflation >= 3.0:
+            suspect_score += min(math.log(inflation) * 3.0, 8.0)
+        elif inflation is None and cps_p > 50:
+            suspect_score += min(math.log(max(cps_p, 0.01) / 17.0) * 3.0, 8.0)
+
     agenda = speech.get("agendaItem") or {}
     return {
         "speechIndex": speech.get("speechIndex"),
@@ -368,6 +383,7 @@ def compute_metrics(speech: dict, whisper_entry: dict | None) -> dict:
         "speaker_change_count": sp_changes,
         "n_comments_in_proceedings": n_comments,
         "n_speech_ids_attached": sid_n,
+        "text_inflation_ratio": round(inflation, 1) if inflation is not None else None,
         "suspect_score": round(suspect_score, 2),
     }
 
@@ -486,7 +502,8 @@ def render_markdown(session_doc: dict, whisper_doc: dict, rows: list[dict],
         out.append("")
         out.append(f"- originMediaID: `{r['originMediaID']}`")
         out.append(f"- agenda: {r['agenda']}")
-        out.append(f"- chars: proceedings={r['chars_proceedings']}, whisper={r['chars_whisper']}")
+        out.append(f"- chars: proceedings={r['chars_proceedings']}, whisper={r['chars_whisper']} "
+                   f"(inflation ×{r['text_inflation_ratio']})")
         out.append(f"- cps: proceedings={r['cps_proceedings']}, whisper={r['cps_whisper']}")
         out.append(f"- duration (s): aligned={r['duration_audio_seconds']}, whisper={r['duration_whisper_seconds']}")
         out.append(f"- similarity: {r['text_similarity']}")
