@@ -7,7 +7,6 @@ parsers, merge call shape, align call shape). Each parliament's
 """
 
 import argparse
-import hashlib
 import json
 import logging
 import os
@@ -274,28 +273,6 @@ def _watermark_skips(config, args, in_scope, state, scope_key, stage, inputs):
     return (recorded is not None and current <= recorded), current
 
 
-def _entities_canonical_sha(config):
-    """sha256 over a serialization-independent projection of entities.json, or
-    None if absent/unreadable. Stable across writers and JSON serialization, so
-    it changes only when the entity *content* changes -- the Part B re-link
-    trigger, identical whether entities.json arrived via a platform fetch or a
-    committed-and-pulled edit."""
-    path = config.dir('nel_data') / 'entities.json'
-    try:
-        with open(path) as f:
-            doc = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return None
-    proj = [
-        [e.get('id'), e.get('label'),
-         sorted(e.get('labelAlternative') or []), e.get('subType')]
-        for e in doc.get('data', [])
-    ]
-    proj.sort(key=lambda x: json.dumps(x, ensure_ascii=False, sort_keys=True))
-    blob = json.dumps(proj, ensure_ascii=False).encode('utf-8')
-    return hashlib.sha256(blob).hexdigest()
-
-
 # ---- stage runners ----
 
 def _run_merge_stage(config, args, hooks: WorkflowHooks, in_scope, publish,
@@ -398,22 +375,15 @@ def _run_nel_stage(config, args, in_scope, publish, state, scope_key) -> None:
     if nel_data_dir is None or not nel_data_dir.is_dir():
         logger.error(f"Cannot do NEL - {nel_data_dir} does not exist")
         return
-    force = bool(getattr(args, 'force', False))
-    dump_sha = _entities_canonical_sha(config)
-    if dump_sha is None:
-        # get_nel_data would log "Cannot read entities" and return empty dicts;
-        # there is nothing to link against, so don't claim to link.
+    if not (nel_data_dir / 'entities.json').exists():
+        # Nothing to link against (e.g. platform not set up and no committed
+        # dump) -- don't claim to link.
         logger.info("NEL link: no entities.json available, nothing to link")
         return
-    # Part B: a changed entity dump re-links the whole (in-scope) corpus, even
-    # when no session's own merge stamp advanced. The marker is machine-local
-    # and per-scope (see the state helpers above).
-    dump_changed = _get_state(state, scope_key, 'nel_entities_sha') != dump_sha
-    # Part A: skip the per-session JSON scan only when nothing changed *and* the
-    # dump is the one we already linked against.
+    force = bool(getattr(args, 'force', False))
     skip, current_mtime = _watermark_skips(
         config, args, in_scope, state, scope_key, 'nel', ['processed'])
-    if skip and not dump_changed:
+    if skip:
         logger.info("NEL link: all sessions current, nothing to link")
         return
     persons, factions = get_nel_data(nel_data_dir)
@@ -424,24 +394,18 @@ def _run_nel_stage(config, args, in_scope, publish, state, scope_key) -> None:
         source_file = _enrichment_source(config, session)
         if not source_file.exists():
             continue
-        if (not force and not dump_changed
-                and _enrichment_is_current(source_file, 'nel', upstream=_NEL_UPSTREAM)):
+        if not force and _enrichment_is_current(source_file, 'nel', upstream=_NEL_UPSTREAM):
             continue
         todo.append((session, source_file))
     if not todo:
         logger.info("NEL link: all sessions current, nothing to link")
         _set_state(state, scope_key, 'nel', current_mtime)
-        _set_state(state, scope_key, 'nel_entities_sha', dump_sha)
         return
     logger.info(f"Linking entities with wikidata IDs ({len(todo)} session(s))")
     for session, source_file in todo:
         logger.warning(f"Linking entities for {session} from {source_file.name}")
         link_entities_from_file(source_file, source_file, persons, factions)
         publish(session, source_file)
-    # Corpus is now linked against this dump for this scope; record so the next
-    # run doesn't re-link on the same dump (the watermark settles a run later,
-    # once the just-written files stop reading as "newer").
-    _set_state(state, scope_key, 'nel_entities_sha', dump_sha)
 
 
 def _run_align_stage(config, args, hooks: WorkflowHooks, in_scope, publish,

@@ -1,10 +1,9 @@
-"""Work-aware stage logging + machine-local watermark/marker gating.
+"""Work-aware stage logging + machine-local watermark gating.
 
 Locks in the behaviour that a no-op run logs one honest line per stage (never a
 header that implies processing), that the per-period mtime watermark lets an
-unchanged tree skip the scan, that a changed entity dump re-links the in-scope
-corpus (Part B), and that the entity-dump fetch rejects a transient glitch while
-treating an absent platform as a calm supported mode.
+unchanged tree skip the scan, and that the entity-dump fetch rejects a transient
+glitch while treating an absent platform as a calm supported mode.
 """
 
 import json
@@ -67,31 +66,6 @@ def _patch_urlopen(monkeypatch, data):
                         lambda url, timeout=120: _FakeResp(data))
 
 
-# ---- canonical entity-dump version (Part B trigger) ----
-
-def test_canonical_sha_ignores_serialization_but_not_content(tmp_path):
-    cfg = _cfg(tmp_path)
-    ent = [
-        {"id": "Q1", "label": "B", "labelAlternative": ["x"], "subType": "person"},
-        {"id": "Q2", "label": "A", "labelAlternative": [], "subType": "faction"},
-    ]
-    _entities(cfg, ent)
-    sha = wf._entities_canonical_sha(cfg)
-    # Reversed order + different whitespace + extra meta: same *content*.
-    (cfg.dir('nel_data') / 'entities.json').write_text(
-        json.dumps({"data": list(reversed(ent)), "meta": {"x": 1}}, indent=4),
-        encoding='utf-8')
-    assert wf._entities_canonical_sha(cfg) == sha
-    # A real content change flips it.
-    ent[0]["label"] = "B2"
-    _entities(cfg, ent)
-    assert wf._entities_canonical_sha(cfg) != sha
-
-
-def test_canonical_sha_none_when_absent(tmp_path):
-    assert wf._entities_canonical_sha(_cfg(tmp_path)) is None
-
-
 # ---- merge stage: honest header vs no-op line ----
 
 def test_merge_logs_header_then_noop(tmp_path, caplog):
@@ -126,7 +100,7 @@ def test_merge_logs_header_then_noop(tmp_path, caplog):
     assert "merge" in state["21"]
 
 
-# ---- nel stage: work, settle, then Part B relink ----
+# ---- nel stage: work, then settle ----
 
 def test_nel_links_then_settles(tmp_path, caplog):
     cfg = _cfg(tmp_path)
@@ -140,7 +114,6 @@ def test_nel_links_then_settles(tmp_path, caplog):
         wf._run_nel_stage(cfg, args, IN_SCOPE, lambda s, f: pub.append(s), state, "21")
     assert pub == ["21001"]
     assert any("Linking entities with wikidata IDs" in r.message for r in caplog.records)
-    assert state["21"]["nel_entities_sha"] == wf._entities_canonical_sha(cfg)
 
     # link_entities_from_file stamped meta.processing.nel into the processed
     # file, so the next pass finds nothing and says so honestly.
@@ -151,24 +124,6 @@ def test_nel_links_then_settles(tmp_path, caplog):
     assert any("nothing to link" in r.message for r in caplog.records)
     assert not any("Linking entities with wikidata IDs" in r.message
                    for r in caplog.records)
-
-
-def test_nel_relinks_when_dump_changes(tmp_path, caplog):
-    cfg = _cfg(tmp_path)
-    _media(cfg, "21001")
-    _entities(cfg, [])
-    # Already linked and current (nel >= merge) AND a watermark that would
-    # otherwise skip the scan -- only a dump-version change must override both.
-    _processed(cfg, "21001",
-               {"merge": "2026-06-18T10:00:00", "nel": "2026-06-18T11:00:00"})
-    args = _args(data_dir=tmp_path)
-    state = {"21": {"nel_entities_sha": "stale-sha", "nel": 9e18}}
-    pub = []
-    with caplog.at_level(logging.INFO):
-        wf._run_nel_stage(cfg, args, IN_SCOPE, lambda s, f: pub.append(s), state, "21")
-    assert pub == ["21001"]
-    assert any("Linking entities with wikidata IDs" in r.message for r in caplog.records)
-    assert state["21"]["nel_entities_sha"] == wf._entities_canonical_sha(cfg)
 
 
 def test_nel_no_entities_file_is_honest(tmp_path, caplog):
