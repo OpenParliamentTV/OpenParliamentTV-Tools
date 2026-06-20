@@ -168,6 +168,9 @@ def parse_protocol_html(html_text: str, std_id, period: int, *, source_uri: str)
             "type": "speech",
             "speaker": current["label"] if current else None,
             "speakerstatus": current["role"] if current else None,
+            # Block-level speaker id (header PAD) — lets the merger trim the
+            # trailing handoff to the next speaker by a robust key, not by label.
+            "speakerID": current["originPersonID"] if current else None,
             "sentences": sentences,
             "text": text,
         })
