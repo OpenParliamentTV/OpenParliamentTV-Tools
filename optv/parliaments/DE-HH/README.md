@@ -31,6 +31,10 @@ verbatim `textContents` (unmatched keep `[]`) and `supported_stages` now include
   (one record per speech: name split into chair-role prefix + `Firstname
   Lastname`, faction-vs-government-role from `data-speakerFunction`, clip-relative
   offsets, real wall-clock `start`/`end`).
+- `scraper/fetch_proceedings.py` → downloads the Plenarprotokoll PDF into
+  `original/proceedings/{session_id}.pdf` via ParlDok's predictable resolver
+  (`parldok/dokument/{wp}/art/Plenarprotokoll/num/{nth}`, no document-id lookup);
+  `optv.shared.pdf2tei` then parses it for the merger's text join.
 
 The mediathek session page (`mediathek.buergerschaft-hh.de/sitzung/{WP}/{n}/`)
 is **static HTML** carrying the full spine. Each Tagesordnungspunkt is a
@@ -85,11 +89,14 @@ current term, so for an older term (WP 22) pass `--max-session N` or seed URLs.
 ## Access notes
 
 The mediathek is plain public HTML (im-en.com, the same vendor as Niedersachsen
-Plenar-TV) — no auth, no anti-bot. Everything the pipeline needs is in the
+Plenar-TV) — no auth, no anti-bot. Everything the spine needs is in the
 static page markup (no JSF ViewState like DE-BY, no result-cap AJAX like DE-SH).
-ParlDok (the Parlamentsdatenbank, `buergerschaft-hh.de/parldok/`) is the unique
-Hamburg system that cross-references proceedings and video, but it is a web
-search interface serving PDF protocols only and is **not** used here.
+The proceedings text comes from ParlDok (the Parlamentsdatenbank,
+`buergerschaft-hh.de/parldok/`) — the unique Hamburg system that cross-references
+proceedings and video. Although ParlDok presents as a web search interface, each
+Plenarprotokoll is also reachable by a predictable, document-id-free URL
+(`parldok/dokument/{wp}/art/Plenarprotokoll/num/{nth}`) that streams the PDF
+directly, so `scraper/fetch_proceedings.py` fetches it without scraping the search.
 
 ## Known limitations
 
