@@ -1,12 +1,12 @@
 """Non-destructive publish helpers from optv/shared/publish.py."""
 
 from optv.shared.publish import (
-    data_has_timing, data_has_ner, is_demotion, carry_forward_wids,
-    carry_forward_enrichments,
+    data_has_timing, data_has_ner, data_has_documents, is_demotion,
+    carry_forward_wids, carry_forward_enrichments, carry_forward_documents,
 )
 
 
-def _speech(origin, people=None, debug=None, agendaItem=None):
+def _speech(origin, people=None, debug=None, agendaItem=None, documents=None):
     s = {
         "originTextID": origin,
         "people": people or [],
@@ -14,7 +14,13 @@ def _speech(origin, people=None, debug=None, agendaItem=None):
     }
     if agendaItem is not None:
         s["agendaItem"] = agendaItem
+    if documents is not None:
+        s["documents"] = documents
     return s
+
+
+_DOC = {"type": "officialDocument", "label": "Drucksache 21/1100",
+        "sourceURI": "https://dserver.bundestag.de/btd/21/011/2101100.pdf"}
 
 
 def test_data_has_timing_and_ner_read_debug_durations():
@@ -137,3 +143,45 @@ def test_enrichments_handle_missing_parent_dict_on_either_side():
     new = [_speech("A")]  # no agendaItem at all
     assert carry_forward_enrichments(new, published) == 0
     assert "agendaItem" not in new[0]
+
+
+# documents -- linked official documents are append-only across a publish, so a
+# stale Tools checkout (pre-period-21 parser) or document-less local cache on
+# another machine can never empty a session that already has them.
+
+
+def test_data_has_documents_detects_any_nonempty_speech():
+    assert data_has_documents([_speech("A", documents=[_DOC])])
+    assert not data_has_documents([_speech("A", documents=[])])
+    assert not data_has_documents([_speech("A")])
+
+
+def test_is_demotion_blocks_dropping_documents():
+    withdocs = [_speech("A", documents=[_DOC])]
+    bare = [_speech("A", documents=[])]
+    assert is_demotion(bare, withdocs)
+    assert not is_demotion(withdocs, withdocs)
+    assert not is_demotion(withdocs, bare)   # gaining documents is fine
+
+
+def test_carry_forward_documents_fills_empty_from_published():
+    published = [_speech("A", documents=[_DOC])]
+    new = [_speech("A", documents=[])]
+    assert carry_forward_documents(new, published) == 1
+    assert new[0]["documents"] == [_DOC]
+
+
+def test_carry_forward_documents_never_overwrites_existing():
+    """Newer data with its own documents wins -- the parser may re-extract."""
+    other = {"type": "officialDocument", "label": "Drucksache 21/2"}
+    published = [_speech("A", documents=[_DOC])]
+    new = [_speech("A", documents=[other])]
+    assert carry_forward_documents(new, published) == 0
+    assert new[0]["documents"] == [other]
+
+
+def test_carry_forward_documents_matches_by_origin_text_id():
+    published = [_speech("A", documents=[_DOC])]
+    new = [_speech("B", documents=[])]
+    assert carry_forward_documents(new, published) == 0
+    assert new[0]["documents"] == []

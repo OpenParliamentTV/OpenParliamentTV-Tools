@@ -100,9 +100,22 @@ def data_has_text(data: list) -> bool:
     return any(s.get('textContents') for s in data)
 
 
+def data_has_documents(data: list) -> bool:
+    """True if any speech carries linked official documents (Drucksachen etc.).
+
+    Document references live only in the source proceedings, are extracted at
+    the parse stage and unioned onto speeches at merge — they don't depend on
+    timing/NER. A machine running a stale Tools checkout (e.g. the pre-period-21
+    parser that silently extracted none) or a document-less local cache would
+    otherwise re-publish empty ``documents`` over a session that already has
+    them; this guards that the same way data_has_timing/_ner guard enrichment.
+    """
+    return any(s.get('documents') for s in data)
+
+
 def is_demotion(new_data: list, published_data: list) -> bool:
     """True if publishing new_data over published_data would drop transcript
-    text, alignment, or NER enrichment the published file already has.
+    text, alignment, NER, or document links the published file already has.
 
     Keeps processed/ monotonic: a bare merged file (or any less-processed file
     produced from a stale cache) must never overwrite a richer published
@@ -113,6 +126,8 @@ def is_demotion(new_data: list, published_data: list) -> bool:
     if data_has_timing(published_data) and not data_has_timing(new_data):
         return True
     if data_has_ner(published_data) and not data_has_ner(new_data):
+        return True
+    if data_has_documents(published_data) and not data_has_documents(new_data):
         return True
     return False
 
@@ -213,4 +228,31 @@ def carry_forward_wids(new_data: list, published_data: list) -> int:
                 faction['wid'] = ref_faction['wid']
                 if ref_faction.get('wtype'):
                     faction['wtype'] = ref_faction['wtype']
+    return carried
+
+
+def carry_forward_documents(new_data: list, published_data: list) -> int:
+    """Fill a speech's ``documents`` from published_data wherever new_data has
+    none, matching speeches by originTextID.
+
+    Append-only, like carry_forward_wids: a publish can add or replace document
+    links, but a speech that already has documents in processed/ must not be
+    silently emptied by a worker on a stale Tools checkout / document-less local
+    cache. Newer data wins when it carries any documents of its own; only a
+    speech with an empty (or absent) list is filled. Mutates new_data; returns
+    the number of speeches filled.
+    """
+    published_by_key = {}
+    for speech in published_data:
+        key = _speech_key(speech)
+        if key is not None:
+            published_by_key[key] = speech
+    carried = 0
+    for speech in new_data:
+        if speech.get('documents'):
+            continue
+        prev = published_by_key.get(_speech_key(speech))
+        if prev and prev.get('documents'):
+            speech['documents'] = prev['documents']
+            carried += 1
     return carried

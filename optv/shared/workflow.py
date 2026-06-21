@@ -20,6 +20,7 @@ from typing import Callable, Iterator, Optional
 from optv.shared.nel import get_nel_data, link_entities_from_file
 from optv.shared.ner import extract_entities_from_file
 from optv.shared.publish import (
+    carry_forward_documents,
     carry_forward_enrichments,
     carry_forward_wids,
     data_signature,
@@ -81,10 +82,11 @@ def _publish_as_processed(config, args, session: str, filepath: Path) -> Path:
     """Publish a produced cache file into ``processed/``.
 
     Non-destructive: refuses to demote a richer published session (dropping
-    alignment/NER) and carries already-published entity links and per-speech
-    enrichments forward, so a publish can only ever add wids / agendaItem
-    types / debug.confidence values, never remove them. Strict on corrupt
-    published JSON — see optv/shared/publish.py for rationale.
+    alignment/NER/documents) and carries already-published entity links,
+    per-speech enrichments and document links forward, so a publish can only
+    ever add wids / agendaItem types / debug.confidence / documents values,
+    never remove them. Strict on corrupt published JSON — see
+    optv/shared/publish.py for rationale.
     """
     processed_file = config.file(session, 'processed', create=True)
     published_data = {'data': []}
@@ -106,6 +108,10 @@ def _publish_as_processed(config, args, session: str, filepath: Path) -> Path:
     if enriched:
         logger.warning(f"Carried {enriched} already-published enrichment field(s) "
                        f"forward while publishing {session} from {filepath.name}")
+    docs_carried = carry_forward_documents(new_doc['data'], published_data['data'])
+    if docs_carried:
+        logger.warning(f"Carried documents for {docs_carried} speech(es) forward "
+                       f"while publishing {session} from {filepath.name}")
 
     if data_signature(published_data['data']) != data_signature(new_doc['data']):
         logger.warning(f"Publishing {session} from {filepath.name}")

@@ -266,7 +266,16 @@ def parse_documents(op):
     for doc in op.findall('p[@klasse="T_Drs"]'):
         # There may be multiple Drucksache in a single .T_Drs:
         # "Drucksachen 19/27871, 19/27822, 19/27315, 19/29694"
-        for session, ref in re.findall(r'(\d\d)/(\d+)', doc.text):
+        #
+        # Since period 21 the Bundestag wraps the Drucksache number in an <a>
+        # link to the PDF ("Drucksache <a href=...>21/1100</a>"), so doc.text
+        # holds only "Drucksache " — read the full element text (incl. children)
+        # so the regex still sees the numbers. The href URL itself is not
+        # itertext content, so it can't introduce spurious matches; and a
+        # multi-Drucksache paragraph only ever carries one <a> (the first ref),
+        # so we keep constructing the per-number sourceURI rather than reusing it.
+        text = "".join(doc.itertext())
+        for session, ref in re.findall(r'(\d\d)/(\d+)', text):
             padded = ref.rjust(5, '0')
             yield {
                 "type": "officialDocument",

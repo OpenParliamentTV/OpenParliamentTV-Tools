@@ -27,6 +27,7 @@ if __package__ is None or __package__ == "":
     __package__ = _module_dir.name
 
 from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
+from optv.shared.merge_format import dedupe_documents
 from optv.shared.meta import build_meta, fill_original_language, now_iso
 from optv.shared.speech_id import normalize_speech_originid
 
@@ -347,9 +348,9 @@ def merge_item(mediaitem, proceedingitems):
     output['textContents'] = [ tc
                                for p in proceedingitems
                                for tc in p['textContents'] ]
-    output['documents'] = [ doc
-                            for p in proceedingitems
-                            for doc in p['documents'] ]
+    output['documents'] = dedupe_documents([ doc
+                                             for p in proceedingitems
+                                             for doc in p['documents'] ])
 
     # Agenda-type classification, three layers (annotate_agenda_item preserves
     # non-empty values, so each later step only fills gaps):

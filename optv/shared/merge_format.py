@@ -9,6 +9,7 @@ language-specific (honorific stripping, chair-title → speaker context) lives i
 
 from __future__ import annotations
 
+import json
 import re
 
 # Slug for deriving a stable agenda id from a free-text title.
@@ -40,3 +41,24 @@ def agenda_id(top_number, title: str, *, slug_re: re.Pattern = SLUG_RE,
     if len(slug) > cap:
         slug = slug[:cap].rsplit("-", 1)[0]   # cut at a word boundary
     return slug or fallback
+
+
+def dedupe_documents(documents: list) -> list:
+    """Drop duplicate document refs, first-seen order preserved.
+
+    A merged speech unions the ``documents`` of every proceedings item folded
+    into it, so the same Drucksache referenced by several items (or carried on
+    several speeches under one agenda item) would otherwise appear multiple
+    times. Identity is ``sourceURI`` (the stable per-document URL), falling back
+    to ``label`` then the whole dict — so refs that never resolved to a URI are
+    still de-duplicated by their human label."""
+    seen = set()
+    out = []
+    for doc in documents:
+        key = (doc.get("sourceURI") or doc.get("label")
+               or json.dumps(doc, sort_keys=True, ensure_ascii=False))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(doc)
+    return out
