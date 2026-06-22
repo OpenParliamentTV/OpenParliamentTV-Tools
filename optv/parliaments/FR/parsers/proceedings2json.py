@@ -46,6 +46,7 @@ import lxml.etree as ET
 
 from optv.parliaments.FR.common import Config, parse_session
 from optv.shared.agenda_types import annotate_agenda_item, classify_fr
+from optv.shared.sentence_split import split_long_sentences
 from optv.parliaments import get_rights as _get_rights
 
 logger = logging.getLogger(__name__)
@@ -157,8 +158,11 @@ class _Sentencizer:
         if not text:
             return []
         if self._nlp is not None:
-            return [s.text.strip() for s in self._nlp(text).sents if s.text.strip()]
-        return [s.strip() for s in re.split(r"(?<=[.!?…])\s+(?=[A-ZÀ-ÖØ-Ý])", text) if s.strip()]
+            sents = [s.text.strip() for s in self._nlp(text).sents if s.text.strip()]
+        else:
+            sents = [s.strip() for s in re.split(r"(?<=[.!?…])\s+(?=[A-ZÀ-ÖØ-Ý])", text) if s.strip()]
+        # Generic (punctuation-only) length-gated split of over-long sentences.
+        return split_long_sentences(sents)
 
 
 _CHAIR_RE = re.compile(r"\ble\s+président\b|\bla\s+présidente\b", re.I)

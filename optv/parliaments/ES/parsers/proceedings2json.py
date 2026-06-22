@@ -23,6 +23,7 @@ import sys
 from spacy.lang.es import Spanish
 from optv.parliaments import get_rights as _get_rights
 from optv.parliaments import get_language as _get_language
+from optv.shared.sentence_split import split_long_sentences
 
 # Rule-based sentencizer, loaded once per process (matches DE proceedings2json).
 _nlp = Spanish()
@@ -50,7 +51,9 @@ _WS_RE = re.compile(r"[ \t ]+")
 
 
 def _split_sentences(text: str) -> list:
-    return [{"text": str(s).strip()} for s in _nlp(text).sents if str(s).strip()]
+    sents = [str(s).strip() for s in _nlp(text).sents if str(s).strip()]
+    # Generic (punctuation-only) length-gated split of over-long sentences.
+    return [{"text": t} for t in split_long_sentences(sents)]
 
 
 def extract_textointegro(html: str) -> tuple[str, str]:

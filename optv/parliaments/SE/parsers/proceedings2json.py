@@ -41,6 +41,7 @@ import lxml.html
 
 from optv.parliaments.SE.common import Config
 from optv.shared.agenda_types import classify_se
+from optv.shared.sentence_split import split_long_sentences
 from optv.parliaments import get_rights as _get_rights
 from optv.parliaments import get_language as _get_language
 
@@ -161,7 +162,9 @@ def split_sentences(nlp, text: str) -> list[str]:
     if not text:
         return []
     doc = nlp(text)
-    return [s.text.strip() for s in doc.sents if s.text.strip()]
+    sents = [s.text.strip() for s in doc.sents if s.text.strip()]
+    # Generic (punctuation-only) length-gated split of over-long sentences.
+    return split_long_sentences(sents)
 
 
 def build_textbody(nlp, paragraphs: list[str], speaker_label: str, role: str | None) -> list[dict]:

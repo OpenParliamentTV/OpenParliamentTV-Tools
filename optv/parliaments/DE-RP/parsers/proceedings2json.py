@@ -45,6 +45,7 @@ if __package__ is None or __package__ == "":
 
 from .common import STATUS_TRANSLATION, fix_faction, fix_fullname
 from optv.shared.agenda_types import classify_de_rp
+from optv.shared.lang.de import split_long_sentences
 from optv.parliaments import get_rights as _get_rights
 from optv.parliaments import get_language as _get_language
 
@@ -72,7 +73,9 @@ nlp.add_pipe("sentencizer")
 
 
 def split_sentences(paragraph: str) -> list:
-    return [{"text": str(s).strip()} for s in nlp(paragraph).sents if str(s).strip()]
+    sents = [str(s).strip() for s in nlp(paragraph).sents if str(s).strip()]
+    # Same German clause-aware length-gated split as the Bundestag parser.
+    return [{"text": t} for t in split_long_sentences(sents)]
 
 
 def parse_session_time(t: str) -> str:

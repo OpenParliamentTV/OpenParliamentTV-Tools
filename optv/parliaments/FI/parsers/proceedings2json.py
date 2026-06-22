@@ -45,6 +45,7 @@ import lxml.etree as ET
 
 from optv.parliaments.FI.common import Config, parse_session_str
 from optv.shared.agenda_types import annotate_agenda_item, classify_fi
+from optv.shared.sentence_split import split_long_sentences
 from optv.parliaments import get_rights as _get_rights
 
 logger = logging.getLogger(__name__)
@@ -108,7 +109,9 @@ def split_sentences(nlp, text: str) -> list[str]:
     if not text:
         return []
     doc = nlp(text)
-    return [s.text.strip() for s in doc.sents if s.text.strip()]
+    sents = [s.text.strip() for s in doc.sents if s.text.strip()]
+    # Generic (punctuation-only) length-gated split of over-long sentences.
+    return split_long_sentences(sents)
 
 
 def _agenda_for(toimenpide, default_title: str) -> tuple[dict, Optional[str], Optional[str]]:

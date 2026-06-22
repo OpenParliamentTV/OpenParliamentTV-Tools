@@ -29,6 +29,7 @@ if __package__ is None or __package__ == "":
 
 from .common import fix_faction, fix_fullname, parse_fullname
 from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
+from optv.shared.lang.de import split_long_sentences
 
 # Native Bundestag TEI (periods 18+) license = manifest proceedings default.
 # The proceedings `creator` stays data-driven (TEI <herausgeber>), so only the
@@ -113,7 +114,10 @@ def parse_speakers(speakers):
 
 def split_sentences(paragraph: str) -> list:
     doc = nlp(paragraph)
-    return [ { 'text': str(sent).strip() } for sent in doc.sents ]
+    sents = [str(sent).strip() for sent in doc.sents if str(sent).strip()]
+    # Length-gated secondary split of the over-long sentences the rule-based
+    # sentencizer leaves whole (German ;/–/: clause chains, enumerations).
+    return [ { 'text': t } for t in split_long_sentences(sents) ]
 
 def parse_speech(elements: list, last_speaker: dict, speech_id: str):
     # speaker/speakerstatus are initialized from the calling method

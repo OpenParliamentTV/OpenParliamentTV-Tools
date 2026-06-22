@@ -33,6 +33,7 @@ if __package__ is None or __package__ == "":
 
 from .common import fix_fullname
 from optv.shared.agenda_types import classify_parlamint_de, is_de_closing_chair_text
+from optv.shared.lang.de import split_long_sentences
 
 # Match proceedings2json: rule-based sentencizer, loaded once per process.
 _nlp = German()
@@ -40,7 +41,9 @@ _nlp.add_pipe("sentencizer")
 
 
 def _split_sentences(text: str) -> list:
-    return [{"text": str(s).strip()} for s in _nlp(text).sents if str(s).strip()]
+    sents = [str(s).strip() for s in _nlp(text).sents if str(s).strip()]
+    # Length-gated secondary split (shared with proceedings2json / AT path).
+    return [{"text": t} for t in split_long_sentences(sents)]
 
 # ParlaMint-DE (periods 16-17) rights come from the manifest proceedings
 # `overrides` entry; kept as module constants so the references below are

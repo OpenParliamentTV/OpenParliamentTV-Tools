@@ -245,7 +245,46 @@ def spacy_sentencize(text: str) -> list[str]:
         from spacy.lang.de import German
         _nlp = German()
         _nlp.add_pipe("sentencizer")
-    return [str(s).strip() for s in _nlp(text).sents if str(s).strip()]
+    sents = [str(s).strip() for s in _nlp(text).sents if str(s).strip()]
+    # Length-gated secondary split of the over-long sentences the rule-based
+    # sentencizer leaves whole (German ;/–/: clause chains, enumerations).
+    return split_long_sentences(sents)
+
+
+# Comma-introduced German clause starters: subordinating conjunctions, the
+# conditional apodosis "dann", and unambiguous relative pronouns. Used by the
+# length-gated splitter to break over-long subordinate-clause / conditional
+# chains ("…, wenn …, wenn …, dann …" / "…, dass …, dass …") at real clause
+# boundaries instead of arbitrary commas. Bare articles der/die/das are
+# *excluded* — too ambiguous with enumeration/apposition commas — keeping only
+# the longer relative forms (deren/dessen/welche…).
+_CLAUSE_STARTERS = (
+    "dass", "weil", "wenn", "ob", "obwohl", "obgleich", "während", "sodass",
+    "sobald", "solange", "indem", "sofern", "insofern", "falls", "damit",
+    "nachdem", "bevor", "seitdem", "seit", "soweit", "zumal", "wohingegen",
+    "wobei", "worunter", "woraufhin", "sondern", "dann",
+    "deren", "dessen", "welche", "welcher", "welches", "welchem", "welchen",
+)
+_CLAUSE_RE = re.compile(
+    r",\s+(?=(?:" + "|".join(_CLAUSE_STARTERS) + r")\b)")
+
+
+def split_long_sentence(text: str, **kwargs) -> list[str]:
+    """German length-gated secondary split: :func:`optv.shared.sentence_split.
+    split_long_sentence` with the German clause-boundary regex wired in. Used by
+    every German sentencizer call site (proceedings2json, parlamint2json, and
+    the AT / state-parliament path via spacy_sentencize) so they segment alike."""
+    from optv.shared.sentence_split import split_long_sentence as _split
+    kwargs.setdefault("clause_re", _CLAUSE_RE)
+    return _split(text, **kwargs)
+
+
+def split_long_sentences(texts, **kwargs) -> list[str]:
+    """Flatten :func:`split_long_sentence` over an iterable of sentence texts."""
+    out: list[str] = []
+    for t in texts:
+        out.extend(split_long_sentence(t, **kwargs))
+    return out
 
 
 # Non-speech blocks extracted as flowing text (roll-call vote lists, voter name

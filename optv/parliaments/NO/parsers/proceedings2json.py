@@ -44,6 +44,7 @@ import lxml.etree as ET
 
 from optv.parliaments.NO.common import Config, period_to_sesjonider
 from optv.shared.agenda_types import classify_no
+from optv.shared.sentence_split import split_long_sentences
 from optv.parliaments import get_rights as _get_rights
 from optv.parliaments import get_language as _get_language
 
@@ -199,10 +200,9 @@ def _sentence_split(nlp, paragraphs: list[str]) -> list[dict]:
     sentences: list[dict] = []
     for para in paragraphs:
         doc = nlp(para)
-        for s in doc.sents:
-            t = s.text.strip()
-            if t:
-                sentences.append({"text": t})
+        sents = [s.text.strip() for s in doc.sents if s.text.strip()]
+        # Generic (punctuation-only) length-gated split of over-long sentences.
+        sentences.extend({"text": t} for t in split_long_sentences(sents))
     return sentences
 
 

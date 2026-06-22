@@ -43,6 +43,7 @@ if __package__ is None or __package__ == "":
 import lxml.etree as ET
 
 from optv.parliaments.PT.common import Config, parse_session
+from optv.shared.sentence_split import split_long_sentences
 
 logger = logging.getLogger(__name__)
 
@@ -140,8 +141,11 @@ class _Sentencizer:
         if not text:
             return []
         if self._nlp is not None:
-            return [s.text.strip() for s in self._nlp(text).sents if s.text.strip()]
-        return [s.strip() for s in re.split(r"(?<=[.!?…])\s+(?=[A-ZÀ-ÖØ-Ý])", text) if s.strip()]
+            sents = [s.text.strip() for s in self._nlp(text).sents if s.text.strip()]
+        else:
+            sents = [s.strip() for s in re.split(r"(?<=[.!?…])\s+(?=[A-ZÀ-ÖØ-Ý])", text) if s.strip()]
+        # Generic (punctuation-only) length-gated split of over-long sentences.
+        return split_long_sentences(sents)
 
 
 def parse_dar(html_text: str, session: str, spacy_model: Optional[str]) -> dict:
