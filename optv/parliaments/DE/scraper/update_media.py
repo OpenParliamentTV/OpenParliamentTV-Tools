@@ -44,7 +44,7 @@ def update_media_directory_period(period, media_dir, force=False, save_raw_data=
     """
     # Fetch root page for period. This will allow us to determine the
     # most recent meeting number and then try to fetch them when needed
-    rootinfo = download_meeting_data(period, media_dir, root_only=True)
+    rootinfo = download_meeting_data(period, root_only=True)
     if not rootinfo['entries']:
         logger.error(f"No entries for period {period} - maybe a server timeout?")
         return
