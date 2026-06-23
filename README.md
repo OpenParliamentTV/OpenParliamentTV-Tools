@@ -45,6 +45,7 @@ optv/
 │       ├── align_prep.py    # optional — per-speech audio staging for align (adapter over optv.shared.audio_prep)
 │       ├── update           # shell wrapper with parliament-specific defaults
 │       └── Makefile         # download + merge targets driven by file mtimes
+├── scripts/                # tracked maintenance / backfill / audit scripts, run via `python -m optv.scripts.<name>`
 └── shared/                  # cross-parliament infrastructure
     ├── schema/              # Stage 2 JSON schemas + reference doc
     ├── docs/EXAMPLES/       # example Stage 2 documents
@@ -65,8 +66,7 @@ optv/
     ├── agenda_types.py      # cross-parliament agenda-type vocabulary + classifier registry
     ├── entity_dump_bootstrap.py  # temporary pre-platform Wikidata entity-dump builder
     ├── whisper_diff.py      # QC: faster-whisper transcription vs proceedings text (opt-in, not in the pipeline)
-    ├── whisper_qc.py        # QC: faster-whisper + Resemblyzer worker library (used by whisper_diff)
-    └── merge_audit.py       # QC: read-only sweep flagging text-accumulation anomalies in merger output
+    └── whisper_qc.py        # QC: faster-whisper + Resemblyzer worker library (used by whisper_diff)
 ```
 
 `workflow.py` is intentionally thin: orchestration (merge → NEL → align → NER → publish), the common argparser, lockfile handling and the publish helper all live in [`optv/shared/workflow.py`](optv/shared/workflow.py). The per-parliament file only contains the four adapters that legitimately differ — download, parse, merge call shape, align call shape — plus parliament-specific CLI flags.
@@ -115,7 +115,7 @@ Flat layout under [tests/](tests/), no config files. Covers pure helpers, the me
 An opt-in QC toolset cross-checks output without touching pipeline data. It has its own dependencies (`pip install -r requirements-qc.txt` — faster-whisper, Resemblyzer, torch) and is not part of the production pipeline:
 
 - [`optv/shared/whisper_diff.py`](optv/shared/whisper_diff.py) (`rank` / `transcribe` / `diff`) — transcribes a session's audio with faster-whisper (+ optional Resemblyzer speaker-change detection, via [`whisper_qc.py`](optv/shared/whisper_qc.py)) and reports where it diverges from the proceedings text.
-- [`optv/shared/merge_audit.py`](optv/shared/merge_audit.py) — read-only sweep over merger output that flags text-accumulation anomalies (histograms + suspect lists).
+- [`optv/scripts/merge_audit.py`](optv/scripts/merge_audit.py) — read-only sweep over merger output that flags text-accumulation anomalies (histograms + suspect lists).
 
 ## Implemented parliaments
 

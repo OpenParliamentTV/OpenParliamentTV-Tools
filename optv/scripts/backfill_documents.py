@@ -40,9 +40,9 @@ one machine and commit the changed ``processed/`` files.
 
 Usage (point ``--dir`` at the data-dir root to cover cache + processed)::
 
-    python -m optv.parliaments.DE.backfill_documents --dir <data_dir> --dry-run
-    python -m optv.parliaments.DE.backfill_documents --dir <data_dir> --apply
-    python -m optv.parliaments.DE.backfill_documents --dir <data_dir> --session '^21' --apply
+    python -m optv.scripts.backfill_documents --dir <data_dir> --dry-run
+    python -m optv.scripts.backfill_documents --dir <data_dir> --apply
+    python -m optv.scripts.backfill_documents --dir <data_dir> --session '^21' --apply
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ import time
 from pathlib import Path
 
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from optv.parliaments.DE.parsers.proceedings2json import parse_transcript
 from optv.shared.merge_format import dedupe_documents
@@ -117,7 +117,7 @@ def _backfill_data(data: list, docs_by_id: dict[str, list]) -> int:
 def _normalize_stage_mtimes(files: list[Path]) -> int:
     """Stamp every stage file with one common mtime so ``Config.is_newer``
     (strict ``>``) never re-runs a stage over backfilled sessions — same
-    rationale as optv/shared/migrate_processed.py."""
+    rationale as optv/scripts/migrate_processed.py."""
     now = time.time()
     for path in files:
         os.utime(path, (now, now))

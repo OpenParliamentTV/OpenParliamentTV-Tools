@@ -1,6 +1,6 @@
 """Tests for the one-time processed/ in-place migration."""
 
-from optv.shared.migrate_processed import migrate_doc
+from optv.scripts.migrate_processed import migrate_doc
 
 
 def _doc():
@@ -55,7 +55,7 @@ def test_migration_is_idempotent():
     assert changed_again is False
 
 
-from optv.shared.migrate_processed import _rename_debug_keys
+from optv.scripts.migrate_processed import _rename_debug_keys
 
 
 def test_debug_keys_renamed_to_camelcase():
@@ -70,7 +70,7 @@ def test_debug_keys_renamed_to_camelcase():
     assert _rename_debug_keys(data) is False
 
 
-from optv.shared.migrate_processed import _backfill_rights
+from optv.scripts.migrate_processed import _backfill_rights
 
 
 def test_backfill_rights_from_manifest():
@@ -89,7 +89,7 @@ def test_backfill_rights_from_manifest():
     assert media["creator"] == "European Parliament"
 
 
-from optv.shared.migrate_processed import _fix_origin_media_id_placement
+from optv.scripts.migrate_processed import _fix_origin_media_id_placement
 
 
 def test_origin_media_id_relocated_and_dropped():

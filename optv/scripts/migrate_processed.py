@@ -28,8 +28,8 @@ output consistent, so a re-publish from cache carries the unified shape.
 
 Usage (point ``--dir`` at the data-dir root to cover cache + processed)::
 
-    python -m optv.shared.migrate_processed --dir <data_dir> --dry-run
-    python -m optv.shared.migrate_processed --dir <data_dir> --apply
+    python -m optv.scripts.migrate_processed --dir <data_dir> --dry-run
+    python -m optv.scripts.migrate_processed --dir <data_dir> --apply
 """
 
 from __future__ import annotations
