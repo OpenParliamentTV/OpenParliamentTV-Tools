@@ -208,14 +208,35 @@ def align_audio(source: list, language: str, cachedir: Path = None,
             logger.debug("All sentences already aligned")
             continue
 
+        # Pre-flight on the *declared* duration, before any download. If the
+        # feed already says this speech's media is longer than the cap, skip
+        # here: the cache-miss fallback below would otherwise pull the speech's
+        # full audioFileURI/videoFileURI (for whole-debate/procedural container
+        # entries that is a whole-session asset, hundreds of MB) only for the
+        # post-download ffprobe cap to discard it. Entries with no declared
+        # duration fall through to that authoritative post-download probe.
+        declared = (speech.get('media') or {}).get('duration')
+        if isinstance(declared, (int, float)) and declared > max_audio_seconds:
+            speech_label = f"{speech['session']['number']}/{speech['speechIndex']}"
+            logger.info(
+                f"Skipping alignment for speech {speech_label}: declared media "
+                f"duration {declared:.0f}s exceeds "
+                f"--align-max-audio-seconds={max_audio_seconds} (no download)")
+            speech.setdefault('debug', {})['alignError'] = (
+                f"audio too long ({declared:.0f}s > {max_audio_seconds}s)")
+            continue
+
         # Prefer already-cached media; aeneas reads video via ffmpeg, so a
         # cached mp4 is a valid input and avoids a re-conversion.
         mp3_path = cachedfile(speech, 'mp3', cachedir)
         mp4_path = cachedfile(speech, 'mp4', cachedir)
+        from_cache = False
         if mp3_path.exists():
             media = mp3_path
+            from_cache = True
         elif mp4_path.exists():
             media = mp4_path
+            from_cache = True
         else:
             # New speech: download audio, else fall back to video + convert.
             media = mediafile(speech, cachedir, mediatype='audio')
@@ -232,6 +253,30 @@ def align_audio(source: list, language: str, cachedir: Path = None,
             continue
 
         speech_label = f"{speech['session']['number']}/{speech['speechIndex']}"
+
+        # Self-heal a stale cache hit: a per-speech clip can't plausibly be much
+        # longer than its declared window, so a cached file that probes far
+        # longer was staged by an earlier run from the wrong (untrimmed /
+        # whole-asset) source. Drop it and skip this pass — the next run
+        # re-stages correctly (per-parliament align_prep for the trimmed-HLS
+        # parliaments, or mediafile() re-download otherwise). Re-fetching here is
+        # avoided on purpose: align_audio's own download path would just re-pull
+        # the same whole-asset source. The byte ceiling (~400 kbit/s) keeps this
+        # to the handful of anomalously large files — correct clips skip the
+        # ffprobe entirely.
+        if (from_cache and isinstance(declared, (int, float)) and declared > 0
+                and media.stat().st_size > declared * 50000):
+            probed = _probe_duration_seconds(media)
+            if probed is not None and probed > declared * 1.5 + 5:
+                logger.warning(
+                    f"Dropping stale cached audio for speech {speech_label} "
+                    f"({media.name}, {media.stat().st_size} bytes, {probed:.0f}s "
+                    f"vs declared {declared:.0f}s) — will re-stage next run")
+                media.unlink(missing_ok=True)
+                speech.setdefault('debug', {})['alignError'] = (
+                    f"stale cached audio dropped ({probed:.0f}s vs declared "
+                    f"{declared:.0f}s); re-stage pending")
+                continue
 
         # Pre-flight: reject media whose duration exceeds the policy cap.
         # Catches the wrong-URL-to-whole-session bug in milliseconds instead
