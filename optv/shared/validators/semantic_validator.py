@@ -54,6 +54,7 @@ def validate_semantic(doc):
     findings.extend(_rule_text_contents_source_uri(doc))
     findings.extend(_rule_media_source_page_unique(doc))
     findings.extend(_rule_sentence_times(doc))
+    findings.extend(_rule_sentence_time_bounds(doc))
     findings.extend(_rule_speech_origin_text_id_deprecated(doc))
     findings.extend(_rule_original_language_consistency(doc))
     findings.extend(_rule_meta_no_per_speech_duplicates(doc))
@@ -388,5 +389,46 @@ def _rule_sentence_times(doc):
                             "semantic.sentence.time.order",
                             f"data/{i}/textContents/{k}/textBody/{m}/sentences/{n}",
                             f"sentence timeEnd ({te}) < timeStart ({ts}).",
+                        ))
+    return out
+
+
+def _rule_sentence_time_bounds(doc):
+    """Flag sentence timecodes that run past the media duration.
+
+    The platform positions search-result hit markers as
+    ``timecode / media.duration``, so a timeStart/timeEnd beyond the duration
+    renders the marker outside its timeline track and breaks the layout. This
+    happens when the audio that was aligned was longer than the published clip
+    (untrimmed source, or a clip the CDN later trimmed). Warning-only, matching
+    the warn-don't-block publish policy: the aligner's own bound check
+    (align.py) is the place that prevents it, this is the catch-net.
+    """
+    out = []
+    # Small tolerance for aeneas tail-boundary rounding, mirroring align.py.
+    for i, sp in enumerate(doc.get("data") or []):
+        dur = (sp.get("media") or {}).get("duration")
+        if not isinstance(dur, (int, float)) or dur <= 0:
+            continue
+        limit = dur * 1.1 + 1
+        for k, tc in enumerate(sp.get("textContents") or []):
+            for m, tb in enumerate(tc.get("textBody") or []):
+                for n, sent in enumerate(tb.get("sentences") or []):
+                    te = sent.get("timeEnd")
+                    if te is None:
+                        continue
+                    try:
+                        te_f = float(te)
+                    except (TypeError, ValueError):
+                        continue
+                    if te_f > limit:
+                        out.append(_warn(
+                            "semantic.sentence.time.bounds",
+                            f"data/{i}/textContents/{k}/textBody/{m}/sentences/{n}",
+                            f"sentence timeEnd ({te}) exceeds media duration "
+                            f"({dur}); the platform divides timecodes by "
+                            "duration to position hit markers, so out-of-range "
+                            "values render outside the timeline. Likely the "
+                            "aligned audio was longer than the published clip.",
                         ))
     return out

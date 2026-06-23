@@ -88,3 +88,40 @@ def test_top_level_origin_media_id_flagged():
 def test_media_only_origin_media_id_ok():
     doc = {"meta": {"session": "x"}, "data": [{"media": {"originMediaID": "abc"}}]}
     assert _rule_origin_media_id_placement(doc) == []
+
+
+from optv.shared.validators.semantic_validator import _rule_sentence_time_bounds
+
+
+def _doc_with_sentence(duration, time_end):
+    return {"meta": {"session": "x"},
+            "data": [{"media": {"duration": duration},
+                      "textContents": [{"textBody": [{"sentences": [
+                          {"timeStart": "1.0", "timeEnd": time_end}]}]}]}]}
+
+
+def test_sentence_time_within_duration_ok():
+    # 20.96s end on a 21s clip — in bounds (this is the reproduced 21037 case).
+    assert _rule_sentence_time_bounds(_doc_with_sentence(21, "20.96")) == []
+
+
+def test_sentence_time_beyond_duration_flagged():
+    # 57.96s end on a 21s clip — the live DE-0210037079 defect.
+    findings = _rule_sentence_time_bounds(_doc_with_sentence(21, "57.96"))
+    assert [f["rule"] for f in findings] == ["semantic.sentence.time.bounds"]
+    assert findings[0]["severity"] == "warning"
+    assert findings[0]["path"] == "data/0/textContents/0/textBody/0/sentences/0"
+
+
+def test_sentence_time_bounds_tolerates_tail_rounding():
+    # Just past duration but within the 1.1x+1 aeneas-tail tolerance — not flagged.
+    assert _rule_sentence_time_bounds(_doc_with_sentence(21, "22.0")) == []
+
+
+def test_sentence_time_bounds_skips_when_no_duration():
+    assert _rule_sentence_time_bounds(_doc_with_sentence(0, "99.0")) == []
+
+
+def test_sentence_time_bounds_wired_into_validate_semantic():
+    rules = {f["rule"] for f in validate_semantic(_doc_with_sentence(21, "57.96"))}
+    assert "semantic.sentence.time.bounds" in rules

@@ -139,6 +139,21 @@ def convert_video_to_audio(video_path: Path, audio_path: Path) -> bool:
         return False
 
 
+def aligned_end_out_of_bounds(max_end: float, declared) -> bool:
+    """True if an aligned end runs past the declared media duration.
+
+    aeneas can only emit timecodes within the audio it was handed, so an end
+    far beyond the *declared* clip duration means the aligned audio was longer
+    than the clip the platform serves. The platform positions hit markers as
+    ``timecode / media.duration``, so such timecodes render outside the
+    timeline. A small 1.1x+1s tolerance absorbs aeneas tail-boundary rounding.
+    Returns False when the duration is unknown/zero (nothing to compare).
+    """
+    if not isinstance(declared, (int, float)) or declared <= 0:
+        return False
+    return max_end > declared * 1.1 + 1
+
+
 def _probe_duration_seconds(media: Path) -> Optional[float]:
     """Return media duration in seconds via ffprobe, or None if it fails."""
     try:
@@ -386,6 +401,32 @@ def align_audio(source: list, language: str, cachedir: Path = None,
         finally:
             if sync_out.exists():
                 sync_out.unlink()
+
+        # Output-side bound check. aeneas can only emit timecodes within the
+        # audio it was handed, so an aligned end far beyond the *declared*
+        # media duration means the aligned audio was longer than the clip the
+        # platform serves (e.g. an untrimmed/whole-asset source, or a clip the
+        # CDN later trimmed). The platform divides timecodes by media.duration
+        # to position them, so out-of-range ends render outside the timeline.
+        # Drop the whole alignment (don't inject) and flag it — honest, and a
+        # corrected re-run can fill it in. This catches the fresh-download path
+        # and the moderate 2-3x overruns that the input-side size/probe guards
+        # above (calibrated for whole-session assets) let through.
+        max_end = 0.0
+        for _begin, _end in fragments.values():
+            try:
+                max_end = max(max_end, float(_end))
+            except (TypeError, ValueError):
+                continue
+        if aligned_end_out_of_bounds(max_end, declared):
+            logger.warning(
+                f"Discarding alignment for speech {speech_label}: aligned end "
+                f"{max_end:.1f}s exceeds declared media duration "
+                f"{declared:.0f}s — aligned audio longer than published clip")
+            speech.setdefault('debug', {})['alignError'] = (
+                f"aligned timecodes exceed media duration "
+                f"({max_end:.1f}s > {declared:.0f}s)")
+            continue
 
         # Inject timing information back into the source data
         for ident, sentence in speech_sentence_iter(speech):
