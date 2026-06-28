@@ -3,6 +3,7 @@
 from optv.shared.publish import (
     data_has_timing, data_has_ner, data_has_documents, is_demotion,
     carry_forward_wids, carry_forward_enrichments, carry_forward_documents,
+    text_signature,
 )
 
 
@@ -16,6 +17,16 @@ def _speech(origin, people=None, debug=None, agendaItem=None, documents=None):
         s["agendaItem"] = agendaItem
     if documents is not None:
         s["documents"] = documents
+    return s
+
+
+def _tspeech(origin, sentences, debug=None, documents=None):
+    """Speech carrying transcript text (textContents/textBody/sentences)."""
+    s = _speech(origin, debug=debug, documents=documents)
+    s["textContents"] = [{"textBody": [{
+        "type": "speech",
+        "sentences": [{"text": t} for t in sentences],
+    }]}]
     return s
 
 
@@ -185,3 +196,49 @@ def test_carry_forward_documents_matches_by_origin_text_id():
     new = [_speech("B", documents=[])]
     assert carry_forward_documents(new, published) == 0
     assert new[0]["documents"] == []
+
+
+# text_signature + content-aware demotion -- the --rebuild path. A *content*
+# change to the transcript (e.g. new sentence-splitting) may replace stale
+# timing/NER under rebuild, but the transcript can never be emptied.
+
+
+def test_text_signature_ignores_enrichment_changes():
+    """Adding timing/entities to the same sentences must not change the sig."""
+    a = [_tspeech("A", ["Hallo Welt."])]
+    b = [_tspeech("A", ["Hallo Welt."], debug={"alignDuration": 5.0})]
+    b[0]["textContents"][0]["textBody"][0]["sentences"][0]["entities"] = [{"wid": "Q1"}]
+    b[0]["textContents"][0]["textBody"][0]["sentences"][0]["timeStart"] = 1.0
+    assert text_signature(a) == text_signature(b)
+
+
+def test_text_signature_changes_when_splitting_changes():
+    one = [_tspeech("A", ["Hallo Welt."])]
+    two = [_tspeech("A", ["Hallo", "Welt."])]  # different sentence boundaries
+    assert text_signature(one) != text_signature(two)
+
+
+def test_rebuild_never_empties_a_published_transcript():
+    """Present→absent text is always a demotion, even under --rebuild
+    (the irreversible media-only / crash data-loss case)."""
+    published = [_tspeech("A", ["Hallo Welt."])]
+    bare = [_speech("A")]  # media-only re-merge: no textContents
+    assert is_demotion(bare, published)
+    assert is_demotion(bare, published, allow_text_replace=True)
+
+
+def test_changed_text_blocked_normally_but_allowed_under_rebuild():
+    published = [_tspeech("A", ["Hallo Welt."],
+                          debug={"alignDuration": 5.0, "nerDuration": 1.0})]
+    rebuilt = [_tspeech("A", ["Hallo", "Welt."])]  # new splitting, not yet re-derived
+    assert is_demotion(rebuilt, published)                          # would drop timing/NER
+    assert not is_demotion(rebuilt, published, allow_text_replace=True)  # rebuild replaces
+
+
+def test_unchanged_text_missing_ner_blocked_even_under_rebuild():
+    """Same transcript content → the enrichment guards still apply, so a
+    bare re-derive that lost NER is refused regardless of the flag."""
+    published = [_tspeech("A", ["Hallo Welt."], debug={"nerDuration": 1.0})]
+    new = [_tspeech("A", ["Hallo Welt."])]  # identical text, no NER
+    assert is_demotion(new, published)
+    assert is_demotion(new, published, allow_text_replace=True)

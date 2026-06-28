@@ -65,6 +65,42 @@ def test_link_entities_no_match_writes_empty_wid_for_string_faction():
     }
 
 
+# clear_existing -- the --rebuild path. Normal linking is fill-only (can add
+# but never correct/remove a wid); clear_existing wipes wids first so the
+# re-link is fully re-derived from the current entity dump.
+
+
+def test_link_entities_clear_existing_removes_stale_wid():
+    """A person whose label no longer matches the dump loses its id under rebuild."""
+    speeches = [{"people": [{"label": "Gone Person", "wid": "Q_OLD", "wtype": "PERSON"}]}]
+    out = link_entities(speeches, {}, {}, clear_existing=True)
+    assert "wid" not in out[0]["people"][0]
+    assert "wtype" not in out[0]["people"][0]
+
+
+def test_link_entities_clear_existing_relinks_to_new_entity():
+    """A label now matching a different entity is re-linked, not preserved."""
+    persons = {"max beispiel": {"id": "Q_NEW"}}
+    speeches = [{"people": [{"label": "Max Beispiel", "wid": "Q_OLD", "wtype": "PERSON"}]}]
+    out = link_entities(speeches, persons, {}, clear_existing=True)
+    assert out[0]["people"][0]["wid"] == "Q_NEW"
+
+
+def test_link_entities_clear_existing_wipes_dict_faction_wid():
+    speeches = [{"people": [{"label": "X",
+                             "faction": {"label": "OldParty", "wid": "Q_F", "wtype": "ORG"}}]}]
+    out = link_entities(speeches, {}, {}, clear_existing=True)
+    # cleared, then re-derived against an empty faction dump -> no match
+    assert out[0]["people"][0]["faction"]["wid"] == ""
+
+
+def test_link_entities_without_clear_preserves_stale_wid():
+    """Contrast: default fill-only linking keeps a now-unmatched wid."""
+    speeches = [{"people": [{"label": "Gone Person", "wid": "Q_OLD", "wtype": "PERSON"}]}]
+    out = link_entities(speeches, {}, {}, clear_existing=False)
+    assert out[0]["people"][0]["wid"] == "Q_OLD"
+
+
 def _write_entities(tmp_path, entities):
     (tmp_path / "entities.json").write_text(
         json.dumps({"meta": {}, "data": entities}), encoding="utf-8")

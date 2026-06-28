@@ -341,3 +341,34 @@ def test_make_align_hook_raises_without_merged(tmp_path):
     hook = ap.make_align_hook(lambda *a, **k: (0, 0, 0))
     with pytest.raises(FileNotFoundError):
         hook(_Cfg(), "21001", object())
+
+
+def test_make_align_hook_sources_richest_doc(tmp_path, monkeypatch):
+    """Part A: align reads the published (NER-bearing) doc when present, not the
+    bare merged cache, so its output keeps NER and is not a publish demotion."""
+    import json
+    from types import SimpleNamespace
+
+    class _Cfg:
+        def file(self, session, kind, create=False):
+            return tmp_path / f"{session}-{kind}.json"
+
+    cfg = _Cfg()
+    cfg.file("21001", "merged").write_text(
+        json.dumps({"meta": {}, "data": [{"id": "from-merged"}]}), encoding="utf-8")
+    cfg.file("21001", "processed").write_text(
+        json.dumps({"meta": {}, "data": [{"id": "from-processed"}]}), encoding="utf-8")
+
+    captured = {}
+
+    def fake_prepare(data, cachedir, *, force=False):
+        captured["data"] = data
+        return (0, 0, 0)
+
+    monkeypatch.setattr(ap, "align_audio", lambda *a, **k: None)
+    hook = ap.make_align_hook(fake_prepare)
+    args = SimpleNamespace(cache_dir=tmp_path, force=False, aeneas_language="de",
+                           align_timeout=1200, align_max_audio_seconds=2400)
+    hook(cfg, "21001", args)
+
+    assert captured["data"][0]["id"] == "from-processed"

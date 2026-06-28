@@ -10,11 +10,13 @@ local cache mtimes.
 """
 
 import json
+from types import SimpleNamespace
 
 from optv.shared.workflow import (
     _enrichment_is_current,
     _enrichment_source,
     _nel_is_current,
+    _publish_as_processed,
 )
 
 
@@ -102,3 +104,49 @@ def test_nel_reruns_when_remerge_advances_past_pass(tmp_path):
         "align": "2025-12-01T09:15:34",
     })
     assert _nel_is_current(src) is False
+
+
+# --rebuild publish behaviour: the current run is authoritative, so
+# carry-forward stands down (a removed wid stays removed) -- but the publish
+# still happens (not a demotion) because the transcript is unchanged.
+
+def _speech_with_text(origin, people, debug=None):
+    return {
+        "originTextID": origin,
+        "people": people,
+        "debug": debug or {},
+        "textContents": [{"textBody": [{"sentences": [{"text": "Hallo Welt."}]}]}],
+    }
+
+
+def _write_doc(path, data):
+    path.write_text(json.dumps({"meta": {"processing": {}}, "data": data}),
+                    encoding="utf-8")
+
+
+def test_publish_carries_wid_forward_without_rebuild(tmp_path):
+    cfg = _FakeConfig(tmp_path)
+    processed = cfg.file("21001", "processed")
+    _write_doc(processed, [_speech_with_text(
+        "A", [{"label": "X", "wid": "Q1", "wtype": "PERSON"}], debug={"nerDuration": 1.0})])
+    new = cfg.file("21001", "ner")
+    _write_doc(new, [_speech_with_text("A", [{"label": "X"}], debug={"nerDuration": 2.0})])
+
+    _publish_as_processed(cfg, SimpleNamespace(rebuild=False, validate=False), "21001", new)
+
+    result = json.loads(processed.read_text())
+    assert result["data"][0]["people"][0]["wid"] == "Q1"  # restored from published
+
+
+def test_publish_does_not_carry_wid_forward_under_rebuild(tmp_path):
+    cfg = _FakeConfig(tmp_path)
+    processed = cfg.file("21001", "processed")
+    _write_doc(processed, [_speech_with_text(
+        "A", [{"label": "X", "wid": "Q1", "wtype": "PERSON"}], debug={"nerDuration": 1.0})])
+    new = cfg.file("21001", "ner")
+    _write_doc(new, [_speech_with_text("A", [{"label": "X"}], debug={"nerDuration": 2.0})])
+
+    _publish_as_processed(cfg, SimpleNamespace(rebuild=True, validate=False), "21001", new)
+
+    result = json.loads(processed.read_text())
+    assert "wid" not in result["data"][0]["people"][0]  # removal persists

@@ -25,6 +25,7 @@ from optv.shared.publish import (
     carry_forward_wids,
     data_signature,
     is_demotion,
+    richest_source,
     strip_legacy_textbody_ids,
 )
 from optv.shared.session_status import SessionStatus
@@ -95,23 +96,30 @@ def _publish_as_processed(config, args, session: str, filepath: Path) -> Path:
     new_doc = json.loads(filepath.read_text())
     strip_legacy_textbody_ids(new_doc['data'])
 
-    if is_demotion(new_doc['data'], published_data['data']):
+    rebuild = bool(getattr(args, 'rebuild', False))
+
+    if is_demotion(new_doc['data'], published_data['data'],
+                   allow_text_replace=rebuild):
         logger.warning(f"Not publishing {session} from {filepath.name}: "
                        f"would drop transcript/alignment/NER already in processed/")
         return processed_file
 
-    carried = carry_forward_wids(new_doc['data'], published_data['data'])
-    if carried:
-        logger.warning(f"Carried {carried} already-published wid(s) forward "
-                       f"while publishing {session} from {filepath.name}")
-    enriched = carry_forward_enrichments(new_doc['data'], published_data['data'])
-    if enriched:
-        logger.warning(f"Carried {enriched} already-published enrichment field(s) "
-                       f"forward while publishing {session} from {filepath.name}")
-    docs_carried = carry_forward_documents(new_doc['data'], published_data['data'])
-    if docs_carried:
-        logger.warning(f"Carried documents for {docs_carried} speech(es) forward "
-                       f"while publishing {session} from {filepath.name}")
+    # --rebuild makes the current run authoritative: skip carry-forward so a
+    # freshly re-derived doc can correct or remove wids / enrichments /
+    # documents instead of having the stale published values restored over it.
+    if not rebuild:
+        carried = carry_forward_wids(new_doc['data'], published_data['data'])
+        if carried:
+            logger.warning(f"Carried {carried} already-published wid(s) forward "
+                           f"while publishing {session} from {filepath.name}")
+        enriched = carry_forward_enrichments(new_doc['data'], published_data['data'])
+        if enriched:
+            logger.warning(f"Carried {enriched} already-published enrichment field(s) "
+                           f"forward while publishing {session} from {filepath.name}")
+        docs_carried = carry_forward_documents(new_doc['data'], published_data['data'])
+        if docs_carried:
+            logger.warning(f"Carried documents for {docs_carried} speech(es) forward "
+                           f"while publishing {session} from {filepath.name}")
 
     if data_signature(published_data['data']) != data_signature(new_doc['data']):
         logger.warning(f"Publishing {session} from {filepath.name}")
@@ -121,29 +129,9 @@ def _publish_as_processed(config, args, session: str, filepath: Path) -> Path:
     return processed_file
 
 
-def _enrichment_source(config, session: str) -> Path:
-    """Richest file to re-run an in-place enrichment (NEL / NER) over.
-
-    ``processed/`` is the published high-water mark: the demotion guard in
-    publish.py keeps it at least as rich as any local stage cache, and it is
-    the only state that travels between machines via git. So prefer it, and
-    fall back to the freshest cache (ner → aligned → merged) only before the
-    first publish exists.
-
-    Sourcing from the cache instead let a stale media-only ``aligned`` stub
-    (produced when proceedings were briefly unavailable) shadow a fully
-    transcribed published session: NER then ran over text-less input and the
-    publish guard correctly refused the demoted result, so the stage silently
-    no-op'd on every run while ``processed/`` already held the real transcript.
-    """
-    processed_file = config.file(session, 'processed')
-    if processed_file.exists():
-        return processed_file
-    for stage in ('ner', 'aligned', 'merged'):
-        stage_file = config.file(session, stage)
-        if stage_file.exists():
-            return stage_file
-    return config.file(session, 'merged')
+# Back-compat alias: the richest-source helper now lives in publish.py so the
+# align hook (audio_prep.py) can share it without importing this module.
+_enrichment_source = richest_source
 
 
 def _enrichment_is_current(source_file: Path, stage: str,
@@ -302,11 +290,15 @@ def _run_merge_stage(config, args, hooks: WorkflowHooks, in_scope, publish,
         f"Merging data from {config.dir('media')} and {config.dir('proceedings')} "
         f"into {config.dir('merged')} ({len(todo)} session(s))"
     )
+    rebuild = bool(getattr(args, 'rebuild', False))
     for session in todo:
         merged_file = hooks.merge_session_to_file(config, session, args)
         status = config.status(session)
-        # Don't publish a bare merge over an aligned/NER'd published file.
-        if SessionStatus.aligned in status or SessionStatus.ner in status:
+        # Don't publish a bare merge over an aligned/NER'd published file --
+        # unless --rebuild, where the content-aware demotion guard decides: a
+        # changed transcript replaces the old (shedding stale timing/NER for the
+        # later stages to re-derive), an unchanged one is still refused.
+        if (SessionStatus.aligned in status or SessionStatus.ner in status) and not rebuild:
             continue
         publish(session, merged_file)
 
@@ -407,10 +399,12 @@ def _run_nel_stage(config, args, in_scope, publish, state, scope_key) -> None:
         logger.info("NEL link: all sessions current, nothing to link")
         _set_state(state, scope_key, 'nel', current_mtime)
         return
+    rebuild = bool(getattr(args, 'rebuild', False))
     logger.info(f"Linking entities with wikidata IDs ({len(todo)} session(s))")
     for session, source_file in todo:
         logger.warning(f"Linking entities for {session} from {source_file.name}")
-        link_entities_from_file(source_file, source_file, persons, factions)
+        link_entities_from_file(source_file, source_file, persons, factions,
+                                clear_existing=rebuild)
         publish(session, source_file)
 
 
@@ -551,6 +545,10 @@ def build_common_argparser(*, description: str) -> argparse.ArgumentParser:
                         help="Period to fetch/consider (mandatory)")
     parser.add_argument("--force", action="store_true", default=False,
                         help="Force re-running stages even if outputs already exist")
+    parser.add_argument("--rebuild", action="store_true", default=False,
+                        help="Re-derive selected stages from scratch (replace/remove "
+                             "derived data, not just fill gaps); implies --force. Never "
+                             "deletes cached files; never empties transcript text")
     parser.add_argument("--cache-dir", type=str, default=None,
                         help="Cache directory (default DATADIR/cache)")
     parser.add_argument("--single-instance", action=argparse.BooleanOptionalAction,
@@ -633,6 +631,11 @@ def run_main(parliament_id: str, hooks: WorkflowHooks, *, description: str,
     if args.data_dir is None:
         parser.print_help()
         sys.exit(1)
+    # --rebuild implies --force: without bypassing the per-stage "already done"
+    # gates, an already-processed session would be skipped before rebuild could
+    # re-derive anything.
+    if getattr(args, "rebuild", False):
+        args.force = True
     setup_logging(args.debug)
     inject_locale(args, parliament_id)
     _apply_manifest_defaults(args, parliament_id)

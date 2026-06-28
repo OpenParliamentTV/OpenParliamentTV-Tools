@@ -53,7 +53,8 @@ def _build_ep_id_index(persons: dict) -> dict:
     return by_ep_id
 
 
-def link_entities(source: list, persons: dict, factions: dict) -> list:
+def link_entities(source: list, persons: dict, factions: dict,
+                  clear_existing: bool = False) -> list:
     """Link entities from source file.
 
     Speakers carrying a parliament-supplied person identifier in
@@ -61,10 +62,24 @@ def link_entities(source: list, persons: dict, factions: dict) -> list:
     dump (the EU pipeline populates this from the EP Open Data API's person
     refs). If no epId match is found, fall back to the historic
     cleaned-label lookup.
+
+    Linking is normally *fill-only* (an existing ``wid`` is preserved, never
+    overwritten), so it can add newly-matchable people but cannot correct or
+    drop an existing link. ``clear_existing`` (set by ``--rebuild``) wipes
+    every person/faction ``wid``/``wtype`` first, so the re-link is fully
+    re-derived from the current entity dump -- a label that no longer matches
+    loses its id, a label that now matches a different entity is re-linked.
     """
     persons_by_ep_id = _build_ep_id_index(persons)
     for speech in source:
         for p in speech.get('people', []):
+            if clear_existing:
+                p.pop('wid', None)
+                p.pop('wtype', None)
+                faction = p.get('faction')
+                if isinstance(faction, dict):
+                    faction.pop('wid', None)
+                    faction.pop('wtype', None)
             if not p.get('wid'):
                 ep_id = (p.get('additionalInformation') or {}).get('epId')
                 ent = persons_by_ep_id.get(str(ep_id)) if ep_id else None
@@ -134,11 +149,12 @@ def get_nel_data(nel_data_dir: Path = None):
 def link_entities_from_file(source_file: Path,
                             output_file: Path,
                             persons: dict,
-                            factions: dict):
+                            factions: dict,
+                            clear_existing: bool = False):
     with open(source_file) as f:
         source = json.load(f)
 
-    data = link_entities(source['data'], persons, factions)
+    data = link_entities(source['data'], persons, factions, clear_existing)
 
     # Skip the rewrite if the existing output is already up-to-date.
     # Otherwise every NEL run bumps meta.processing.nel on every session

@@ -20,6 +20,32 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+def richest_source(config, session: str) -> Path:
+    """Richest file to re-run an in-place stage (NEL / NER / align) over.
+
+    ``processed/`` is the published high-water mark: the demotion guard below
+    keeps it at least as rich as any local stage cache, and it is the only
+    state that travels between machines via git. So prefer it, and fall back to
+    the freshest cache (ner → aligned → merged) only before the first publish
+    exists.
+
+    Sourcing from the cache instead let a stale media-only ``aligned`` stub
+    (produced when proceedings were briefly unavailable) shadow a fully
+    transcribed published session: a stage then ran over text-less input and
+    the publish guard correctly refused the demoted result, so the stage
+    silently no-op'd on every run while ``processed/`` already held the real
+    transcript.
+    """
+    processed_file = config.file(session, 'processed')
+    if processed_file.exists():
+        return processed_file
+    for stage in ('ner', 'aligned', 'merged'):
+        stage_file = config.file(session, stage)
+        if stage_file.exists():
+            return stage_file
+    return config.file(session, 'merged')
+
+
 def strip_legacy_textbody_ids(data: list) -> None:
     """Drop the legacy per-paragraph ``speech_id`` from every textBody item.
 
@@ -39,6 +65,29 @@ def data_signature(data: list) -> str:
     """Return a signature (as a string) for the given data.
     """
     h = blake2b(json.dumps(data).encode('utf-8'))
+    return h.hexdigest()
+
+
+def text_signature(data: list) -> str:
+    """Signature of just the transcript *text* in ``data``.
+
+    Hashes every ``textContents[].textBody[].sentences[].text`` in document
+    order, ignoring entities / timing / wids (which a re-run legitimately
+    changes). Used by ``is_demotion`` to tell "the transcript content changed"
+    (e.g. new sentence-splitting logic) apart from "the same text, re-enriched"
+    -- the former is a rebuild that must be allowed to replace stale
+    timing/NER, the latter must not silently drop them.
+    """
+    h = blake2b()
+    for speech in data:
+        for tc in speech.get('textContents') or []:
+            for item in tc.get('textBody') or []:
+                if not isinstance(item, dict):
+                    continue
+                for sentence in item.get('sentences') or []:
+                    if isinstance(sentence, dict):
+                        h.update((sentence.get('text') or '').encode('utf-8'))
+                        h.update(b'\x00')
     return h.hexdigest()
 
 
@@ -113,16 +162,33 @@ def data_has_documents(data: list) -> bool:
     return any(s.get('documents') for s in data)
 
 
-def is_demotion(new_data: list, published_data: list) -> bool:
+def is_demotion(new_data: list, published_data: list, *,
+                allow_text_replace: bool = False) -> bool:
     """True if publishing new_data over published_data would drop transcript
     text, alignment, NER, or document links the published file already has.
 
     Keeps processed/ monotonic: a bare merged file (or any less-processed file
     produced from a stale cache) must never overwrite a richer published
     session.
+
+    ``allow_text_replace`` (set by the ``--rebuild`` mode) relaxes exactly one
+    case: when the transcript *content* genuinely changed (e.g. new
+    sentence-splitting logic) the published timing/NER were derived from the
+    old text and are now stale, so their absence in ``new_data`` is not counted
+    as a demotion -- the rebuild's later stages re-derive them over the new
+    text. The present→absent text guard below is NEVER relaxed (that is the
+    irreversible media-only / crash data loss case), so even a rebuild can't
+    empty a published transcript.
     """
+    # Present→absent transcript: always a demotion, even under rebuild.
     if data_has_text(published_data) and not data_has_text(new_data):
         return True
+    # Transcript content changed (both sides have text, different text): only a
+    # rebuild may replace it (and shed the now-stale timing/NER for re-derive).
+    if (data_has_text(published_data) and data_has_text(new_data)
+            and text_signature(published_data) != text_signature(new_data)):
+        return not allow_text_replace
+    # Same text (or both text-less): the original monotonic enrichment guards.
     if data_has_timing(published_data) and not data_has_timing(new_data):
         return True
     if data_has_ner(published_data) and not data_has_ner(new_data):

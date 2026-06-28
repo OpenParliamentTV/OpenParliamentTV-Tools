@@ -418,19 +418,27 @@ def make_align_hook(prepare_audio: Callable[..., tuple[int, int, int]]):
 
     Wraps a parliament's per-speech audio-prep function (e.g. the result of
     :func:`make_fragment_prepare`, or a hand-written ``align_prep`` for a
-    per-speech-clip source like DE-BY): it loads the merged doc, stages audio,
-    runs aeneas, stamps ``meta.processing.align`` and writes
+    per-speech-clip source like DE-BY): it loads the richest available doc
+    (published ``processed/`` if present, else the freshest cache), stages
+    audio, runs aeneas, stamps ``meta.processing.align`` and writes
     ``<session>-aligned.json``. Every aligning parliament shares this body; the
     only per-parliament delta is how the audio is staged.
+
+    Sourcing the richest doc (not always ``merged``) keeps NER/wids already in
+    ``processed/`` in the aligned output, so a re-align only *adds* timing and
+    no longer trips the publish demotion guard (which would otherwise silently
+    discard a forced re-alignment of an already-NER'd session).
     """
     import datetime as _dt
     import json as _json
 
+    from optv.shared.publish import richest_source
+
     def _align(config, session, args):
-        merged_file = config.file(session, "merged")
-        if not merged_file.exists():
+        source_file = richest_source(config, session)
+        if not source_file.exists():
             raise FileNotFoundError(f"[{session}] no merged file — cannot align")
-        doc = _json.loads(merged_file.read_text())
+        doc = _json.loads(source_file.read_text())
 
         logger.info("[%s] staging per-speech audio", session)
         prepare_audio(doc["data"], args.cache_dir, force=args.force)
