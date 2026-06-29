@@ -104,14 +104,26 @@ def _publish_as_processed(config, args, session: str, filepath: Path) -> Path:
                        f"would drop transcript/alignment/NER already in processed/")
         return processed_file
 
-    # --rebuild makes the current run authoritative: skip carry-forward so a
-    # freshly re-derived doc can correct or remove wids / enrichments /
-    # documents instead of having the stale published values restored over it.
+    # Wids are owned exclusively by the NEL stage, which under --rebuild
+    # re-derives them in place (link_entities clear_existing=True) and then
+    # publishes the same file -- so carrying wids forward is *always* safe and is
+    # exempt from the rebuild rule below: it is a no-op on the NEL publish (new
+    # == published) and on any freshly re-linked doc, but it stops a *non-NEL*
+    # rebuild stage (the bare-merge republish, align, ner) from silently dropping
+    # wids the published session already holds. carry_forward_wids is fill-only,
+    # so it can never overwrite or resurrect a wid NEL intentionally removed.
+    # (Without this, a --rebuild job that runs merge but not nel strips every
+    # committed wid: merge republishes a bare merge and nothing re-links it.)
+    carried = carry_forward_wids(new_doc['data'], published_data['data'])
+    if carried:
+        logger.warning(f"Carried {carried} already-published wid(s) forward "
+                       f"while publishing {session} from {filepath.name}")
+    # --rebuild makes the current run authoritative for the remaining
+    # enrichments: skip carry-forward so a freshly re-derived doc can correct or
+    # remove enrichments / documents instead of having the stale published
+    # values restored over it. (These, unlike wids, are re-derived by the
+    # rebuilt stages themselves rather than owned by one dedicated stage.)
     if not rebuild:
-        carried = carry_forward_wids(new_doc['data'], published_data['data'])
-        if carried:
-            logger.warning(f"Carried {carried} already-published wid(s) forward "
-                           f"while publishing {session} from {filepath.name}")
         enriched = carry_forward_enrichments(new_doc['data'], published_data['data'])
         if enriched:
             logger.warning(f"Carried {enriched} already-published enrichment field(s) "
