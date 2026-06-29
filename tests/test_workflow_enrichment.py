@@ -106,9 +106,13 @@ def test_nel_reruns_when_remerge_advances_past_pass(tmp_path):
     assert _nel_is_current(src) is False
 
 
-# --rebuild publish behaviour: the current run is authoritative, so
-# carry-forward stands down (a removed wid stays removed) -- but the publish
-# still happens (not a demotion) because the transcript is unchanged.
+# --rebuild publish behaviour: the current run is authoritative for the
+# stage-derived enrichments (a removed agendaItem.type / confidence / documents
+# stays removed), so their carry-forward stands down -- but the publish still
+# happens (not a demotion) because the transcript is unchanged. wids are the
+# exception: they are owned solely by NEL (which re-derives them in place under
+# --rebuild), so the fill-only wid carry-forward runs even under --rebuild to
+# stop a non-NEL stage from silently dropping committed wids.
 
 def _speech_with_text(origin, people, debug=None):
     return {
@@ -138,7 +142,11 @@ def test_publish_carries_wid_forward_without_rebuild(tmp_path):
     assert result["data"][0]["people"][0]["wid"] == "Q1"  # restored from published
 
 
-def test_publish_does_not_carry_wid_forward_under_rebuild(tmp_path):
+def test_publish_carries_wid_forward_even_under_rebuild(tmp_path):
+    # wids are owned exclusively by NEL; a non-NEL stage (here a bare NER
+    # republish) must never drop a committed wid, even under --rebuild. The
+    # fill-only carry-forward can't resurrect a wid NEL intentionally removed,
+    # because a rebuilt NEL re-derives in place so new == published there.
     cfg = _FakeConfig(tmp_path)
     processed = cfg.file("21001", "processed")
     _write_doc(processed, [_speech_with_text(
@@ -149,4 +157,21 @@ def test_publish_does_not_carry_wid_forward_under_rebuild(tmp_path):
     _publish_as_processed(cfg, SimpleNamespace(rebuild=True, validate=False), "21001", new)
 
     result = json.loads(processed.read_text())
-    assert "wid" not in result["data"][0]["people"][0]  # removal persists
+    assert result["data"][0]["people"][0]["wid"] == "Q1"  # restored from published
+
+
+def test_publish_does_not_carry_enrichment_forward_under_rebuild(tmp_path):
+    # Non-wid enrichments (agendaItem.type, debug.confidence, documents) are
+    # re-derived by the rebuilt stages themselves, so --rebuild makes the
+    # current run authoritative: a removed value stays removed.
+    cfg = _FakeConfig(tmp_path)
+    processed = cfg.file("21001", "processed")
+    _write_doc(processed, [_speech_with_text(
+        "A", [{"label": "X"}], debug={"nerDuration": 1.0, "confidence": 0.9})])
+    new = cfg.file("21001", "ner")
+    _write_doc(new, [_speech_with_text("A", [{"label": "X"}], debug={"nerDuration": 2.0})])
+
+    _publish_as_processed(cfg, SimpleNamespace(rebuild=True, validate=False), "21001", new)
+
+    result = json.loads(processed.read_text())
+    assert "confidence" not in result["data"][0]["debug"]  # removal persists
