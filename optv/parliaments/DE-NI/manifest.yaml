@@ -18,10 +18,7 @@ periods: [19]
 # / fidelity audit has cleared it (the per-subject VTT calibration is fragile) and
 # it needs substantial refinement before platform integration.
 supported_stages: [download, parse, merge, nel, ner]
-# Aspirational — the hosted dump may not exist on de-ni.openparliament.tv yet.
-# Until it does, scraper/build_entity_dump.py writes the local fallback at
-# <data_dir>/metadata/entities.json (picked up by optv.shared.nel.get_nel_data).
-entity_dump_url: "https://de-ni.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+entity_dump_url: ""
 default_retry_count: 20
 default_retry_delay_max: 10
 

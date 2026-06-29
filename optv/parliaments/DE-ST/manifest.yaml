@@ -7,10 +7,7 @@ locale:
   entityfishing_language: de
 periods: [8]
 supported_stages: [download, parse, merge, nel, align, ner]
-# Aspirational - the dump may not exist on de-st.openparliament.tv yet.
-# Until it does, point --nel-data-dir at <data_dir>/metadata/entities.json
-# (built by scraper/build_entity_dump.py).
-entity_dump_url: "https://de-st.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+entity_dump_url: ""
 default_retry_count: 20
 default_retry_delay_max: 10
 

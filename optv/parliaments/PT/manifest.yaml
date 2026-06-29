@@ -12,7 +12,9 @@ locale:                         # consumed by optv.shared.{align,ner}
 # session.number = sessão_legislativa * 1000 + reunião to stay unique within the
 # term (TW/FI/FR composite-encoding class). See optv/parliaments/PT/common.py.
 periods: [17]                   # XVII legislatura (since 2025)
-supported_stages: [download, parse, merge, nel, align, ner]
+# `ner` is omitted: entity-fishing ships no Portuguese KB, so NER disambiguation
+# can't run (nel — local name-matching against entities.json — is unaffected).
+supported_stages: [download, parse, merge, nel, align]
 entity_dump_url: ""             # built locally via scraper/build_entity_dump.py (FR/NO/FI pattern)
 default_retry_count: 10
 default_retry_delay_max: 10

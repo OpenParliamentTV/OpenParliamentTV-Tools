@@ -9,7 +9,9 @@ locale:
                                      # inject_locale()'s required-keys check.
   entityfishing_language: zh
 periods: [11]
-supported_stages: [download, parse, merge, nel, align, ner]
+# `ner` is omitted: entity-fishing ships no Chinese KB, so NER disambiguation
+# can't run (nel — local name-matching against entities.json — is unaffected).
+supported_stages: [download, parse, merge, nel, align]
 entity_dump_url: ""                  # built locally; see scraper/build_entity_dump.py
 default_retry_count: 10
 default_retry_delay_max: 10

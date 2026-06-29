@@ -14,10 +14,7 @@ periods: [19]
 # and UNVALIDATED — no Whisper-QC/text-fidelity audit has cleared it and it
 # needs substantial refinement before platform integration.
 supported_stages: [download, parse, merge, nel, align, ner]
-# Aspirational - the dump may not exist on de-by.openparliament.tv yet.
-# Until it does, scraper/build_entity_dump.py writes the local fallback
-# at <data_dir>/metadata/entities.json.
-entity_dump_url: "https://de-by.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+entity_dump_url: ""
 default_retry_count: 20
 default_retry_delay_max: 10
 

@@ -16,10 +16,7 @@ periods: [8]   # archive also covers WP 7; out of scope for v1
 # audit has cleared it and it needs substantial refinement before platform
 # integration.
 supported_stages: [download, parse, merge, nel, align, ner]
-# Aspirational — the dump may not exist on de-sn.openparliament.tv yet. Until it
-# does, scraper/build_entity_dump.py writes the local fallback at
-# <data_dir>/metadata/entities.json.
-entity_dump_url: "https://de-sn.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+entity_dump_url: ""
 default_retry_count: 20
 default_retry_delay_max: 10
 
