@@ -76,8 +76,14 @@ def fix_time(t: str) -> str:
 
 def clean_text(t: str) -> str:
     """Clean text before splitting into sentences.
+
+    The source XML is pretty-printed, so a paragraph carries a hard newline or
+    tab plus indentation embedded mid-sentence. Collapse any whitespace run that
+    contains a newline/CR/tab to a single space; leave benign runs of plain
+    spaces alone (``split_sentences`` strips each sentence afterwards). Same rule
+    the platform / migration apply, so re-parsed text matches migrated text.
     """
-    t = re.sub(r'\n\s+', ' ', t)
+    t = re.sub(r'[ \t]*[\r\n\t]+[ \t]*', ' ', t)
     return t
 
 def parse_speakers(speakers):
