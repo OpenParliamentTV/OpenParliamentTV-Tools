@@ -116,6 +116,11 @@ def _wid_from_idno(elem) -> str | None:
 
 _REGISTRY_CACHE: dict = {}
 
+# Speaker/faction registries shared by every ParlaMint session file. Fetched by
+# optv.parliaments.DE.scraper.fetch_parlamint (which keeps its own copy of these
+# names -- it writes them, this module reads them).
+REGISTRY_FILES = ("ParlaMint-DE-listPerson.xml", "ParlaMint-DE-listOrg.xml")
+
 
 def _load_registries(proceedings_dir: Path) -> tuple[dict, dict]:
     """Load listPerson + listOrg into in-memory dicts.
@@ -124,8 +129,8 @@ def _load_registries(proceedings_dir: Path) -> tuple[dict, dict]:
     persons[Qid] = {label, firstname, lastname, affiliations: [(ref, frm, to, role)]}
     orgs[org_id] = {label, abbrev, wid}
     """
-    person_file = proceedings_dir / "ParlaMint-DE-listPerson.xml"
-    org_file = proceedings_dir / "ParlaMint-DE-listOrg.xml"
+    person_file = proceedings_dir / REGISTRY_FILES[0]
+    org_file = proceedings_dir / REGISTRY_FILES[1]
     if not person_file.exists() or not org_file.exists():
         raise FileNotFoundError(
             f"Missing ParlaMint registries in {proceedings_dir} "
@@ -966,6 +971,14 @@ def parse_parlamint_directory(directory: Path, args) -> None:
     (so Bundestag-native `<sessionid>-proceedings.xml` are ignored).
     """
     directory = Path(directory)
+    # Without the registries nothing here can be parsed. Rather than abort the
+    # whole workflow on the first session, skip: an already-parsed session
+    # keeps its existing output (the mtime that selected it is usually just
+    # checkout skew -- `-data.xml` is versioned, `-proceedings.json` is not),
+    # and an unparsed one is reported so it is not lost silently.
+    have_registries = all((directory / name).exists() for name in REGISTRY_FILES)
+    unparseable = []
+
     for source in sorted(directory.glob("*-data.xml")):
         output_file = get_parsed_proceedings_filename(source, directory)
         # mtime-driven, matching parse_proceedings_directory: re-parse only
@@ -973,6 +986,12 @@ def parse_parlamint_directory(directory: Path, args) -> None:
         # global --force flag is intentionally not consulted here — parsing is
         # an implicit always-run step, not a command-selected stage.
         if output_file.exists() and output_file.stat().st_mtime >= source.stat().st_mtime:
+            continue
+        if not have_registries:
+            if output_file.exists():
+                logger.warning(f"No ParlaMint registries - keeping existing {output_file.name}")
+            else:
+                unparseable.append(source.name)
             continue
         # Cheap sanity check: is this actually a ParlaMint session file?
         try:
@@ -985,6 +1004,13 @@ def parse_parlamint_directory(directory: Path, args) -> None:
             continue
         logger.info(f"Parsing ParlaMint {source.name}")
         parse_proceedings(source, directory, str(source), args)
+
+    if unparseable:
+        logger.error(f"Missing ParlaMint registries in {directory} "
+                     f"({' and '.join(REGISTRY_FILES)}) - "
+                     f"{len(unparseable)} session(s) left unparsed: "
+                     f"{', '.join(unparseable[:5])}"
+                     f"{' ...' if len(unparseable) > 5 else ''}")
 
 
 if __name__ == "__main__":

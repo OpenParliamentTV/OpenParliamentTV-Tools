@@ -27,7 +27,8 @@ from .common import Config
 from .merger.merge_session import merge_session
 from .parsers.parlamint2json import parse_parlamint_directory
 from .parsers.proceedings2json import parse_proceedings_directory
-from .scraper.fetch_parlamint import download_parlamint_period
+from .scraper.fetch_parlamint import (REGISTRY_FILES, download_parlamint_period,
+                                      download_parlamint_registries)
 from .scraper.fetch_proceedings import download_plenary_protocols
 from .scraper.update_media import update_media_directory_period, update_media_from_raw
 
@@ -51,8 +52,30 @@ def _download(config, args):
         download_plenary_protocols(config.dir('proceedings'), fullscan=False, period=args.period)
 
 
+def _ensure_parlamint_registries(proceedings_dir: Path) -> None:
+    """Fetch listPerson/listOrg if absent.
+
+    Neither the registries nor the parsed `-proceedings.json` are versioned in
+    the data repo, so a fresh checkout has no way to parse a ParlaMint period
+    unless we fetch them here -- `--download-original` is not required for a
+    merge-only run. No-op once they are on disk.
+    """
+    missing = [name for name in REGISTRY_FILES
+               if not (proceedings_dir / name).exists()]
+    if not missing:
+        return
+    logger.warning(f"ParlaMint registries missing ({', '.join(missing)}) - fetching")
+    try:
+        download_parlamint_registries(proceedings_dir)
+    except Exception as e:
+        # parse_parlamint_directory degrades to skipping sessions it cannot
+        # re-parse, so a transient network failure need not kill the run.
+        logger.error(f"Could not fetch ParlaMint registries: {e}")
+
+
 def _parse(config, args):
     if args.period in PARLAMINT_PERIODS:
+        _ensure_parlamint_registries(config.dir('proceedings'))
         parse_parlamint_directory(config.dir('proceedings'), args)
     else:
         parse_proceedings_directory(config.dir('proceedings'), args)

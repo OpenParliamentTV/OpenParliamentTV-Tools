@@ -42,7 +42,10 @@ class WorkflowHooks:
       download_originals(config, args) -> None
           Body of ``--download-original``. Optional.
       parse_originals(config, args) -> None
-          Always called after download (mtime-driven). Optional.
+          Turn the downloaded originals into the intermediate JSON that merge
+          consumes (mtime-driven). Only called for ``--download-original`` /
+          ``--merge-speeches`` runs, since nothing downstream of merge reads
+          its output. Optional.
       merge_session_to_file(config, session, args) -> Path
           Produce the merged cache file for one session and return its path.
       align_session_to_file(config, session, args) -> Path
@@ -517,7 +520,11 @@ def run_workflow(config, args, hooks: WorkflowHooks) -> None:
     if args.download_original and hooks.download_originals:
         hooks.download_originals(config, args)
 
-    if hooks.parse_originals:
+    # Parsing only produces merge's inputs, so it is pointless for runs that
+    # start further down the pipeline. Keeping it unconditional meant an
+    # NEL-only run re-parsed the originals -- and could die there on a parser
+    # error for sessions it was never going to touch.
+    if hooks.parse_originals and (args.download_original or args.merge_speeches):
         hooks.parse_originals(config, args)
 
     if args.merge_speeches:
