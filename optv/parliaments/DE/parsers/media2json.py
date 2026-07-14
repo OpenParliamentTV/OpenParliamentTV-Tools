@@ -19,12 +19,14 @@ from urllib.parse import urlparse, parse_qs
 import yaml
 
 try:
-    from parsers.common import fix_faction, fix_fullname, fix_role, fixup_execute
+    from parsers.common import (fix_faction, fix_fullname, fix_role, fixup_execute,
+                                split_role_faction)
 except ModuleNotFoundError:
     # Module not found. Tweak the sys.path
     base_dir = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(base_dir))
-    from parsers.common import fix_faction, fix_fullname, fix_role, fixup_execute
+    from parsers.common import (fix_faction, fix_fullname, fix_role, fixup_execute,
+                                split_role_faction)
 
 # Ensure optv.shared.* resolves under both `python -m ...` and direct script invocation.
 _repo_root = str(Path(__file__).resolve().parents[4])
@@ -44,7 +46,15 @@ FEED_LICENSE = _get_rights("DE", stream="media")["license"]
 FEED_CREATOR = _get_rights("DE", stream="media")["creator"]
 FEED_AUTHOR_EMAIL = 'mail@bundestag.de'
 # Note that <faction> may be empty (in the case of Nationalhymne)
-title_data_re = re.compile(r'Redebeitrag\s+von\s+(?P<fullname>.+?)\s+\((?P<faction>.*?)\),?\s+am (?P<title_date>[\d.]+)\s+um\s+(?P<title_time>[\d:]+)\s+Uhr\s+\((?P<session_info>.+)\)')
+#
+# `fullname` is greedy and `faction` cannot span a bare parenthesis, so the
+# faction is the *last* group before ", am". A lazy name plus a paren-crossing
+# faction used to hand the first "(" to the faction and shred any name carrying
+# a parenthetical: "Dr. h. c. (Univ Kyiv) Hans Michelbach (CDU/CSU)" parsed to
+# name "Dr. h. c." + faction "Univ Kyiv) Hans Michelbach (CDU/CSU".
+# `faction` tolerates one level of nesting for the ceremonial readings
+# ("Tankred Suckau (liest Walter Kempowski (1929-2007)/)").
+title_data_re = re.compile(r'Redebeitrag\s+von\s+(?P<fullname>.+)\s+\((?P<faction>[^()]*(?:\([^()]*\)[^()]*)*)\),?\s+am\s+(?P<title_date>[\d.]+)\s+um\s+(?P<title_time>[\d:]+)\s+Uhr\s+\((?P<session_info>.+)\)')
 
 def extract_title_data(title: str) -> Optional[dict]:
     """Extract structured data from title string.
@@ -222,22 +232,12 @@ def parse_media_data(data: dict, fixups: dict = None) -> dict:
             # Faction may encode only faction, or role/faction information.
             # jq -r '.[] | .people[0].faction' data/examples/nmedia/*json | sort -u
             # in old dumps to get all different values.
-            full_faction = metadata.get('faction', '')
-            if '/' in full_faction:
-                # Maybe it encodes a role
-                role, faction = full_faction.split('/', 1)
-                if role in ('CDU', 'B90', 'Bündnis 90'):
-                    # Special cases for CDU and B90
-                    faction = full_faction
-                    role = None
-            else:
-                faction = full_faction
-                role = None
+            role, faction = split_role_faction(metadata.get('faction', ''))
             person = {
                 'label': fix_fullname(metadata.get('fullname', '')),
                 'context': 'main-speaker',
             }
-            if role is not None:
+            if role:
                 person['role'] = fix_role(role)
             if faction:
                 person['faction'] = {'label': fix_faction(faction)}

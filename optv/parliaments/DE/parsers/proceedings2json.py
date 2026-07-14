@@ -27,7 +27,7 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parents[3]))           # for optv.shared.*
     __package__ = module_dir.name
 
-from .common import fix_faction, fix_fullname, parse_fullname
+from .common import fix_faction, fix_fullname, is_known_faction, parse_fullname
 from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
 from optv.shared.lang.de import split_long_sentences
 
@@ -86,6 +86,72 @@ def clean_text(t: str) -> str:
     t = re.sub(r'[ \t]*[\r\n\t]+[ \t]*', ' ', t)
     return t
 
+def speaker_from_redner(redner) -> tuple:
+    """Return (fullname, status) for a <redner>, preferring its display text.
+
+    The Bundestag prints the speaker's full name in the text right after
+    ``</redner>`` ("…</redner>Kees de Vries (CDU/CSU):"), and that is the only
+    place some of it survives. The structured ``<vorname>``/``<namenszusatz>``/
+    ``<nachname>`` silently drop name particles -- ``<vorname>Kees</vorname>
+    <nachname>Vries</nachname>`` for *Kees de Vries*, likewise the "de" of
+    Thomas de Maizière and the "von der" of Hans-Georg von der Marwitz -- and in
+    a handful of 2025 files they duplicate their own text
+    (``<vorname>SvenjaSvenja</vorname>``). None of those labels link.
+
+    The display text is cut at the first ":" because a personal statement
+    (Erklärung nach §31 GO) runs the whole statement into the same node, right
+    after the "Name (Fraktion):" header.
+
+    Only the *name* is taken from the display text; the status still comes from
+    the structured fields. The display text would also reveal a chair speaking
+    from a <redner> block ("Präsident Dr. Wolfgang Schäuble:", 14 in the corpus,
+    where the structured fields carry no office), but promoting those to
+    president/vice-president would change people[].context on already-published
+    speeches -- a separate decision from repairing a name.
+
+    Falls back to the structured fields when there is no usable display text.
+    """
+    firstname = redner.findtext('.//vorname') or ""
+    lastname = redner.findtext('.//nachname') or ""
+    nameaddition = redner.findtext('.//namenszusatz') or ""
+    structured, status = parse_fullname(f"{firstname} {nameaddition} {lastname}")
+
+    tail = (redner.tail or '').split(':', 1)[0]
+    if tail.strip():
+        fullname, _tail_status = parse_fullname(tail)
+        if fullname:
+            return fullname, status
+    return structured, status
+
+
+_TRAILING_PAREN_RE = re.compile(r'\(([^()]*)\)\s*$')
+
+
+def faction_from_redner(redner) -> str:
+    """Faction for a <redner>, falling back to the display text when <fraktion> is corrupt.
+
+    The same corrupt records that duplicate the name duplicate the faction
+    ("<fraktion>SPDSPD</fraktion>"), or fuse two speakers' factions
+    ("SPDCDU/CSU"). The display text after </redner> spells it correctly --
+    "Svenja Schulze (SPD):".
+
+    The fallback is *guarded* by is_known_faction rather than trusting the
+    trailing parenthetical outright: it often holds something else entirely --
+    a constituency ("Volker Beck (Köln)"), a Land, or a note
+    ("(Gebärdensprachdolmetschung)") -- and preferring it blindly would replace
+    18 perfectly good factions to repair 28 broken ones.
+    """
+    faction = fix_faction(redner.findtext('.//fraktion') or "")
+    if faction and is_known_faction(faction):
+        return faction
+    match = _TRAILING_PAREN_RE.search((redner.tail or '').split(':', 1)[0].strip())
+    if match:
+        candidate = fix_faction(match.group(1).strip())
+        if is_known_faction(candidate):
+            return candidate
+    return faction
+
+
 def parse_speakers(speakers):
     """Convert a list a list of <redner> to a dict of Person data indexed by fullname
     """
@@ -99,10 +165,8 @@ def parse_speakers(speakers):
         identifiers.add(ident)
         firstname = s.findtext('.//vorname') or ""
         lastname = s.findtext('.//nachname') or ""
-        nameaddition = s.findtext('.//namenszusatz') or ""
-        fullname = f"{firstname} {nameaddition} {lastname}"
-        fullname, status = parse_fullname(fullname)
-        faction = fix_faction(s.findtext('.//fraktion') or "")
+        fullname, status = speaker_from_redner(s)
+        faction = faction_from_redner(s)
         # Persons can be without any party (independent) but join a faction. So we cannot assume any correspondence between both.
         #party = faction.split('/')[0]
 
@@ -154,12 +218,13 @@ def parse_speech(elements: list, last_speaker: dict, speech_id: str):
         if c.tag == 'p':
             klasse = c.attrib.get('klasse')
             if klasse == 'redner':
-                # Speaker identification
-                firstname = c.findtext('.//vorname') or ""
-                lastname = c.findtext('.//nachname') or ""
-                nameaddition = c.findtext('.//namenszusatz') or ""
-                speaker = f"{firstname} {nameaddition} {lastname}"
-                speaker, status = parse_fullname(speaker)
+                # Speaker identification. Derive the name exactly as
+                # parse_speakers does -- it keys speaker_info by that name, and
+                # this is what looks it up again.
+                redner = c.find('.//redner')
+                if redner is None:
+                    continue
+                speaker, status = speaker_from_redner(redner)
                 if status is not None:
                     speakerstatus = status
                 elif main_speaker is None:
