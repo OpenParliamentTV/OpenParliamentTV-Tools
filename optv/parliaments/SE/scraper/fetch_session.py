@@ -27,12 +27,7 @@ Idempotent: skips the per-anforande walk if the bundle already exists;
 skips per-debate fetches whose output files already exist. ``--force``
 re-fetches everything.
 
-The list endpoint ``anforandelista`` is not used here — its filter
-parameters (``prot_nr``, ``dok_id``, ``rm``, ``bet``, ``from``/``tom``,
-page index ``p=``) are silently ignored by the upstream API
-(verified 2026-04-30). Direct per-speech lookup is the reliable per-session
-path; the bulk dataset at ``data.riksdagen.se/dataset/anforande/`` is the
-recommended path for period-wide backfill (not implemented here).
+The list endpoint ``anforandelista`` is not used here: it filters by riksmöte (``rm``), party and person (``iid``) but not by protokoll, and ignores the page index ``p=`` (checked 2026-10-26), so it cannot enumerate one protokoll's speeches. Direct per-speech lookup is the reliable per-session path; the bulk dataset at ``data.riksdagen.se/dataset/anforande/`` is the recommended path for period-wide backfill (not implemented here).
 """
 
 from __future__ import annotations

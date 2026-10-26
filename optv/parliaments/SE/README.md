@@ -16,7 +16,7 @@ Two streams, both fetched in one walk via [`scraper/fetch_session.py`](scraper/f
 
 ## Running
 
-`--session` is required for downloads (Riksdag's `anforandelista` filter is unreliable so the wrapper can't auto-discover them), so the `update` wrapper and `Makefile` cover **post-download** stages only — merge + align + NER over whatever raw files already exist under `original/`:
+`--session` is required for downloads (the adapter does not discover protokolls yet, see Known limitations), so the `update` wrapper and `Makefile` cover **post-download** stages only — merge + align + NER over whatever raw files already exist under `original/`:
 
 ```bash
 ./optv/parliaments/SE/update <data_dir>
@@ -31,8 +31,8 @@ Two streams, both fetched in one walk via [`scraper/fetch_session.py`](scraper/f
 
 ## Known limitations
 
-- **`--session` required for downloads.** The Riksdag `anforandelista` filter is unreliable (verified 2026-04-30); direct per-anforande lookup is the only stable path. There is no period-wide auto-discovery yet — the future approach is the bulk dataset URL pattern `data.riksdagen.se/dataset/anforande/anforande-{rm_compact}.json.zip`.
-- **Zero-duration procedural speeches.** Riksdag publishes talman/vice talman procedural calls with `anf_sekunder=0` despite carrying transcript text. [`align_prep.py`](align_prep.py) skips these cleanly, sets `debug.align-skip = "zero-duration-from-source"`, and removes any stale cache files.
+- **`--session` required for downloads.** There is no protokoll discovery yet. `anforandelista` cannot list one protokoll's speeches: it filters by riksmöte (`rm`), party and person (`iid`) but not by protokoll, and ignores the page index `p=` (checked 2026-10-26), so direct per-anforande lookup is the stable path. Protokoll IDs per date range are available from `data.riksdagen.se/dokumentlista/?doktyp=prot&from=…&tom=…&utformat=json`. For period-wide backfill, the bulk dataset `data.riksdagen.se/dataset/anforande/anforande-{rm_compact}.json.zip` covers past riksmöten; the file for 2026/27 was not yet published on 2026-10-26.
+- **Zero-duration procedural speeches.** Riksdag publishes talman/vice talman procedural calls with `anf_sekunder=0` despite carrying transcript text. [`align_prep.py`](align_prep.py) skips these cleanly, sets `debug.alignSkip = "zero-duration-from-source"`, and removes any stale cache files.
 - **Fragment-missing fallback.** When a per-speech `#t=startpos,duration` fragment is missing, the aligner falls back to downloading the full-debate MP3 (1–2 hrs), which can deadlock Whisper QC. Production text output is unaffected.
 - **NEL.** `entity_dump_url` is empty until an SE `entities.json` is hosted upstream; the NEL stage works as soon as a local `<data_dir>/metadata/entities.json` is present (current dump ≈ 2 077 Riksdag members + 8 active parties, expanded to ~5 600 aliases at load time).
 - **No rollback handling.** Withdrawn or revised speeches are taken as-is from the canonical Riksdag numbering — no special-case logic in the merger.

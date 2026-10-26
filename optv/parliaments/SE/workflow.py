@@ -11,11 +11,7 @@ riksmöte 2025/26). Session strings are ``{period}-{protokoll_nr:03d}``, so
 ``--limit-to-period`` filters by the ``2025-`` prefix (with dash; otherwise
 ``2025`` would match ``20251`` etc.).
 
-Download stage requires ``--protokoll <dok_id>`` because Riksdag's
-``anforandelista`` filter is unreliable (verified 2026-04-30): we cannot
-auto-discover the protokoll list for a riksmöte from the API. Future
-period-wide download support should layer on the bulk dataset URL pattern
-``data.riksdagen.se/dataset/anforande/anforande-{rm_compact}.json.zip``.
+Download stage requires ``--session <dok_id>`` (a protokoll ID such as ``HD0991``): protokoll discovery is not implemented yet. ``anforandelista`` cannot filter by protokoll, but ``dokumentlista/?doktyp=prot&from=…&tom=…`` lists protokoll IDs by date (checked 2026-10-26). Period-wide backfill could also use the bulk dataset URL pattern ``data.riksdagen.se/dataset/anforande/anforande-{rm_compact}.json.zip`` (no file yet for riksmöte 2026/27 on 2026-10-26).
 
 NEL needs ``metadata/entities.json`` (Wikidata-derived Riksdag members +
 parties); NER needs an Entity-Fishing endpoint with the ``db-sv`` KB loaded.
@@ -63,8 +59,8 @@ def _session_in_scope(args, session):
 
 def _download(config, args):
     if not args.protokoll:
-        sys.exit("--download-original requires --protokoll <dok_id> (e.g. --protokoll HD0991). "
-                 "Riksdag's anforandelista filter is unreliable so we can't auto-discover protokollen.")
+        sys.exit("--download-original requires --session <dok_id> (e.g. --session HD0991). "
+                 "Protokoll discovery is not implemented yet.")
     for protokoll_id in args.protokoll:
         logger.info(f"Downloading protokoll {protokoll_id} into {config.dir('data')}")
         fetch_session(

@@ -4,8 +4,8 @@
 # Parliament-specific options are baked in here.
 #
 # Note: --download-original is intentionally omitted because Riksdag downloads
-# require an explicit --session <dok_id> (the anforandelista filter is
-# unreliable). To download a new protokoll, call workflow.py directly:
+# require an explicit --session <dok_id> (protokoll discovery is not
+# implemented yet). To download a new protokoll, call workflow.py directly:
 #   ./workflow.py --period=2025 <data_dir> --download-original --session HD0991
 # Once raw files exist under original/, this wrapper merges + aligns + NERs them.
 
