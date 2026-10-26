@@ -52,3 +52,12 @@ This joins a Wikidata SPARQL pull (`P39 wd:Q6310593`, "Member of the Legislative
 - **NER needs `db-zh`.** The shared `entity-fishing` deployment must have the Chinese KB loaded (`sciencialab/entity-fishing-db-zh` on HuggingFace). Without it, the NER stage runs cleanly but every `entities[]` is empty.
 - **Video copyright.** The IVOD service publishes under [non-commercial-use-only terms](https://ivod.ly.gov.tw/Copyright); proceedings text is [Open Government Data Licensed](https://data.gov.tw/license) (CC BY 4.0 compatible). Pipeline outputs include `media.creator` / `media.license` / `textContents[].license` so downstream deployments can act on this; the Tools repo neither enforces nor relaxes the restrictions.
 - **`gazette` transcripts mostly empty for recent IVODs.** ly.govapi.tw exposes a `gazette` field on older IVODs (the official-gazette transcript, paragraph-level) but the field is `null` for most term-11 records as of mid-2026. Whisperx is the primary text path.
+
+## Research verification notes (2026-10-26)
+
+From the re-verification of the research profile [parliaments/TW/TW.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Research/blob/main/parliaments/TW/TW.md):
+
+- **Official per-clip transcripts.** `https://ivod.ly.gov.tw/Demand/Speech/{IVOD_ID}` (the `speechRecordUrl` in open data dataset 421) returns the official gazette text of a clip. It is filled only weeks after the sitting (empty body until then), so it can replace the WhisperX text later; the adapter does not use it yet.
+- **Text provenance.** The WhisperX text is an AI transcript produced by ly.govapi.tw, but `parsers/proceedings2json.py` emits it as `type: "proceedings"` with creator 立法院 and the open data licence.
+- **The `selectTerm` note under "Data model" is outdated.** Dataset 148 stopped on 2025-01-23. Its successor, dataset 421, is queried via `https://data.ly.gov.tw/odw/ID421Action.action` by term, session period and date range and works for term 11. Its date filter, or `GET /v2/ivods?日期=YYYY-MM-DD`, finds new plenaries, so `--session` need not stay required.
+- **Agenda item.** Open data dataset 221 gives each legislator's speech type per sitting day (`國是論壇`, `法案發言`, `政黨質詢`) and matches the clips one to one; it can replace the sitting title used as `agendaItem`.
