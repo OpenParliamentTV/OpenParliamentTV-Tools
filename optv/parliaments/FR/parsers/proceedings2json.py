@@ -325,7 +325,7 @@ def _finalize(c: dict, sentencize) -> dict:
     text_body: list[dict] = [{
         "type": "speech",
         "speaker": c["person"]["label"],
-        "speakerstatus": c["person"].get("role"),
+        "speakerstatus": c["person"]["context"],
         "sentences": sentences,
     }]
     for _after, text in c["comments"]:

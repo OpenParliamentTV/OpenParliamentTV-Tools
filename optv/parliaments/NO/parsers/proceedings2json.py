@@ -286,10 +286,9 @@ def _build_speech(speech_el: ET._Element,
     sentences = _sentence_split(nlp, paragraphs)
 
     if speech_type == "Replikk":
+        # A reply is its own clip with the replier on camera, so the replier
+        # stays ``main-speaker``; ``isReply`` marks the record as a reply.
         is_reply = True
-        # Replikk speakers are members responding to a Hovedinnlegg, normal context.
-        if speaker.get("context") == "main-speaker":
-            speaker["context"] = "speaker"
     elif speech_type == "Presinnlegg":
         # President is the speaker.
         is_reply = False
@@ -344,7 +343,7 @@ def _build_speech(speech_el: ET._Element,
             "textBody": [{
                 "type": "speech" if speech_type != "Presinnlegg" else "comment",
                 "speaker": speaker["label"],
-                "speakerstatus": speaker.get("role"),
+                "speakerstatus": person["context"],
                 "sentences": sentences,
             }],
         }],

@@ -13,9 +13,10 @@ normalizer would drop a redundant copy anyway).
 
 The on-camera speaker is identified by ``media.padIntern`` (== the protocol
 header's ``PAD_<n>``); the merger guarantees that person is present in
-``people`` and listed first. Speeches with no matching proceedings text are kept
-as media-only records with empty ``textContents`` (the platform prefers video
-without text over a dropped clip).
+``people`` and listed first, and sets the speaker vocabulary on ``people[].context``
+and ``textBody[].speakerstatus`` (``assign_speaker_status``). Speeches with no
+matching proceedings text are kept as media-only records with empty
+``textContents`` (the platform prefers video without text over a dropped clip).
 
 Outputs ``cache/merged/{session}-merged.json``.
 """
@@ -39,7 +40,7 @@ if __package__ is None or __package__ == "":
 from optv.parliaments.AT.common import Config, save_if_changed
 from optv.parliaments.AT.parsers.media2json import parse_session as parse_media_session
 from optv.parliaments.AT.parsers.proceedings2json import (
-    parse_session as parse_proceedings_session, clean_person_name)
+    parse_session as parse_proceedings_session, clean_person_name, at_speaker_status)
 from optv.parliaments.AT.parsers.agenda_title import split_agenda_title
 from optv.parliaments.AT.scraper.fetch_session import to_roman
 from optv.shared.agenda_types import classify_at, annotate_agenda_item
@@ -93,6 +94,40 @@ def _trim_trailing_handoff(speech: dict, pad_intern: str | None) -> int:
     speech["people"] = [p for p in speech.get("people", [])
                         if str(p.get("originPersonID")) in refs] or speech.get("people", [])
     return len(tb) - (last + 1)
+
+
+def assign_speaker_status(speech: dict, pad_intern: str | None) -> None:
+    """Set the platform speaker vocabulary on ``people[].context`` and on every
+    ``textBody[].speakerstatus``, in place.
+
+    Chair → ``president`` / ``vice-president``; the on-camera speaker
+    (``pad_intern``) → ``main-speaker``; anyone else → ``speaker``; a block
+    without a speaker → ``None``. Derived from ``people[].role`` only (never from
+    an incoming ``speakerstatus``), so it is idempotent. A block's author is
+    resolved by ``speakerID``, falling back to a unique ``speaker`` label match.
+    """
+    pad = str(pad_intern) if pad_intern is not None else None
+    people = speech.get("people") or []
+    status_by_id: dict[str, str] = {}
+    labels: dict[str, list[str]] = {}
+    for p in people:
+        pid = str(p["originPersonID"]) if p.get("originPersonID") is not None else None
+        status = at_speaker_status(p.get("role"), pad is not None and pid == pad)
+        p["context"] = status
+        if pid is not None:
+            status_by_id[pid] = status
+        labels.setdefault(p.get("label"), []).append(status)
+    for tc in speech.get("textContents") or []:
+        for block in tc.get("textBody") or []:
+            sid, label = block.get("speakerID"), block.get("speaker")
+            if sid is not None and str(sid) in status_by_id:
+                block["speakerstatus"] = status_by_id[str(sid)]
+            elif label is not None and len(labels.get(label, [])) == 1:
+                block["speakerstatus"] = labels[label][0]
+            elif sid is not None or label is not None:
+                block["speakerstatus"] = "speaker"
+            else:
+                block["speakerstatus"] = None
 
 
 def _agenda_item(title: str) -> dict:
@@ -194,6 +229,7 @@ def merge_one(media_rec: dict, proc: dict | None, parliament: str,
         speech["textContents"] = []
         debug["textMissing"] = True
 
+    assign_speaker_status(speech, media_rec.get("padIntern"))
     speech["debug"] = debug
     return speech
 

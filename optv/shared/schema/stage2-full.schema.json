@@ -94,7 +94,7 @@
           "enum": ["speech", "comment"]
         },
         "speaker": {"type": ["string", "null"]},
-        "speakerstatus": {"type": ["string", "null"]},
+        "speakerstatus": {"anyOf": [{"$ref": "#/definitions/speakerContext"}, {"type": "null"}]},
         "text": {"type": "string"},
         "speech_id": {"type": "string"},
         "sentences": {

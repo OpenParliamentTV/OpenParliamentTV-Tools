@@ -167,7 +167,7 @@ def split_sentences(nlp, text: str) -> list[str]:
     return split_long_sentences(sents)
 
 
-def build_textbody(nlp, paragraphs: list[str], speaker_label: str, role: str | None) -> list[dict]:
+def build_textbody(nlp, paragraphs: list[str], speaker_label: str, context: str) -> list[dict]:
     """Build the ``textBody`` array from speech paragraphs.
 
     Currently emits a single ``type: "speech"`` block whose ``sentences`` is
@@ -183,7 +183,7 @@ def build_textbody(nlp, paragraphs: list[str], speaker_label: str, role: str | N
     return [{
         "type": "speech",
         "speaker": speaker_label,
-        "speakerstatus": role,
+        "speakerstatus": context,
         "sentences": sentences,
     }]
 
@@ -209,7 +209,7 @@ def speech_record(anf: dict, prot: dict, speech_index: int, nlp) -> dict:
     fetch_id = anf.get("_fetch_id") or f"{protokoll_id}-{anf.get('anforande_nummer')}"
 
     paragraphs = html_to_paragraphs(anf.get("anforandetext") or "")
-    text_body = build_textbody(nlp, paragraphs, label, role)
+    text_body = build_textbody(nlp, paragraphs, label, context)
 
     person: dict[str, Any] = {
         "type": "memberOfParliament",

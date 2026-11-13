@@ -64,6 +64,19 @@ Unknown
 
 `Unknown` is accepted by the schema but flagged as a data-quality warning by the semantic validator.
 
+### `textContents[].textBody[].speakerstatus` — valid values
+
+The same enum as `people[].context`, or `null` for a block without a speaker. The platform reads it per block:
+
+| Value | Meaning | Platform effect |
+|-------|---------|-----------------|
+| `main-speaker` | The speech's credited (on-camera) speaker | Counted in the statistics index (word statistics, search suggestions) |
+| `president`, `vice-president`, `interim-president` | The session chair, also when the chair is the clip's speaker | Stored as chair text in statistics; marked as chair in AKN/ParlaMint exports |
+| `speaker` | Anyone else (interjection, question, a minister answering) | Not counted |
+| `null` | No speaker (e.g. a heading before the first speaker) | Not counted |
+
+A speaker's role label (`Abgeordnete`, `ministre`, `statsminister`, …) is never a `speakerstatus`; it goes in `people[].role`.
+
 ### `agendaItem.speechIndex` — deprecated
 
 Legacy period-17 artefact (nested speech index). New writers MUST use top-level `data[].speechIndex`. Accepted by the full schema; the semantic validator warns.

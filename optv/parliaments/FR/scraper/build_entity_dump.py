@@ -338,7 +338,7 @@ def build(leg: int) -> tuple[dict, dict]:
                 "label": name,
                 "labelAlternative": aliases,
                 # firstname/lastname mirror the platform entity-dump shape (see
-                # de.openparliament.tv/data/entity-dump) so the live pull that
+                # de.openparliament.tv/api/v1/entityDump) so the live pull that
                 # will eventually replace this file is a drop-in.
                 "firstname": first,
                 "lastname": last,

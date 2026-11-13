@@ -1,8 +1,12 @@
-"""AT merger: trailing-handoff trim + confidence/linkedMediaIndexes gate."""
+"""AT merger: trailing-handoff trim, confidence/linkedMediaIndexes gate, speaker vocabulary."""
 
 from __future__ import annotations
 
 import importlib
+
+import pytest
+
+from optv.parliaments.AT.parsers.proceedings2json import at_speaker_status
 
 _merger = importlib.import_module("optv.parliaments.AT.merger.merge_session")
 
@@ -116,3 +120,109 @@ def test_apply_gate_skips_media_only():
     _merger.apply_gate([s])
     assert "confidence" not in s["debug"]
     assert "linkedMediaIndexes" not in s["debug"]
+
+
+# --------------------------------------------------------------------------- #
+# Speaker vocabulary: people[].context + textBody[].speakerstatus
+# --------------------------------------------------------------------------- #
+
+_GUEST_PRESIDENT_ROLES = [
+    "Präsidentin des Rechnungshofes",
+    "Präsident der Parlamentarischen Versammlung des Europarates",
+    "Präsidentin des Europäischen Parlaments",
+]
+
+
+@pytest.mark.parametrize("role,expected", [
+    ("Präsident", "president"),
+    ("Präsidentin", "president"),
+    ("Zweite Präsidentin", "vice-president"),
+    ("Dritter Präsident", "vice-president"),
+    ("Vizepräsident", "vice-president"),
+])
+@pytest.mark.parametrize("on_camera", [True, False])
+def test_speaker_status_chair(role, expected, on_camera):
+    assert at_speaker_status(role, on_camera) == expected
+
+
+@pytest.mark.parametrize("role", _GUEST_PRESIDENT_ROLES + [
+    "Abgeordneter", "Bundesminister für Finanzen", "Schriftführerin", None, ""])
+def test_speaker_status_non_chair(role):
+    assert at_speaker_status(role, True) == "main-speaker"
+    assert at_speaker_status(role, False) == "speaker"
+
+
+def _person(pad, role):
+    return {"originPersonID": pad, "label": f"P{pad}", "role": role, "context": role}
+
+
+def _role_block(pad, text, with_id=True):
+    b = {"speaker": f"P{pad}" if pad else None, "speakerstatus": "Abgeordneter",
+         "sentences": [{"text": text}], "text": text}
+    if with_id:
+        b["speakerID"] = pad
+    return b
+
+
+def _statuses(speech):
+    return [b["speakerstatus"] for b in speech["textContents"][0]["textBody"]]
+
+
+def test_assign_speaker_status_mixed_speech():
+    # Q&A: chair intro, on-camera MP asks, minister answers, MP follows up,
+    # plus a heading paragraph before any speaker.
+    sp = {
+        "people": [_person("1", "Abgeordneter"), _person("9", "Präsident"),
+                   _person("5", "Bundesminister für Inneres")],
+        "textContents": [{"textBody": [
+            {"speaker": None, "speakerID": None, "speakerstatus": None,
+             "sentences": [{"text": "Fragestunde"}]},
+            _role_block("9", "Wir kommen zur Fragestunde."),
+            _role_block("1", "Herr Minister!"),
+            _role_block("5", "Die Antwort lautet."),
+            _role_block("1", "Danke."),
+        ]}],
+    }
+    _merger.assign_speaker_status(sp, "1")
+    assert _statuses(sp) == [None, "president", "main-speaker", "speaker", "main-speaker"]
+    assert [p["context"] for p in sp["people"]] == ["main-speaker", "president", "speaker"]
+    assert [p["role"] for p in sp["people"]] == ["Abgeordneter", "Präsident", "Bundesminister für Inneres"]
+
+
+def test_assign_speaker_status_chair_on_camera():
+    sp = {"people": [_person("9", "Präsidentin")],
+          "textContents": [{"textBody": [_role_block("9", "Die Sitzung ist eröffnet.")]}]}
+    _merger.assign_speaker_status(sp, "9")
+    assert _statuses(sp) == ["president"]
+    assert sp["people"][0]["context"] == "president"
+
+
+def test_assign_speaker_status_guest_president_is_main_speaker():
+    sp = {"people": [_person("7", "Präsidentin des Rechnungshofes"), _person("9", "Präsident")],
+          "textContents": [{"textBody": [_role_block("9", "Bitte."), _role_block("7", "Danke.")]}]}
+    _merger.assign_speaker_status(sp, "7")
+    assert _statuses(sp) == ["president", "main-speaker"]
+
+
+def test_assign_speaker_status_label_fallback_and_idempotent():
+    # Blocks without speakerID resolve by their unique speaker label.
+    sp = {"people": [_person("1", "Abgeordnete"), _person("9", "Präsident")],
+          "textContents": [{"textBody": [_role_block("9", "Bitte.", with_id=False),
+                                         _role_block("1", "Rede.", with_id=False)]}]}
+    _merger.assign_speaker_status(sp, "1")
+    assert _statuses(sp) == ["president", "main-speaker"]
+    _merger.assign_speaker_status(sp, "1")
+    assert _statuses(sp) == ["president", "main-speaker"]
+
+
+def test_merge_one_emits_vocabulary_only():
+    media_rec = {"speechIndex": 3, "stdId": 100, "padIntern": "1",
+                 "speakerName": "P1 (ÖVP)", "agendaTitle": "TOP 1 Erste Lesung: Test",
+                 "media": {"duration": 120}}
+    proc = {"stdId": 100, "people": [_person("9", "Präsident"), _person("1", "Abgeordneter")],
+            "textContents": [{"textBody": [_role_block("9", "Zu Wort gelangt P1."),
+                                           _role_block("1", "Rede.")]}]}
+    speech = _merger.merge_one(media_rec, proc, "AT", 27, 50, (None, None))
+    assert [p["originPersonID"] for p in speech["people"]] == ["1", "9"]
+    assert [p["context"] for p in speech["people"]] == ["main-speaker", "president"]
+    assert _statuses(speech) == ["president", "main-speaker"]

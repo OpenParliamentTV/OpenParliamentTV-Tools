@@ -10,7 +10,9 @@ The scraper saves one Word-generated protocol HTML per on-camera speech at
 
 The ``PAD_<n>`` in the href is the person's stable parliament id (it matches the
 Mediathek ``redner.pad_intern``), so it doubles as ``originPersonID`` and as the
-key that lets the merger mark the on-camera speaker. Plain bold/italic inside a
+key that lets the merger mark the on-camera speaker. The header role label goes
+into ``people[].role``; ``context`` and ``speakerstatus`` carry the platform
+speaker vocabulary (see ``at_speaker_status``). Plain bold/italic inside a
 paragraph (``<b><i>eröffne</i></b>``) is emphasis, not a header — only a leading
 bold block carrying a ``PAD`` anchor and a trailing colon qualifies.
 
@@ -96,24 +98,33 @@ def clean_person_name(raw: str) -> str:
     return s.strip(" ,")
 
 
-def at_speaker_context(role: str) -> str:
-    """Map an Austrian chair/role label to a Stage-2 speaker ``context``.
+# A presiding-officer header label, matched against the *whole* role so guest
+# office holders ("Präsidentin des Rechnungshofes", "Präsident der
+# Parlamentarischen Versammlung des Europarates") are not taken for the chair.
+# The protocol labels the Second/Third President plainly "Präsident(in)" too, so
+# the deputy forms are rare.
+_CHAIR_ROLE_RE = re.compile(
+    r"^(?P<deputy>(?:zweite|dritte)[rn]?\s+|vize)?präsident(?:in)?$", re.IGNORECASE)
 
-    The Nationalrat's presiding officers are the Präsident and the Zweite/Dritte
-    Präsident:in (deputy presiders) — the latter map to ``vice-president``.
-    Everyone else (Abgeordnete, Bundesminister:in, Staatssekretär:in, …) is the
-    one speaking on camera ⇒ ``main-speaker``.
+
+def at_chair_status(role: str | None) -> str | None:
+    """``president`` / ``vice-president`` for a presiding-officer role label, else None."""
+    m = _CHAIR_ROLE_RE.match(clean_text(role or ""))
+    if not m:
+        return None
+    return "vice-president" if m.group("deputy") else "president"
+
+
+def at_speaker_status(role: str | None, on_camera: bool) -> str:
+    """Platform speaker vocabulary for a person / textBody block.
+
+    The chair is ``president`` / ``vice-president`` (also when the chair is the
+    clip's on-camera speaker); otherwise the on-camera speaker of the speech is
+    ``main-speaker`` and anyone else (a minister answering in Q&A, a
+    Schriftführer:in, …) is ``speaker``. Used for both ``people[].context`` and
+    ``textBody[].speakerstatus``; the role label itself stays in ``people[].role``.
     """
-    r = (role or "").lower()
-    if ("vizepräsident" in r or "zweite präsident" in r or "zweiter präsident" in r
-            or "dritte präsident" in r or "dritter präsident" in r
-            or "zweiten präsident" in r or "dritten präsident" in r):
-        return "vice-president"
-    if "schriftführer" in r:
-        return "speaker"
-    if "präsident" in r:
-        return "president"
-    return "main-speaker"
+    return at_chair_status(role) or ("main-speaker" if on_camera else "speaker")
 
 
 def _simplify(inner: str) -> str:
@@ -138,7 +149,9 @@ def parse_protocol_html(html_text: str, std_id, period: int, *, source_uri: str)
             pad = str(int(header.group("pad")))   # canonical: strip the href's zero-padding
             label = clean_person_name(header.group("name"))
             fac = clean_text(header.group("fac")) if header.group("fac") else None
-            context = at_speaker_context(role)
+            # The on-camera speaker is only known to the merger (media
+            # ``pad_intern``), which promotes that person to ``main-speaker``.
+            context = at_speaker_status(role, on_camera=False)
             if pad not in people:
                 first, last = split_first_last(label)
                 person = {
@@ -167,7 +180,7 @@ def parse_protocol_html(html_text: str, std_id, period: int, *, source_uri: str)
             "speech_id": str(std_id),
             "type": "speech",
             "speaker": current["label"] if current else None,
-            "speakerstatus": current["role"] if current else None,
+            "speakerstatus": current["context"] if current else None,
             # Block-level speaker id (header PAD) — lets the merger trim the
             # trailing handoff to the next speaker by a robust key, not by label.
             "speakerID": current["originPersonID"] if current else None,

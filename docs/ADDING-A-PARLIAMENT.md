@@ -57,7 +57,7 @@ locale:                         # consumed by optv.shared.{align,ner}
   entityfishing_language: de            # 2-letter for entityfishing
 periods: [17, 18, 19, 20, 21]   # legislative terms covered
 supported_stages: [download, parse, merge, nel, align, ner]
-entity_dump_url: "https://de.openparliament.tv/data/entity-dump/?type=all&wiki=true&exclude_document=true"
+entity_dump_url: "https://de.openparliament.tv/api/v1/entityDump?type=all&wiki=true&exclude_document=true"
 default_retry_count: 20
 default_retry_delay_max: 10
 

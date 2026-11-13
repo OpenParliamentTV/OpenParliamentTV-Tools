@@ -211,7 +211,7 @@ def speech_record(toimenpide, speech_index: int, nlp, default_title: str) -> Opt
             "textBody": [{
                 "type": "speech",
                 "speaker": person["label"],
-                "speakerstatus": person.get("role"),
+                "speakerstatus": person["context"],
                 "sentences": sentences,
             }],
         }],

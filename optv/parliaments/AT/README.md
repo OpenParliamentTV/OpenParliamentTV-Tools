@@ -13,7 +13,7 @@ On-disk: `original/media/{session}-mediathek.json` (raw spine) and `original/pro
 
 ## Merge strategy
 
-`merger/merge_session.py` is a media-spine merge with an **exact id join**: the protocol `std_id` equals the media `st_objekte_id`, so transcript text grafts onto each video clip by integer key — no fuzzy/Needleman-Wunsch alignment. The on-camera speaker is identified by `pad_intern` (matching the protocol header's `PAD_<n>` anchor) and guaranteed present and first in `people`. Because that one `std_id` is *both* the media and text source id, it is written to `media.originMediaID` and `textContents[].originTextID` and `speech.originID` is left unset. Speeches without matching text are kept media-only.
+`merger/merge_session.py` is a media-spine merge with an **exact id join**: the protocol `std_id` equals the media `st_objekte_id`, so transcript text grafts onto each video clip by integer key — no fuzzy/Needleman-Wunsch alignment. The on-camera speaker is identified by `pad_intern` (matching the protocol header's `PAD_<n>` anchor) and guaranteed present and first in `people`. `people[].context` and `textBody[].speakerstatus` carry the platform speaker vocabulary: the presiding officer (header role exactly `Präsident`/`Präsidentin`) is `president`, the on-camera speaker `main-speaker`, anyone else (e.g. a minister answering in Q&A) `speaker`; the protocol role label stays in `people[].role`. Because that one `std_id` is *both* the media and text source id, it is written to `media.originMediaID` and `textContents[].originTextID` and `speech.originID` is left unset. Speeches without matching text are kept media-only.
 
 ## Running
 

@@ -15,7 +15,7 @@ Run:
 
     python -m optv.parliaments.DE-ST.scraper.build_entity_dump <data_dir>
 
-Until the hosted ``https://de-st.openparliament.tv/data/entity-dump/`` exists,
+Until the hosted ``https://de-st.openparliament.tv/api/v1/entityDump`` exists,
 this is the canonical source; the workflow falls back to it via the local
 ``metadata/entities.json`` path picked up by ``optv.shared.nel.get_nel_data``.
 """
