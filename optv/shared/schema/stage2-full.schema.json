@@ -108,7 +108,10 @@
       "required": ["creator", "license"],
       "additionalProperties": true,
       "properties": {
-        "type": {"type": "string"},
+        "type": {
+          "type": "string",
+          "description": "Kind of text. Recommended values: proceedings (the parliament's official record) | generated (a machine transcript of the video). A speech may carry one entry of each per language, proceedings first. Free-form for forward compatibility."
+        },
         "language": {"type": "string"},
         "originTextID": {"type": "string"},
         "sourceURI": {"type": "string"},

@@ -21,7 +21,16 @@ media:
   default:
     creator: 立法院 (Legislative Yuan)
     license: https://ivod.ly.gov.tw/Copyright
+# Official per-clip text (ivod.ly.gov.tw/Demand/Speech/{IVOD_ID}, the gazette
+# record): the Legislative Yuan's open-data declaration (free reuse with
+# attribution).
 proceedings:
   default:
     creator: 立法院 (Legislative Yuan)
-    license: https://data.gov.tw/license
+    license: https://data.ly.gov.tw/copyprotection.action
+# Machine transcript (WhisperX) produced by the ly.govapi.tw aggregator,
+# emitted as textContents[].type "generated".
+transcript:
+  default:
+    creator: ly.govapi.tw (OpenFun Ltd.)
+    license: https://creativecommons.org/licenses/by/4.0/

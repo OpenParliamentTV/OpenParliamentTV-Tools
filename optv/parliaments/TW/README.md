@@ -4,29 +4,34 @@ Parser/merger for the Republic of China's Legislative Yuan (立法院), term 11 
 
 ## Data model
 
-Two streams, both pulled from the same third-party aggregator [ly.govapi.tw/v2](https://ly.govapi.tw/v2/) (operated by [openfunltd](https://github.com/openfunltd), a Taiwanese civic-tech NPO; also the source backing [`billy3321/ivod_transcript_db`](https://github.com/billy3321/ivod_transcript_db)). The aggregator wraps the official `data.ly.gov.tw` open-data and IVOD services, adds per-speech AI transcripts ([WhisperX](https://github.com/m-bain/whisperX)) + speaker diarization (pyannote), and exposes filtering by term/session/meeting code that the upstream open-data portal does not (the `data.ly.gov.tw` `selectTerm` filter is non-functional for term 11 — verified 2026-05-27). **Media is the authoritative spine**.
+Video and the machine transcript come from the third-party aggregator [ly.govapi.tw/v2](https://ly.govapi.tw/v2/) (operated by [openfunltd](https://github.com/openfunltd), a Taiwanese civic-tech company; also the source backing [`billy3321/ivod_transcript_db`](https://github.com/billy3321/ivod_transcript_db)). The aggregator wraps the official `data.ly.gov.tw` open-data and IVOD services, adds per-speech AI transcripts ([WhisperX](https://github.com/m-bain/whisperX)) + speaker diarization (pyannote), and exposes filtering by term/session/meeting code/date. Speech kinds and the official text come from the Legislative Yuan's own services. **Media is the authoritative spine**.
 
-- **Media stream** ([`scraper/fetch_media.py`](scraper/fetch_media.py) → [`parsers/media2json.py`](parsers/media2json.py)): `GET /v2/ivods?會議資料.會議代碼={code}` returns one record per IVOD clip with `IVOD_ID`, HLS URL, exact start/end timestamps, speaker name (`委員名稱`), duration, and meeting metadata. Lands in `original/media/{session}-ivods.json` (raw) → `original/media/{session}-media.json` (parsed). Full-meeting videos (`影片種類="Full"`) are filtered out so only per-speech clips survive.
-- **Proceedings stream** ([`scraper/fetch_proceedings.py`](scraper/fetch_proceedings.py) → [`parsers/proceedings2json.py`](parsers/proceedings2json.py)): `GET /v2/ivods/{IVOD_ID}` per clip — same fields plus `transcript.whisperx` (segment-level timings + text) and `transcript.pyannote` (speaker turns). Raw lands in `original/proceedings/{session}-details.json`; parsed in `original/proceedings/{session}-proceedings.json`. Each whisperx segment becomes one Stage 2 sentence (timings already aligned by Whisper).
+- **Media stream** ([`scraper/fetch_media.py`](scraper/fetch_media.py) → [`parsers/media2json.py`](parsers/media2json.py)): `GET /v2/ivods?會議資料.會議代碼={code}` returns one record per IVOD clip with `IVOD_ID`, HLS URL, exact start/end timestamps, speaker name (`委員名稱`), duration, and meeting metadata. Lands in `original/media/{session}-ivods.json` (raw) → `original/media/{session}-media.json` (parsed). Full-meeting videos (`影片種類="Full"`) are filtered out so only per-speech clips survive. A plenary meeting code can span several sitting days (e.g. `院會-11-6-5` sat on two days), so the index is re-fetched when a new sitting day of the meeting appears.
+- **Speech kinds** ([`scraper/fetch_speech_kinds.py`](scraper/fetch_speech_kinds.py)): open data dataset 221 (`https://data.ly.gov.tw/odw/ID221Action.action?meetingDateS=…&meetingDateE=…&fileType=json`, ROC-calendar dates) lists each legislator's speech kind per sitting day (`國是論壇`, `法案發言`, `質詢`, `政黨質詢`, `個人質詢`, `詢問`, …). The spoken rows of the meeting land in `original/media/{session}-speechkinds.json`. The rows carry no time or `IVOD_ID`, so the media parser pairs them with clips by (sitting date, legislator); a legislator who speaks twice on a day gets their rows in order of speaking.
+- **Machine transcript** ([`scraper/fetch_proceedings.py`](scraper/fetch_proceedings.py) → [`parsers/proceedings2json.py`](parsers/proceedings2json.py)): `GET /v2/ivods/{IVOD_ID}` per clip — same fields plus `transcript.whisperx` (segment-level timings + text) and `transcript.pyannote` (speaker turns). Raw lands in `original/proceedings/{session}-details.json` (fetched incrementally: only clips not yet in the file, or whose WhisperX transcript was not published yet). Each WhisperX segment becomes one sentence, with its timings, of the `textContents[]` entry `type: "generated"`.
+- **Official text** ([`scraper/fetch_records.py`](scraper/fetch_records.py) → [`parsers/speech_record.py`](parsers/speech_record.py)): `https://ivod.ly.gov.tw/Demand/Speech/{IVOD_ID}` (the `speechRecordUrl` of open data dataset 421) returns the gazette record of a clip as an HTML fragment. It is empty until the gazette is published, weeks after the sitting; clips without text are re-checked about once a day for up to 180 days after the sitting. Filled pages land in `original/proceedings/{session}-records.json`. The parser splits the fragment into speaker turns (`陳委員昭姿：`, `卓院長榮泰：`, `主席：`, `伍麗華 Saidhai Tahovecahe 委員：`), one `textBody` item each, with `speakerstatus` `main-speaker` for the clip's legislator, `president` for the chair and `speaker` for officials. It becomes the `textContents[]` entry `type: "proceedings"`, listed first. Its sentences are untimed.
+- Both proceedings-side streams are parsed into `original/proceedings/{session}-proceedings.json`.
 - **No `align_prep.py`**: HLS per-speech clips are addressable directly via `media.videoFileURI`, so no audio slicing is needed.
+
+The Legislative Yuan's hosts (`data.ly.gov.tw`, `ivod.ly.gov.tw`) only complete a TLS handshake with legacy renegotiation, which [`scraper/ly_api.py`](scraper/ly_api.py) enables for those requests (`legacy_tls=True`). ly.govapi.tw answers bursts with `429 Too Many Requests`; the client paces at one request per ~2 s and retries 429 and 5xx responses with backoff.
 
 ## Merge strategy
 
 [`merger/merge_session.py`](merger/merge_session.py) joins on the **string `IVOD_ID`** (each per-speech IVOD has one; both streams carry it verbatim). 1:1 left join from media → proceedings. Media-only speeches surface as `debug.merge.text-missing = true`. Proceedings-only entries can't happen by construction (proceedings are fetched per IVOD listed in media) but the merger guards against them anyway.
 
+The merger builds `agendaItem` from the media record: the clip's speech kind as `title`/`officialTitle`, with `type`/`nativeType` from [`classify_tw`](../../shared/agenda_types.py) (e.g. `政黨質詢` → `questioning_of_the_government` / `TW-party_interpellation`). A clip without a dataset-221 match keeps the sitting title with `nativeType: "TW-plenary"`.
+
 ## Alignment (whisperx, not aeneas)
 
-[`workflow.py:_align`](workflow.py) skips aeneas/espeak entirely and reads the WhisperX segments back out of the raw IVOD detail bundle. Each segment becomes one `sentence` with `timeStart`/`timeEnd` already populated (formatted as the numeric strings the Stage 2 schema requires). Speeches with no whisperx data pass through unaligned. `debug.alignSource: "whisperx"` records the provenance and `debug.alignDuration` carries the last segment's `end` for the shared status detector.
+[`workflow.py:_align`](workflow.py) skips aeneas/espeak entirely and reads the WhisperX segments back out of the raw IVOD detail bundle into the `generated` entry: each segment becomes one `sentence` with `timeStart`/`timeEnd` already populated (formatted as the numeric strings the Stage 2 schema requires). The official `proceedings` entry stays untimed. Speeches with no WhisperX data pass through unaligned. `debug.alignSource: "whisperx"` records the provenance and `debug.alignDuration` carries the last segment's `end` for the shared status detector.
 
 aeneas with espeak's `cmn` voice produces poor-quality Mandarin alignment, and the API already gives us higher-quality Whisper output for free — there is no point in running aeneas as well.
 
 ## Running
 
-`--session <code>` (repeatable) is required for downloads because the LY API has no "current plenary" auto-discovery endpoint. The `update` wrapper and `Makefile` cover **post-download** stages only — merge + NEL + align + NER over whatever raw files already exist under `original/`:
-
 ```bash
 ./optv/parliaments/TW/update <data_dir>
-# or, with finer control / to download a new plenary:
+# or, with finer control / to download a specific plenary:
 ./optv/parliaments/TW/workflow.py --period=11 <data_dir> \
     --session 院會-11-5-11 \
     --download-original --merge-speeches \
@@ -34,7 +39,9 @@ aeneas with espeak's `cmn` voice produces poor-quality Mandarin alignment, and t
     --ner-api-endpoint http://localhost:8090/service/
 ```
 
-`--period=11` selects term 11. Session keys are `{屆:02d}{會期:02d}{會次:03d}` (e.g. `1105011` = 院會-11-5-11). To enumerate every plenary in a session-period for backfill, see [`scraper/ly_api.py:LYApiClient.list_plenary_meeting_codes`](scraper/ly_api.py); `--limit-ivods N` is testing-only.
+Without `--session`, `--download-original` discovers plenary meetings with IVODs on any day from `--since YYYY-MM-DD` (default: the last 14 days) to today via `GET /v2/ivods?日期=YYYY-MM-DD`; a backfill passes an early `--since`. `--session <code>` (repeatable) downloads those meetings instead. `--period=11` selects term 11. Session keys are `{屆:02d}{會期:02d}{會次:03d}` (e.g. `1105011` = 院會-11-5-11). `--limit-ivods N` is testing-only.
+
+The `update` wrapper runs two passes. Pass 1 downloads (discovery, speech kinds, details, official text), merges, links entities, applies the WhisperX timings and extracts entities. When official text arrives for a session that is already published, the publish guard refuses the changed transcript and the merge/align stages skip already-aligned sessions, so the download step queues the session in `cache/tw-official-text-upgrades.txt`; pass 2 re-runs exactly those sessions with `--rebuild` and clears the file.
 
 The NEL entity dump is built locally:
 
@@ -44,20 +51,19 @@ The NEL entity dump is built locally:
 
 This joins a Wikidata SPARQL pull (`P39 wd:Q6310593`, "Member of the Legislative Yuan") with the ly.govapi.tw legislators roster for the current term, plus a hand-curated list of Taiwanese parties. Output: `<data_dir>/metadata/entities.json` (~1100 entities; coverage drops for newer 2024+ term-11 legislators not yet in Wikidata).
 
+## Text provenance and rights
+
+| `textContents[].type` | Source | `creator` | `license` (manifest stream) |
+|---|---|---|---|
+| `proceedings` | Official gazette record per clip, `ivod.ly.gov.tw/Demand/Speech/{IVOD_ID}` | 立法院 (Legislative Yuan) | [Legislative Yuan open-data declaration](https://data.ly.gov.tw/copyprotection.action) (`proceedings`) |
+| `generated` | WhisperX machine transcript by ly.govapi.tw, `ly.govapi.tw/v2/ivods/{IVOD_ID}` | ly.govapi.tw (OpenFun Ltd.) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (`transcript`) |
+
+The Legislative Yuan's declaration allows free reuse with attribution, except for works it marks as needing consent. The IVOD video is published under [non-commercial-use-only terms](https://ivod.ly.gov.tw/Copyright) (`media.license`), and the WhisperX transcript is derived from that video. Pipeline outputs carry `media.creator` / `media.license` / `textContents[].license` so downstream deployments can act on this; the Tools repo neither enforces nor relaxes the restrictions.
+
 ## Known limitations
 
-- **`--session` required for downloads.** The LY API has no auto-discovery endpoint for "the latest plenary"; the wrapper can't bake one in. Backfill across many meetings: enumerate via `LYApiClient.list_plenary_meeting_codes(term, session_period)` and pass each code on the command line.
-- **Committee meetings are out of scope.** Only plenary meetings (`會議代碼` starting with `院會-`) become OPTV sessions. Committee meetings (`委員會-*`) carry rich material but multiply the volume; left as a future extension.
+- **Committee meetings are out of scope.** Only plenary meetings (`會議代碼` `院會-T-SP-MN`) become OPTV sessions. Committee meetings (`委員會-*`) carry rich material but multiply the volume; left as a future extension. Extraordinary-session codes are skipped by discovery.
+- **Official text arrives late.** Until the gazette is published, a speech carries only the `generated` transcript.
 - **NEL coverage is bounded by Wikidata.** Roughly 1030 LY members have `P39 wd:Q6310593` set on Wikidata. Around 40 current term-11 members do not yet, so they appear in `entities.json` with no QID and the NEL stage leaves their `wid` empty. The Stage 2 validator surfaces this as warnings (`semantic.people.wid.missing`).
 - **NER needs `db-zh`.** The shared `entity-fishing` deployment must have the Chinese KB loaded (`sciencialab/entity-fishing-db-zh` on HuggingFace). Without it, the NER stage runs cleanly but every `entities[]` is empty.
-- **Video copyright.** The IVOD service publishes under [non-commercial-use-only terms](https://ivod.ly.gov.tw/Copyright); proceedings text is [Open Government Data Licensed](https://data.gov.tw/license) (CC BY 4.0 compatible). Pipeline outputs include `media.creator` / `media.license` / `textContents[].license` so downstream deployments can act on this; the Tools repo neither enforces nor relaxes the restrictions.
-- **`gazette` transcripts mostly empty for recent IVODs.** ly.govapi.tw exposes a `gazette` field on older IVODs (the official-gazette transcript, paragraph-level) but the field is `null` for most term-11 records as of mid-2026. Whisperx is the primary text path.
-
-## Research verification notes (2026-10-26)
-
-From the re-verification of the research profile [parliaments/TW/TW.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Research/blob/main/parliaments/TW/TW.md):
-
-- **Official per-clip transcripts.** `https://ivod.ly.gov.tw/Demand/Speech/{IVOD_ID}` (the `speechRecordUrl` in open data dataset 421) returns the official gazette text of a clip. It is filled only weeks after the sitting (empty body until then), so it can replace the WhisperX text later; the adapter does not use it yet.
-- **Text provenance.** The WhisperX text is an AI transcript produced by ly.govapi.tw, but `parsers/proceedings2json.py` emits it as `type: "proceedings"` with creator 立法院 and the open data licence.
-- **The `selectTerm` note under "Data model" is outdated.** Dataset 148 stopped on 2025-01-23. Its successor, dataset 421, is queried via `https://data.ly.gov.tw/odw/ID421Action.action` by term, session period and date range and works for term 11. Its date filter, or `GET /v2/ivods?日期=YYYY-MM-DD`, finds new plenaries, so `--session` need not stay required.
-- **Agenda item.** Open data dataset 221 gives each legislator's speech type per sitting day (`國是論壇`, `法案發言`, `政黨質詢`) and matches the clips one to one; it can replace the sitting title used as `agendaItem`.
+- **`gazette` field mostly empty.** ly.govapi.tw exposes a `gazette` field on older IVODs (the official-gazette transcript, paragraph-level); the parser uses it as the `proceedings` entry when the IVOD site has no text, but the field is `null` for most term-11 records.

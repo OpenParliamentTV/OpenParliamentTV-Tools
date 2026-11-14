@@ -8,9 +8,13 @@ speech carries empty text + a ``debug.merge.text-missing`` flag).
 
 Output shape matches ``optv/shared/schema/stage2-full.schema.json``:
 ``{"meta": {...}, "data": [speech, ...]}``. Each merged speech inherits
-the media block from the media parser, the agenda/speaker/text from the
+the media block from the media parser, the speaker/text from the
 proceedings parser, and gets ``speechIndex`` from chronological position
 in the merged stream.
+
+``agendaItem`` is built here from the media record: the clip's dataset-221
+speech kind (國是論壇, 法案發言, 質詢, …; see :func:`classify_tw`) when known,
+otherwise the sitting title with ``nativeType: "TW-plenary"``.
 """
 
 from __future__ import annotations
@@ -30,7 +34,7 @@ if __package__ is None or __package__ == "":
     __package__ = "optv.parliaments.TW.merger"
 
 from optv.parliaments.TW.common import Config, decode_session
-from optv.shared.agenda_types import CORE_REGULAR
+from optv.shared.agenda_types import CORE_REGULAR, classify_tw
 from optv.shared.speech_id import normalize_speech_originid
 from optv.shared.publish import save_if_changed
 from optv.shared.meta import build_meta, fill_original_language, now_iso
@@ -52,6 +56,24 @@ def _index_proceedings(proceedings_data: list[dict]) -> dict[str, dict]:
         else:
             index[key] = s
     return index
+
+
+def agenda_item(media_record: dict) -> dict:
+    """``agendaItem`` for one clip: its speech kind, else the sitting title."""
+    kind = (media_record.get("speechKind") or "").strip()
+    if kind:
+        native, core = classify_tw(kind)
+        item = {"officialTitle": kind, "title": kind, "type": core}
+        if native:
+            item["nativeType"] = native
+        return item
+    meeting_name = media_record.get("meetingName") or ""
+    return {
+        "officialTitle": meeting_name,
+        "title": meeting_name,
+        "type": CORE_REGULAR,
+        "nativeType": "TW-plenary",
+    }
 
 
 def merge_one(media_record: dict, proceeding: dict | None,
@@ -80,14 +102,9 @@ def merge_one(media_record: dict, proceeding: dict | None,
         "mediaIndex": speech_index,
     }
 
+    speech["agendaItem"] = agenda_item(media_record)
     if proceeding is None:
         # Media without proceedings text. Synthesize minimal valid fields.
-        speech["agendaItem"] = {
-            "officialTitle": meeting_name,
-            "title": meeting_name,
-            "type": CORE_REGULAR,
-            "nativeType": "TW-plenary",
-        }
         speech["people"] = [{
             "type": "memberOfParliament",
             "label": speaker_label or "（不詳）",
@@ -96,7 +113,6 @@ def merge_one(media_record: dict, proceeding: dict | None,
         speech["textContents"] = []
         debug["merge"] = {"text-missing": True}
     else:
-        speech["agendaItem"] = deepcopy(proceeding["agendaItem"])
         speech["people"] = deepcopy(proceeding.get("people") or [])
         speech["textContents"] = deepcopy(proceeding.get("textContents") or [])
         debug["proceedingIndex"] = proceeding.get("speechIndex", speech_index)

@@ -39,7 +39,9 @@ def load_manifest(parliament_id: str) -> dict[str, Any]:
 def get_rights(parliament_id: str, period: int = None, stream: str = "media") -> dict:
     """Resolve the creator/license/source for a ``(period, stream)``.
 
-    Reads the manifest ``media`` / ``proceedings`` block, which has the shape::
+    Reads the manifest ``media`` / ``proceedings`` block (or another rights
+    stream a parliament declares, e.g. TW's ``transcript`` for its machine
+    transcript), which has the shape::
 
         <stream>:
           default: {creator?, license?, source?, sourceURI?}

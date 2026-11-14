@@ -19,6 +19,14 @@ video_url          media.videoFileURI (HLS)
 開始時間 / 結束時間  dateStart / dateEnd
 委員名稱            people[0].label
 ================  ===============================
+
+Speech kinds: if ``original/media/{session}-speechkinds.json`` (open data
+dataset 221, see :mod:`..scraper.fetch_speech_kinds`) exists, each clip gets a
+``speechKind`` (國是論壇, 法案發言, 質詢, …), which the merger turns into the
+speech's ``agendaItem``. Dataset 221 has no time or IVOD_ID, so rows are
+paired by (sitting date, legislator): when a legislator speaks more than once
+on a day, the k-th row for that legislator and day goes to their k-th clip by
+start time (the row order follows the order of speaking).
 """
 
 from __future__ import annotations
@@ -29,6 +37,7 @@ import json
 import logging
 import re
 import sys
+from collections import deque
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -123,8 +132,49 @@ def speech_media_record(ivod: dict, *, term: int, session_period: int,
     return record
 
 
-def parse_ivod_list(doc: dict) -> dict:
-    """Convert a raw ``{meta, ivods: [...]}`` blob into the parsed media doc."""
+_NAME_SPLIT_RE = re.compile(r"[、，,]")
+
+
+def _norm_name(name: str) -> str:
+    return re.sub(r"\s+", "", name or "")
+
+
+def _roc_to_iso(roc: str) -> str:
+    y, m, d = (roc or "0/1/1").strip().split("/")
+    return f"{int(y) + 1911:04d}-{int(m):02d}-{int(d):02d}"
+
+
+def assign_speech_kinds(records: list[dict], rows: list[dict]) -> int:
+    """Set ``speechKind`` on media records from dataset-221 rows, in place.
+
+    ``records`` must be in chronological order. Returns the number of
+    records left without a speech kind.
+    """
+    queues: dict[tuple[str, str], deque[str]] = {}
+    for row in rows:
+        kind = (row.get("speechKindName") or "").strip()
+        if not kind:
+            continue
+        day = _roc_to_iso(row.get("smeetingDate"))
+        for name in _NAME_SPLIT_RE.split(row.get("legislatorNameList") or ""):
+            if _norm_name(name):
+                queues.setdefault((day, _norm_name(name)), deque()).append(kind)
+    unmatched = 0
+    for rec in records:
+        key = ((rec.get("dateStart") or "")[:10], _norm_name(rec.get("speakerLabel")))
+        queue = queues.get(key)
+        if queue:
+            rec["speechKind"] = queue.popleft()
+        else:
+            unmatched += 1
+    return unmatched
+
+
+def parse_ivod_list(doc: dict, speech_kinds: list[dict] | None = None) -> dict:
+    """Convert a raw ``{meta, ivods: [...]}`` blob into the parsed media doc.
+
+    ``speech_kinds`` are the dataset-221 rows of the meeting (optional).
+    """
     meta = dict(doc.get("meta") or {})
     term = int(meta.get("term") or 0)
     sp = int(meta.get("sessionPeriod") or 0)
@@ -143,6 +193,11 @@ def parse_ivod_list(doc: dict) -> dict:
 
     # Sort by start time so the merger sees a deterministic order.
     records.sort(key=lambda r: (r.get("dateStart") or "", r.get("IVOD_ID") or 0))
+    if speech_kinds is not None:
+        unmatched = assign_speech_kinds(records, speech_kinds)
+        if unmatched:
+            logger.info(f"[{session_key}] {unmatched} of {len(records)} clip(s) "
+                        "without a dataset-221 speech kind; using the sitting title")
 
     date_start = records[0].get("dateStart") if records else None
     date_end = max((r.get("dateEnd") for r in records if r.get("dateEnd")),
@@ -170,7 +225,11 @@ def parse_session_media(config: Config, session: str) -> dict:
     raw_path = config.file(session, "ivods")
     if not raw_path.exists():
         raise FileNotFoundError(f"No raw IVOD index at {raw_path}")
-    return parse_ivod_list(json.loads(raw_path.read_text()))
+    kinds_path = config.file(session, "speechkinds")
+    speech_kinds = None
+    if kinds_path.exists():
+        speech_kinds = json.loads(kinds_path.read_text()).get("rows") or []
+    return parse_ivod_list(json.loads(raw_path.read_text()), speech_kinds)
 
 
 def main():

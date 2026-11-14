@@ -100,3 +100,65 @@ def test_merge_handles_media_only_speech(tmp_path):
     assert flagged[0]["textContents"] == []
     # The media block (videoFileURI etc.) must still be intact.
     assert flagged[0]["media"]["videoFileURI"]
+
+
+# ---- agendaItem from dataset-221 speech kinds ----
+
+def test_merge_agenda_item_falls_back_to_sitting_title(tmp_path):
+    config = _set_up_data_dir(tmp_path)
+    merged = json.loads(merge_session(SESSION, config).read_text())
+    for sp in merged["data"]:
+        assert sp["agendaItem"]["nativeType"] == "TW-plenary"
+        assert sp["agendaItem"]["type"] == "regular"
+        assert sp["agendaItem"]["title"].startswith("第11屆第5會期第11次會議")
+
+
+def test_merge_agenda_item_from_speech_kind(tmp_path):
+    from optv.parliaments.TW.parsers.media2json import parse_session_media
+
+    config = _set_up_data_dir(tmp_path)
+    kinds = json.loads((FIX / "sample-speechkinds.json").read_text())
+    config.file(SESSION, "speechkinds", create=True).write_text(
+        json.dumps(kinds, ensure_ascii=False))
+    config.file(SESSION, "media").write_text(
+        json.dumps(parse_session_media(config, SESSION), ensure_ascii=False))
+
+    merged = json.loads(merge_session(SESSION, config).read_text())
+    for sp in merged["data"]:
+        assert sp["agendaItem"] == {
+            "officialTitle": "個人質詢",
+            "title": "個人質詢",
+            "type": "questioning_of_the_government",
+            "nativeType": "TW-individual_interpellation",
+        }
+
+
+# ---- align hook: WhisperX timings onto the generated entry only ----
+
+def test_align_times_generated_entry_and_leaves_official_text(tmp_path):
+    from optv.parliaments.TW.workflow import _align
+
+    config = _set_up_data_dir(tmp_path)
+    raw_details = json.loads((FIX / "sample-details.json").read_text())
+    html = (FIX / "sample-speech-record.html").read_text()
+    proc_doc = parse_details(raw_details, term=11, session_period=5, meeting_number=11,
+                             records={"169638": html})
+    config.file(SESSION, "proceedings").write_text(json.dumps(proc_doc, ensure_ascii=False))
+    merge_session(SESSION, config)
+    merged = json.loads(config.file(SESSION, "merged").read_text())
+    before = {sp["media"]["originMediaID"]: sp for sp in merged["data"]}
+
+    aligned = json.loads(_align(config, SESSION, None).read_text())
+    for sp in aligned["data"]:
+        # The speech-level originID is normalized away; the hook must find the
+        # WhisperX segments by media.originMediaID.
+        assert "originID" not in sp
+        assert sp["debug"]["alignDuration"] > 0
+        assert sp["debug"]["alignSource"] == "whisperx"
+        generated = [tc for tc in sp["textContents"] if tc["type"] == "generated"]
+        assert len(generated) == 1
+        assert all("timeStart" in s for s in generated[0]["textBody"][0]["sentences"])
+    official = next(sp for sp in aligned["data"]
+                    if sp["media"]["originMediaID"] == "169638")
+    assert [tc["type"] for tc in official["textContents"]] == ["proceedings", "generated"]
+    assert official["textContents"][0] == before["169638"]["textContents"][0]

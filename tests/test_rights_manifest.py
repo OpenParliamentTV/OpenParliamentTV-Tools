@@ -42,6 +42,14 @@ def test_proceedings_rights_resolve(parliament):
     assert rights.get("license"), f"{parliament}: manifest proceedings.license missing"
 
 
+def test_tw_transcript_rights_resolve():
+    """TW's WhisperX machine transcript (textContents type "generated") has its
+    own rights stream, distinct from the official text."""
+    transcript = get_rights("TW", stream="transcript")
+    assert transcript.get("creator") and transcript.get("license")
+    assert transcript != get_rights("TW", stream="proceedings")
+
+
 # Matches a dict-style assignment of a non-empty string literal to creator/license,
 # e.g.  "creator": "Landtag X",   or   'license': 'CC-BY'
 _LITERAL_RE = re.compile(r"""["'](?:creator|license)["']\s*:\s*["'][^"']+["']""")

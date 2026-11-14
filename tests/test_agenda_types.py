@@ -25,8 +25,30 @@ from optv.shared.agenda_types import (
     classify_parlamint_de,
     classify_pt,
     classify_se,
+    classify_tw,
     is_de_closing_chair_text,
 )
+
+
+@pytest.mark.parametrize("kind,expected_native,expected_core", [
+    ("國是論壇", "TW-national_affairs_forum", CORE_CURRENT_AFFAIRS),
+    ("質詢", "TW-interpellation", CORE_GOVERNMENT_QUESTIONING),
+    ("政黨質詢", "TW-party_interpellation", CORE_GOVERNMENT_QUESTIONING),
+    ("個人質詢", "TW-individual_interpellation", CORE_GOVERNMENT_QUESTIONING),
+    ("詢問", "TW-inquiry", CORE_QA),
+    ("法案發言", "TW-bill_speech", CORE_REGULAR),
+    ("政黨推派", "TW-party_nominated", CORE_REGULAR),
+    ("政黨發言", "TW-party_statement", CORE_REGULAR),
+    ("個人登記", "TW-individual_registered", CORE_REGULAR),
+    ("臨時提案", "TW-extempore_motion", CORE_REGULAR),
+    ("其他", "TW-other", CORE_OTHER),
+    (" 質詢 ", "TW-interpellation", CORE_GOVERNMENT_QUESTIONING),
+    ("測試", None, CORE_REGULAR),
+    ("", None, CORE_REGULAR),
+    (None, None, CORE_REGULAR),
+])
+def test_classify_tw(kind, expected_native, expected_core):
+    assert classify_tw(kind) == (expected_native, expected_core)
 
 
 @pytest.mark.parametrize("itype,expected_native,expected_core", [

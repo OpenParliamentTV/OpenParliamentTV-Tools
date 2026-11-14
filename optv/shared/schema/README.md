@@ -131,6 +131,20 @@ validator (`semantic.speech.originalLanguage_mismatch`) warns when they diverge.
 Multilingual **media** (interpretation booths / sign-language tracks) is out of
 scope for now; `media` stays a single object.
 
+## Text types (convention)
+
+`textContents[].type` says what kind of text an entry is:
+
+- `proceedings` — the parliament's official record (stenographic protocol,
+  gazette, Hansard), with the parliament as `creator`.
+- `generated` — a machine transcript (speech-to-text) of the video, with its
+  producer as `creator` and that producer's terms as `license`.
+
+One speech may carry both in the same language (TW: the official gazette text,
+untimed, plus the WhisperX transcript, timed). The `proceedings` entry comes
+first; the platform keys stored text on `(type, language)` and prefers
+`proceedings` over `generated`.
+
 ## Speech identity model (originID / originMediaID / originTextID)
 
 Three id slots, each at its own level, no duplication:

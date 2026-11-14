@@ -2,19 +2,30 @@
 
 # Update script for an OpenParliamentTV-Data-TW output directory.
 #
-# --download-original is intentionally omitted because TW downloads require an
-# explicit --session <code> (the LY API does not expose a "current
-# plenary" auto-discovery). To download a new plenary, call workflow.py directly:
+# Pass 1 downloads (plenary meetings discovered by date over the last 14 days,
+# their speech kinds and the official per-clip text), merges, links entities,
+# applies the WhisperX timings and extracts entities.
 #
-#   ./workflow.py --period=11 <data_dir> --download-original \
-#       --session 院會-11-5-11
-#
-# Once raw files exist under original/, this wrapper merges + links + aligns +
-# extracts entities for everything in scope.
+# Pass 2 re-runs, with --rebuild, the already-published sessions for which
+# pass 1 found newly published official text (listed in
+# cache/tw-official-text-upgrades.txt): the publish guard refuses a changed
+# transcript otherwise.
+
+set -e
 
 OUTPUT=${1?Missing output directory parameter (data base directory)}
 
 CALLDIR="$(dirname "$(readlink "$0" 2>/dev/null || echo "$0")")"
+UPGRADES="${OUTPUT}/cache/tw-official-text-upgrades.txt"
 
 python3 "${CALLDIR}/workflow.py" --period=11 --retry-count=10 "$OUTPUT" \
-    --merge-speeches --link-entities --align-sentences --extract-entities
+    --download-original --merge-speeches --link-entities --align-sentences \
+    --extract-entities
+
+if [ -s "$UPGRADES" ]; then
+    SESSIONS="$(tr -s '[:space:]' '|' < "$UPGRADES" | sed 's/^|//; s/|$//')"
+    python3 "${CALLDIR}/workflow.py" --period=11 --retry-count=10 "$OUTPUT" \
+        --rebuild --limit-session "^(${SESSIONS})$" \
+        --merge-speeches --link-entities --align-sentences --extract-entities
+    rm -f "$UPGRADES"
+fi

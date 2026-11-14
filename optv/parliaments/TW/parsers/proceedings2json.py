@@ -5,6 +5,11 @@ Input:  ``original/proceedings/{session}-details.json``  — fetch_proceedings
                                                             output (one record
                                                             per per-speech IVOD,
                                                             with transcripts).
+        ``original/proceedings/{session}-records.json``  — fetch_records
+                                                            output (official
+                                                            per-clip text, only
+                                                            for clips that have
+                                                            it yet).
 Output: ``original/proceedings/{session}-proceedings.json`` — per-speech text
                                                               records (Stage 2
                                                               shape, no media).
@@ -12,16 +17,25 @@ Output: ``original/proceedings/{session}-proceedings.json`` — per-speech text
 For each IVOD detail we emit a speech record with:
 
 * ``people[0].label`` = ``委員名稱``
-* ``textContents[].textBody[].sentences`` = whisperx segments, with
-  ``timeStart`` / ``timeEnd`` already populated (we treat each whisperx
-  segment as one sentence — see :mod:`.transcript`).
-* ``originID`` = ``IVOD_ID``
-* ``agendaItem.officialTitle`` = ``會議名稱`` (the plenary's full title is the
-  best agenda anchor we have — TW doesn't expose per-speech agenda items).
+* ``textContents``, in this order:
 
-If an IVOD has no transcript at all (neither whisperx nor gazette), we still
-emit the record with an empty ``textContents`` so the merger doesn't lose
-the speech; the merger flags it with ``debug.merge.text-missing``.
+  1. ``type: "proceedings"``: the official text (the gazette record) once the
+     IVOD site serves it (``ivod.ly.gov.tw/Demand/Speech/{IVOD_ID}``, parsed
+     by :mod:`.speech_record` into one ``textBody`` item per speaker turn), or
+     the ``gazette`` field of the detail where ly.govapi.tw carries one.
+     Untimed. Rights from the manifest ``proceedings`` stream.
+  2. ``type: "generated"``: the WhisperX machine transcript made by
+     ly.govapi.tw, one sentence per segment with ``timeStart`` / ``timeEnd``
+     (see :mod:`.transcript`). Rights from the manifest ``transcript`` stream.
+
+* ``originID`` = ``IVOD_ID``
+
+``agendaItem`` is not set here: the merger builds it from the media record
+(dataset-221 speech kind, or the sitting title).
+
+If an IVOD has no text at all, we still emit the record with an empty
+``textContents`` so the merger doesn't lose the speech; the merger flags it
+with ``debug.merge.text-missing``.
 """
 
 from __future__ import annotations
@@ -31,7 +45,6 @@ import datetime
 import json
 import logging
 import sys
-from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -41,8 +54,8 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))     # repo root
     __package__ = "optv.parliaments.TW.parsers"
 
-from optv.parliaments.TW.common import Config, decode_session
-from optv.shared.agenda_types import CORE_REGULAR
+from optv.parliaments.TW.common import SPEECH_RECORD_URL, Config, decode_session
+from .speech_record import parse_speech_record
 from .transcript import (
     gazette_paragraphs,
     whisperx_max_time,
@@ -55,75 +68,92 @@ logger = logging.getLogger(__name__)
 
 PARLIAMENT_CODE = "TW"
 LANGUAGE_CODE = _get_language("TW")
-SPEECH_CREATOR = _get_rights("TW", stream="proceedings")["creator"]
-# Open Government Data License (Taiwan), CC-BY-4.0 compatible.
-SPEECH_LICENSE = _get_rights("TW", stream="proceedings")["license"]
+# Official text: the Legislative Yuan's open-data declaration.
+PROCEEDINGS_RIGHTS = _get_rights("TW", stream="proceedings")
+# WhisperX machine transcript by ly.govapi.tw.
+TRANSCRIPT_RIGHTS = _get_rights("TW", stream="transcript")
+
+IVOD_API_URL = "https://ly.govapi.tw/v2/ivods/{ivod_id}"
 
 
 def _session_number(session_period: int, meeting_number: int) -> int:
     return session_period * 1000 + meeting_number
 
 
-def _make_textbody_from_whisperx(segments: list[dict], speaker: str) -> dict | None:
-    sentences = whisperx_to_sentences(segments)
-    if not sentences:
-        return None
+def generated_text_content(ivod_id, sentences: list[dict], speaker: str) -> dict:
+    """The ``generated`` (WhisperX) textContents entry for one clip.
+
+    One ``textBody`` item for the whole clip: the transcript is not split by
+    speaker, so it also carries the answers of the officials questioned.
+    """
     return {
-        "type": "speech",
-        "speaker": speaker,
-        "speakerstatus": None,
-        "sentences": sentences,
+        "type": "generated",
+        "language": LANGUAGE_CODE,
+        "originTextID": str(ivod_id) if ivod_id is not None else "",
+        "sourceURI": IVOD_API_URL.format(ivod_id=ivod_id),
+        "creator": TRANSCRIPT_RIGHTS["creator"],
+        "license": TRANSCRIPT_RIGHTS["license"],
+        "textBody": [{
+            "type": "speech",
+            "speaker": speaker,
+            "speakerstatus": None,
+            "sentences": sentences,
+        }],
     }
 
 
-def _make_textbody_from_gazette(paragraphs: list[str], speaker: str) -> dict | None:
-    if not paragraphs:
-        return None
-    # Each paragraph becomes one untimed sentence; downstream we have no
-    # better signal in the gazette case. (Whisperx is the priority path.)
+def _official_text_content(ivod_id, text_body: list[dict], source_uri: str) -> dict:
     return {
+        "type": "proceedings",
+        "language": LANGUAGE_CODE,
+        "originTextID": str(ivod_id) if ivod_id is not None else "",
+        "sourceURI": source_uri,
+        "creator": PROCEEDINGS_RIGHTS["creator"],
+        "license": PROCEEDINGS_RIGHTS["license"],
+        "textBody": text_body,
+    }
+
+
+def _gazette_text_body(paragraphs: list[str], speaker: str) -> list[dict]:
+    if not paragraphs:
+        return []
+    # Each paragraph becomes one untimed sentence.
+    return [{
         "type": "speech",
         "speaker": speaker,
         "speakerstatus": None,
         "sentences": [{"text": p} for p in paragraphs],
-    }
+    }]
 
 
 def speech_record(ivod_detail: dict, *, term: int, session_period: int,
-                  meeting_number: int, speech_index: int) -> dict:
-    """One IVOD detail → intermediate proceedings record."""
+                  meeting_number: int, speech_index: int,
+                  official_html: str | None = None) -> dict:
+    """One IVOD detail → intermediate proceedings record.
+
+    ``official_html`` is the clip's official text fragment from the IVOD
+    site, if it has been published.
+    """
     ivod_id = ivod_detail.get("IVOD_ID")
     speaker = (ivod_detail.get("委員名稱") or "").strip()
-    meeting_name = (
-        ivod_detail.get("會議名稱")
-        or (ivod_detail.get("會議資料") or {}).get("標題")
-        or ""
-    )
 
     transcript = ivod_detail.get("transcript") or {}
     whisperx = transcript.get("whisperx") or []
     gazette = ivod_detail.get("gazette")
 
-    text_body: list[dict] = []
-    tb = _make_textbody_from_whisperx(whisperx, speaker)
-    if tb is not None:
-        text_body.append(tb)
-    else:
-        tb_gaz = _make_textbody_from_gazette(gazette_paragraphs(gazette), speaker)
-        if tb_gaz is not None:
-            text_body.append(tb_gaz)
-
     text_contents: list[dict] = []
-    if text_body:
-        text_contents.append({
-            "type": "proceedings",
-            "language": LANGUAGE_CODE,
-            "originTextID": str(ivod_id) if ivod_id is not None else "",
-            "sourceURI": ivod_detail.get("IVOD_URL") or "",
-            "creator": SPEECH_CREATOR,
-            "license": SPEECH_LICENSE,
-            "textBody": text_body,
-        })
+    official_body = parse_speech_record(official_html or "", speaker)
+    if official_body:
+        text_contents.append(_official_text_content(
+            ivod_id, official_body, SPEECH_RECORD_URL.format(ivod_id=ivod_id)))
+    else:
+        gazette_body = _gazette_text_body(gazette_paragraphs(gazette), speaker)
+        if gazette_body:
+            text_contents.append(_official_text_content(
+                ivod_id, gazette_body, IVOD_API_URL.format(ivod_id=ivod_id)))
+    sentences = whisperx_to_sentences(whisperx)
+    if sentences:
+        text_contents.append(generated_text_content(ivod_id, sentences, speaker))
 
     person: dict[str, Any] = {
         "type": "memberOfParliament",
@@ -135,12 +165,6 @@ def speech_record(ivod_detail: dict, *, term: int, session_period: int,
         "parliament": PARLIAMENT_CODE,
         "electoralPeriod": {"number": term},
         "session": {"number": _session_number(session_period, meeting_number)},
-        "agendaItem": {
-            "officialTitle": meeting_name,
-            "title": meeting_name,
-            "type": CORE_REGULAR,
-            "nativeType": "TW-plenary",
-        },
         "speechIndex": speech_index,
         "originID": str(ivod_id) if ivod_id is not None else "",
         "isReply": False,
@@ -151,6 +175,7 @@ def speech_record(ivod_detail: dict, *, term: int, session_period: int,
             "ivodId": ivod_id,
             "whisperxSegments": len(whisperx),
             "hasGazette": bool(gazette),
+            "officialText": bool(official_body),
         },
     }
 
@@ -167,11 +192,14 @@ def speech_record(ivod_detail: dict, *, term: int, session_period: int,
 
 
 def parse_details(doc: dict, *, term: int, session_period: int,
-                  meeting_number: int) -> dict:
+                  meeting_number: int, records: dict[str, str] | None = None) -> dict:
     """Convert a raw details bundle into the parsed proceedings doc.
 
-    Speeches are 1-indexed by `開始時間` ordering (deterministic).
+    ``records`` maps IVOD_ID → official text fragment (see
+    :mod:`..scraper.fetch_records`). Speeches are 1-indexed by `開始時間`
+    ordering (deterministic).
     """
+    records = records or {}
     meta = dict(doc.get("meta") or {})
     session_key = meta.get("session") or ""
     ivods = list(doc.get("ivods") or [])
@@ -183,7 +211,8 @@ def parse_details(doc: dict, *, term: int, session_period: int,
                                       term=term,
                                       session_period=session_period,
                                       meeting_number=meeting_number,
-                                      speech_index=idx))
+                                      speech_index=idx,
+                                      official_html=records.get(str(detail.get("IVOD_ID")))))
 
     out_meta = {
         "session": session_key,
@@ -207,8 +236,13 @@ def parse_session_proceedings(config: Config, session: str) -> dict:
     if not raw_path.exists():
         raise FileNotFoundError(f"No raw IVOD details at {raw_path}")
     doc = json.loads(raw_path.read_text())
+    records_path = config.file(session, "records")
+    records = None
+    if records_path.exists():
+        records = json.loads(records_path.read_text()).get("records") or {}
     term, sp, mn = decode_session(session)
-    return parse_details(doc, term=term, session_period=sp, meeting_number=mn)
+    return parse_details(doc, term=term, session_period=sp, meeting_number=mn,
+                         records=records)
 
 
 def main():

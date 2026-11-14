@@ -874,6 +874,35 @@ def classify_pt(intervention_type: Optional[str]) -> tuple[Optional[str], str]:
 
 
 # ---------------------------------------------------------------------------
+# TW — Legislative Yuan (open data dataset 221 ``speechKindName`` vocabulary)
+# ---------------------------------------------------------------------------
+
+# The TW classification key is the per-speech ``speechKindName`` from open data
+# dataset 221 (one row per legislator and sitting day), a controlled
+# vocabulary, so every pattern is anchored to the whole value. 質詢 (general
+# interpellation), 政黨質詢 and 個人質詢 all question the Executive Yuan;
+# 詢問 questions officials presenting a report.
+_TW_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"^國是論壇$"), "TW-national_affairs_forum", CORE_CURRENT_AFFAIRS),
+    (re.compile(r"^質詢$"), "TW-interpellation", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"^政黨質詢$"), "TW-party_interpellation", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"^個人質詢$"), "TW-individual_interpellation", CORE_GOVERNMENT_QUESTIONING),
+    (re.compile(r"^詢問$"), "TW-inquiry", CORE_QA),
+    (re.compile(r"^法案發言$"), "TW-bill_speech", CORE_REGULAR),
+    (re.compile(r"^政黨推派$"), "TW-party_nominated", CORE_REGULAR),
+    (re.compile(r"^政黨發言$"), "TW-party_statement", CORE_REGULAR),
+    (re.compile(r"^個人登記$"), "TW-individual_registered", CORE_REGULAR),
+    (re.compile(r"^臨時提案$"), "TW-extempore_motion", CORE_REGULAR),
+    (re.compile(r"^其他$"), "TW-other", CORE_OTHER),
+]
+
+
+def classify_tw(speech_kind: Optional[str]) -> tuple[Optional[str], str]:
+    """Classify a TW speech by its dataset-221 ``speechKindName``."""
+    return _match_title((speech_kind or "").strip(), _TW_PATTERNS)
+
+
+# ---------------------------------------------------------------------------
 # Convenience: write classification onto an agendaItem dict
 # ---------------------------------------------------------------------------
 
