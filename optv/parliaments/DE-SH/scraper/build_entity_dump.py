@@ -7,6 +7,7 @@ Two sources, joined on German label:
    ``P39 wd:Q18130496`` ("member of the Landtag of Schleswig-Holstein").
    Provides the QID plus German and English label variants. Returns
    roughly 688 historical members (verified 2026-05-29).
+   ``DE_SH_EXTRA_MEMBERS`` adds members whose item lacks that statement.
 2. **Hand-curated party list** for the parties currently represented in
    WP 20: CDU, Grüne, SPD, FDP, SSW. (AfD held seats in WP 19 but did
    not clear the 5% threshold in the 2022 election.) The SSW is the
@@ -86,6 +87,11 @@ DE_SH_PARTIES: list[dict] = [
     ]},
 ]
 
+# Members the SPARQL misses because their Wikidata item has no P39 statement.
+DE_SH_EXTRA_MEMBERS: list[dict] = [
+    {"id": "Q50943765", "label": "Kristina Herbst"},  # Landtagspräsidentin, WP 20
+]
+
 
 def fetch_wikidata_de_sh_mps() -> list[dict]:
     logger.info("Querying Wikidata for DE-SH Landtag members…")
@@ -108,6 +114,9 @@ def fetch_wikidata_de_sh_mps() -> list[dict]:
             "labelAlternative": alts,
         }
     logger.info(f"Got {len(members)} MPs from Wikidata")
+    for extra in DE_SH_EXTRA_MEMBERS:
+        members.setdefault(extra["id"], {**extra, "subType": "memberOfParliament",
+                                         "labelAlternative": []})
     return list(members.values())
 
 
