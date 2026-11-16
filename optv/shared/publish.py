@@ -179,10 +179,19 @@ def is_demotion(new_data: list, published_data: list, *,
     text. The present→absent text guard below is NEVER relaxed (that is the
     irreversible media-only / crash data loss case), so even a rebuild can't
     empty a published transcript.
+
+    The reverse (a transcript arriving over a text-less published file) is
+    always a promotion: timing/NER markers there were stamped over no text.
     """
     # Present→absent transcript: always a demotion, even under rebuild.
     if data_has_text(published_data) and not data_has_text(new_data):
         return True
+    # Absent→present transcript: a promotion. Timing/NER markers on a
+    # text-less published file were stamped over no text (an NER pass over a
+    # media-only session), so the new data can't drop anything they carry;
+    # only document links are independent of the text.
+    if not data_has_text(published_data) and data_has_text(new_data):
+        return data_has_documents(published_data) and not data_has_documents(new_data)
     # Transcript content changed (both sides have text, different text): only a
     # rebuild may replace it (and shed the now-stale timing/NER for re-derive).
     if (data_has_text(published_data) and data_has_text(new_data)

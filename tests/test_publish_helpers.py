@@ -59,6 +59,19 @@ def test_is_demotion_allows_equal_or_richer_publish():
     assert not is_demotion(aligned, [])             # nothing published yet
 
 
+def test_is_demotion_allows_text_over_textless_with_empty_ner_stamp():
+    # NER over a media-only session stamps nerDuration with no text; the
+    # transcript arriving later must still publish (it was refused forever).
+    textless = [_speech("A", debug={"nerDuration": 2e-07}), _speech("B")]
+    with_text = [_tspeech("A", ["Guten Morgen."]), _tspeech("B", ["Danke."])]
+    assert not is_demotion(with_text, textless)
+    assert not is_demotion(with_text, textless, allow_text_replace=True)
+    # ...but document links are independent of the text and stay guarded.
+    textless_docs = [_speech("A", debug={"nerDuration": 2e-07}, documents=[_DOC])]
+    with_text_nodocs = [_tspeech("A", ["Guten Morgen."], documents=[])]
+    assert is_demotion(with_text_nodocs, textless_docs)
+
+
 def test_carry_forward_fills_missing_wid_from_published():
     published = [_speech("A", people=[
         {"label": "Max Beispiel", "wid": "Q42", "wtype": "PERSON"}])]
