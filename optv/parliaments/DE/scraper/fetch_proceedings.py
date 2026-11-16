@@ -16,7 +16,6 @@ import os
 from pathlib import Path
 import re
 import sys
-import urllib.request
 import urllib3
 
 SERVER_ROOT = "https://www.bundestag.de"
@@ -29,6 +28,70 @@ AJAX_ID = {
     # Ajax ID Period 21
     21: "1058442-1058442"
 }
+
+
+class _ServerRefused(Exception):
+    """bundestag.de answered something other than 200 — typically a 303 to its
+    bot challenge (``/.enodia/challenge``), which a non-browser client cannot pass."""
+
+
+def _get(http: urllib3.PoolManager, url: str) -> bytes:
+    """GET ``url`` without following redirects; raise _ServerRefused unless 200.
+
+    Following redirects would turn a bot challenge into a 200 HTML page that
+    reads as an empty list, or gets stored as a protocol.
+    """
+    response = http.request("GET", url, redirect=False)
+    if response.status != 200:
+        location = response.headers.get("Location")
+        raise _ServerRefused(f"HTTP {response.status} for {url}"
+                             + (f" -> {location}" if location else ""))
+    return response.data
+
+
+def _protocol_links(page: bytes) -> "list[str]":
+    """Protocol hrefs of one list page, in order, without duplicates.
+
+    The page renders every entry twice (list view + table template), while the
+    endpoint's ``offset`` counts entries — so the caller must advance by the
+    de-duplicated count.
+    """
+    if not page.strip():
+        return []
+    parsed = lxml.html.fromstring(page)
+    return list(dict.fromkeys(a.attrib["href"] for a in parsed.iter("a")
+                              if "href" in a.attrib))
+
+
+def _with_source_pi(data: bytes, url: str) -> bytes:
+    """Insert ``<?source url="…"?>`` after the XML declaration (or first, if none).
+
+    A simple text-based approach is more economical than parsing the whole
+    XML. Some files start with the BOM b'\\xef\\xbb\\xbf', so the declaration
+    is looked for in the first line rather than with startswith.
+    """
+    pi = f"""<?source url="{url}"?>\n""".encode('utf-8')
+    newline = data.find(b"\n")
+    first_line = data if newline < 0 else data[:newline + 1]
+    if b'<?xml' in first_line:
+        return first_line + pi + data[len(first_line):]
+    return pi + data
+
+
+def _is_protocol(xml_path: Path) -> bool:
+    """True if ``xml_path`` is well-formed XML with a <dbtplenarprotokoll> root.
+
+    Rejects what may arrive instead of a protocol — an HTML challenge or error
+    page, a truncated body — none of which may be cached as a protocol, since
+    cached files are never fetched again.
+    """
+    try:
+        root = lxml.etree.parse(str(xml_path)).getroot()
+    except Exception as e:
+        logger.debug(f"{xml_path}: not well-formed XML ({e})")
+        return False
+    return str(root.tag).endswith('dbtplenarprotokoll')
+
 
 def _verify_session_id(xml_path: Path, expected_id: str) -> bool:
     """True unless the XML's root wahlperiode/sitzung-nr definitely contradict
@@ -52,10 +115,49 @@ def _verify_session_id(xml_path: Path, expected_id: str) -> bool:
         return True
     return period == expected_id[:-3] and int(session) == int(expected_id[-3:])
 
-def download_plenary_protocols(destination_dir: str, fullscan: bool = False, period: int = 20) -> "list[(str, str)]":
-    """Download and stores proceedings
 
-    Returns a list of (filename, url) for downloaded files.
+def _download(http: urllib3.PoolManager, file_url: str, target: Path, session_id: str) -> bool:
+    """Fetch ``file_url`` into ``target`` via a ``.part`` file; True if stored.
+
+    ``target`` only appears once the download is a well-formed protocol of
+    ``session_id``. Anything else is discarded and the entry stays missing, so
+    the next run retries it. Raises _ServerRefused on a non-200 answer.
+    """
+    data = _get(http, file_url)
+    tmp = target.with_name(target.name + ".part")
+    try:
+        tmp.write_bytes(_with_source_pi(data, file_url))
+        if not _is_protocol(tmp):
+            logger.error(f"{file_url} is not a plenary protocol (challenge or error page?) "
+                         f"- not storing {target.name}")
+            return False
+        if not _verify_session_id(tmp, session_id):
+            logger.error(
+                f"Session-id mismatch for {target}: filename expects {session_id} "
+                f"but XML header disagrees — rejecting download from {file_url}"
+            )
+            return False
+        os.replace(tmp, target)
+        return True
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def download_plenary_protocols(destination_dir: str, fullscan: bool = False, period: int = 20) -> "list[(str, str)]":
+    """Download missing proceedings; return a list of (filename, url) for new files.
+
+    The opendata list is mostly but not strictly newest-first: an entry the
+    Bundestag touches after a newer protocol came out is listed above it (e.g.
+    21108 "Teilprotokoll" before 21109). So every entry of a page is checked,
+    and the next page is only requested while a page holds nothing cached yet
+    (cold cache, or more than a page of new protocols) — one list request per
+    run in steady state. ``fullscan`` walks all pages.
+
+    Cached files are never fetched again, even when the Bundestag later updates
+    a protocol in place under the same URL; refreshing one means deleting it.
+
+    A non-200 answer (bot challenge, outage) ends the run with a warning and
+    the files fetched so far; it is never mistaken for the end of the list.
     """
     if not AJAX_ID.get(period):
         return []
@@ -66,66 +168,38 @@ def download_plenary_protocols(destination_dir: str, fullscan: bool = False, per
     http = urllib3.PoolManager()
     created_files = []
     offset = 0
-    while True:
-        logger.debug(f"Fetching RSS with offset {offset}")
-        response = http.request("GET", f"{SERVER_ROOT}/ajax/filterlist/de/services/opendata/{AJAX_ID[period]}?noFilterSet=true&offset={offset}")
-        parsed = lxml.html.fromstring(response.data)
-        link_count = 0
-        for link in parsed.getiterator(tag="a"):
-            link_href = link.attrib["href"]
-            link_count += 1
-            basename = os.path.basename(link_href)
-            # Get session id from filename.
-            # The basename is either NNNNN-data.xml or NNNNN.xml (from 20138 on)
-            ids = re.findall(r'^(\d+)', basename)
-            if not ids:
-                raise ValueError(f"Invalid filename {basename} - cannot extract session id")
-            session_id = ids[0]
-            basename = f"{session_id}-proceedings.xml"
-            filename = dest / basename
-            if filename.exists():
-                # Existing file.
-                if not fullscan:
-                    logger.info(f"Found cached file {filename}. Stopping.")
-                    return created_files
-            else:
-                # Download file
-                #file_url = f"{SERVER_ROOT}{link_href}"
-                file_url = f"{link_href}"
-                logger.info(f"downloading URL {file_url}")
-                with urllib.request.urlopen(file_url) as f:
-                    # Add source URL as a processing instruction, but
-                    # after the XML declaration. The cleanest way
-                    # would be to parse the whole XML and use some
-                    # API, but a simple text-based approach is more economical.
-                    pi = f"""<?source url="{file_url}"?>\n""".encode('utf-8')
-                    with open(filename, 'wb') as out:
-                        first_line = f.readline()
-                        # We make sure to preserve the XML declaration
-                        # at the start. If there is no XML
-                        # declaration, then we put the PI first.
-                        # Note: some files have the BOM b'\xef\xbb\xbf'
-                        # at the beginning, so we cannot test with .startswith
-                        if b'<?xml' in first_line:
-                            out.write(first_line)
-                            out.write(pi)
-                        else:
-                            out.write(pi)
-                            out.write(first_line)
-                        # Write the rest of the file
-                        out.write(f.read())
-                if not _verify_session_id(filename, session_id):
-                    logger.error(
-                        f"Session-id mismatch for {filename}: filename expects {session_id} "
-                        f"but XML header disagrees — rejecting download from {file_url}"
-                    )
-                    filename.unlink(missing_ok=True)
+    try:
+        while True:
+            logger.debug(f"Fetching proceedings list with offset {offset}")
+            hrefs = _protocol_links(_get(
+                http, f"{SERVER_ROOT}/ajax/filterlist/de/services/opendata/{AJAX_ID[period]}"
+                      f"?noFilterSet=true&offset={offset}"))
+            if not hrefs:
+                # Past the last page
+                break
+            page_had_cached = False
+            for file_url in hrefs:
+                basename = os.path.basename(file_url)
+                # Get session id from filename.
+                # The basename is either NNNNN-data.xml or NNNNN.xml (from 20138 on)
+                ids = re.findall(r'^(\d+)', basename)
+                if not ids:
+                    raise ValueError(f"Invalid filename {basename} - cannot extract session id")
+                session_id = ids[0]
+                filename = dest / f"{session_id}-proceedings.xml"
+                if filename.exists():
+                    page_had_cached = True
                     continue
-                created_files.append( (filename, file_url) )
-        if link_count == 0:
-            # Empty file, end of data
-            break
-        offset += link_count
+                logger.info(f"downloading URL {file_url}")
+                if _download(http, file_url, filename, session_id):
+                    created_files.append( (filename, file_url) )
+            if page_had_cached and not fullscan:
+                logger.info(f"Reached already cached proceedings at offset {offset}. Stopping.")
+                break
+            offset += len(hrefs)
+    except _ServerRefused as e:
+        logger.warning(f"bundestag.de refused the request ({e}) - bot challenge? "
+                       f"Skipping the rest of this proceedings fetch")
     return created_files
 
 if __name__ == "__main__":
@@ -141,7 +215,7 @@ if __name__ == "__main__":
                         help="Display debug messages")
     parser.add_argument("--full-scan", dest="fullscan", action="store_true",
                         default=False,
-                        help="Do a full scan of the RSS feed (else we stop at the first existing file)")
+                        help="Walk the whole list (else stop after the first page holding an already cached file)")
     args = parser.parse_args()
     if args.output_dir is None:
         parser.print_help()
