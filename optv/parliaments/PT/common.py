@@ -78,6 +78,13 @@ def source_label(session: str) -> str:
 
 
 class Config(BaseConfig):
+    # The av interventions are the spine: an intervention without a DAR text
+    # match keeps empty textContents, and text shows as non-empty
+    # textContents (no debug.proceedingIndex). A session is text-bearing
+    # when any speech has text; align and NER skip the others.
+    TEXT_SIGNAL = "textContents"
+    TEXT_PROBE = "any"
+
     def __init__(self, data_dir: Path, cache_dir: Path = None):
         data_dir = Path(data_dir)
         if cache_dir is not None:
@@ -136,37 +143,6 @@ class Config(BaseConfig):
             f.name[:-len(suffix)]
             for f in self.dir('media').glob(f'{prefix}*{suffix}')
         ))
-
-    def status(self, session: str) -> set:
-        """Return the status for the given session."""
-        status = set()
-        if self.file(session, 'media').exists():
-            status.add(SessionStatus.media)
-        if self.file(session, 'proceedings').exists():
-            status.add(SessionStatus.proceedings)
-        if self.file(session, 'merged').exists():
-            status.add(SessionStatus.merged)
-        sfile = self.file(session, 'processed')
-        if sfile.exists():
-            status.add(SessionStatus.session)
-            with open(sfile, 'r') as f:
-                data = json.load(f)['data']
-            if len(data) == 0:
-                status.add(SessionStatus.empty)
-            for s in data:
-                if s.get('people') and s['people'][0].get('wid'):
-                    status.add(SessionStatus.linked)
-                    break
-            for s in data:
-                tcs = s.get('textContents') or []
-                if not tcs or not any((tc.get('textBody') or []) for tc in tcs):
-                    status.add(SessionStatus.no_text)
-                    continue
-                if s.get('debug', {}).get('alignDuration'):
-                    status.add(SessionStatus.aligned)
-                if s.get('debug', {}).get('nerDuration'):
-                    status.add(SessionStatus.ner)
-        return status
 
 
 if __name__ == '__main__':

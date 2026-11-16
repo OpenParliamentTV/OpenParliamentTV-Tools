@@ -47,6 +47,18 @@ class BaseConfig:
     # clips per session without a Diario turn are expected; align and NER
     # skip those speeches and process the rest).
     TEXT_PROBE: str = "every"
+    # --- status knob: what marks a speech as carrying merged text ---
+    # "proceedingIndex": the merger stamps ``debug.proceedingIndex`` (DE family,
+    # the PDF-tier spine join). "textContents": a non-empty ``textBody`` in any
+    # ``textContents`` entry (mergers that graft text without that stamp).
+    TEXT_SIGNAL: str = "proceedingIndex"
+
+    def has_merged_text(self, speech: dict) -> bool:
+        """Whether ``speech`` carries merged text, by ``TEXT_SIGNAL``."""
+        if self.TEXT_SIGNAL == "textContents":
+            return any((tc.get('textBody') or [])
+                       for tc in (speech.get('textContents') or []))
+        return (speech.get('debug') or {}).get('proceedingIndex') is not None
 
     def __init__(self, data_dir: Path, cache_dir: Path = None):
         data_dir = Path(data_dir)
@@ -124,7 +136,7 @@ class BaseConfig:
         transcript, so they short-circuit to ``no_text``. ``TEXT_PROBE``
         decides whether one speech without merged text makes the whole
         session ``no_text`` ("every") or only a session where no speech has
-        text ("any").
+        text ("any"); ``TEXT_SIGNAL`` decides what counts as merged text.
         """
         status = set()
         if self.file(session, 'media').exists():
@@ -152,16 +164,15 @@ class BaseConfig:
                 # Video-only: PDF-only/absent proceedings, no align/ner stages.
                 status.add(SessionStatus.no_text)
                 return status
-            # Check for proceedingIndex information (indication that proceedings were merged)
+            # Merged text per speech (TEXT_SIGNAL), probed per TEXT_PROBE.
             if self.TEXT_PROBE == "any":
-                with_text = [s for s in data
-                             if s.get('debug', {}).get('proceedingIndex') is not None]
+                with_text = [s for s in data if self.has_merged_text(s)]
                 if not with_text:
                     status.add(SessionStatus.no_text)
                     return status
                 data = with_text
             for s in data:
-                if s.get('debug', {}).get('proceedingIndex') is None:
+                if not self.has_merged_text(s):
                     status.add(SessionStatus.no_text)
                     return status
                 # Accept the legacy kebab keys too, mirroring data_has_timing /

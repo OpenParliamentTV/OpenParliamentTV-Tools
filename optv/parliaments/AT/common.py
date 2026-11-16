@@ -39,6 +39,10 @@ logger = logging.getLogger(__name__)
 class Config(BaseConfig):
     # The scraper's per-session raw spine file is ``{session}-mediathek.json``.
     MEDIA_GLOB_SUFFIX = "-mediathek.json"
+    # Media spine: Mediathek clips without a matching proceedings turn stay as
+    # media-only records with empty textContents; the session is still aligned
+    # and NER'd.
+    TEXT_PROBE = "any"
 
 
 if __name__ == '__main__':
