@@ -53,12 +53,27 @@ def _merge(config, session, args):
     return merge_session(session, config, args)
 
 
+# Each per-speech MP4 carries the floor audio (stream 0, `qaa`) and the
+# Spanish interpretation (stream 1, `spa`).
+FLOOR_TRACK = 0
+INTERPRETATION_TRACK = 1
+
+
+def audio_track(speech: dict, _index: int, content: dict) -> int:
+    """The text as spoken follows the floor audio; the Spanish version of a
+    speech given in Catalan, Galician or Basque follows the interpretation."""
+    if content.get('language') == speech.get('originalLanguage'):
+        return FLOOR_TRACK
+    return INTERPRETATION_TRACK
+
+
 def _align(config, session, args):
     merged_file = config.file(session, 'merged')
     aligned_file = config.file(session, 'aligned', create=True)
     align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir,
                     timeout=args.align_timeout,
-                    max_audio_seconds=args.align_max_audio_seconds)
+                    max_audio_seconds=args.align_max_audio_seconds,
+                    audio_track=audio_track)
     return aligned_file
 
 

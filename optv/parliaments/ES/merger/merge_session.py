@@ -56,13 +56,15 @@ def remove_accents(s: str) -> str:
 
 
 def norm_surname(item: dict) -> str:
-    """Normalised surname for matching (accent-folded, uppercased)."""
+    """Normalised surname for matching (accent-folded, uppercased, hyphens as
+    spaces: the Diario writes "Sánchez Pérez Castejón" for "Sánchez
+    Pérez-Castejón" now and then)."""
     people = item.get('people') or []
     if not people:
         return ""
     p = people[0]
     name = p.get('lastname') or p.get('label') or ""
-    return remove_accents(name).upper().strip()
+    return " ".join(remove_accents(name).upper().replace("-", " ").split())
 
 
 def _is_chair_role(item: dict) -> bool:
@@ -143,6 +145,45 @@ def align_by_surname(media: list, proceedings: list) -> dict:
     return {mi: [proceedings[pj] for pj in plist] for mi, plist in matched.items()}
 
 
+def merge_text_contents(proc_items: list) -> tuple:
+    """Join the matched turns' text into one entry per rendering.
+
+    Returns (textContents, originalLanguage or None). A turn the Diario
+    prints in a co-official language carries two entries: the text as spoken
+    and its Spanish version. A speech gets the Spanish rendering, plus the
+    as-spoken one when any of its turns has it, each concatenating every
+    turn's text (a Spanish-only turn reads the same in both). The platform
+    stores one text per (type, language), so the turns are never emitted as
+    separate entries of the same language.
+    """
+    spoken, spanish = [], []
+    language = None
+    for p in proc_items:
+        tcs = p.get('textContents') or []
+        if not tcs:
+            continue
+        if len(tcs) > 1:
+            language = language or tcs[0].get('language')
+            spoken.append(tcs[0])
+            spanish.append(tcs[-1])
+        else:
+            spoken.append(tcs[0])
+            spanish.append(tcs[0])
+    if not spanish:
+        return [], None
+
+    def joined(parts: list, lang: str) -> dict:
+        tc = deepcopy(parts[0])
+        tc['language'] = lang
+        tc['textBody'] = [deepcopy(b) for part in parts for b in part.get('textBody', [])]
+        return tc
+
+    es = joined(spanish, spanish[-1].get('language'))
+    if language is None:
+        return [es], None
+    return [joined(spoken, language), es], language
+
+
 def merge_item(media_item: dict, proc_items: list, session_id: str) -> dict:
     """Build one Stage 2 speech: media (video/speaker/time/agenda) + matched text."""
     output = deepcopy(media_item)
@@ -154,7 +195,9 @@ def merge_item(media_item: dict, proc_items: list, session_id: str) -> dict:
         output['originID'] = first.get('originID') or first.get('originTextID')
         output['debug']['proceedingIndex'] = first.get('speechIndex')
         output['debug']['proceedingIndexes'] = [p.get('speechIndex') for p in proc_items]
-        output['textContents'] = [tc for p in proc_items for tc in p.get('textContents', [])]
+        output['textContents'], original_language = merge_text_contents(proc_items)
+        if original_language:
+            output['originalLanguage'] = original_language
         pages = [p.get('debug', {}).get('page') for p in proc_items if p.get('debug', {}).get('page')]
         if pages:
             output['debug']['page'] = pages[0]

@@ -183,3 +183,37 @@ def test_fetch_force_overrides_collapse(tmp_path, monkeypatch):
         _args(data_dir=tmp_path, nel_entity_url="http://x/dump", force=True), "DE")
     after = json.loads((cfg.dir('nel_data') / 'entities.json').read_text())
     assert len(after["data"]) == 2
+
+
+# --------------------------------------------------------------------------- #
+# BaseConfig.status: TEXT_PROBE
+# --------------------------------------------------------------------------- #
+
+def _speeches(cfg, session, speeches):
+    cfg.file(session, 'processed', create=True).write_text(
+        json.dumps({"meta": {}, "data": speeches}), encoding='utf-8')
+
+
+_MATCHED = {"debug": {"proceedingIndex": 1001}}
+_ALIGNED = {"debug": {"proceedingIndex": 1002, "alignDuration": 3.2}}
+_UNMATCHED = {"debug": {"proceedingIndex": None}}
+
+
+class _AnyTextConfig(BaseConfig):
+    TEXT_PROBE = "any"
+
+
+def test_status_every_marks_partly_matched_session_no_text(tmp_path):
+    cfg = _cfg(tmp_path)
+    _speeches(cfg, '15001', [_MATCHED, _UNMATCHED])
+    assert wf.SessionStatus.no_text in cfg.status('15001')
+
+
+def test_status_any_keeps_partly_matched_session_text_bearing(tmp_path):
+    cfg = _AnyTextConfig(tmp_path)
+    _speeches(cfg, '15001', [_UNMATCHED, _MATCHED])
+    assert wf.SessionStatus.no_text not in cfg.status('15001')
+    _speeches(cfg, '15001', [_UNMATCHED, _ALIGNED])
+    assert wf.SessionStatus.aligned in cfg.status('15001')
+    _speeches(cfg, '15001', [_UNMATCHED, _UNMATCHED])
+    assert wf.SessionStatus.no_text in cfg.status('15001')

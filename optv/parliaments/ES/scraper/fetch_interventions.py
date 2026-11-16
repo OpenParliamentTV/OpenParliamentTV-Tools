@@ -15,6 +15,9 @@
 #      comes from the MP4 path ({leg}_000400_{session}_…, organ 400 = Pleno),
 #   4. write raw-<period><session>-media.json per plenary session (meta.docId
 #      keeps the Diario id) for media2json + the proceedings scraper.
+# When the feed cannot be downloaded, the records come from the intervention
+# search instead (fetch_search.py), from the newest sitting on file onward;
+# meta.source records which source a raw file came from.
 
 import logging
 logger = logging.getLogger(__name__)
@@ -34,6 +37,7 @@ if __package__ is None or __package__ == "":
     __package__ = module_dir.name
 
 from .common import fetch_url
+from .fetch_search import latest_session_date, search_records
 
 _repo_root = str(Path(__file__).resolve().parents[4])
 if _repo_root not in sys.path:
@@ -139,9 +143,18 @@ def split_pleno_sessions(records: list, period: int) -> dict:
     return sessions
 
 
+SOURCE_OPENDATA = "opendata"
+SOURCE_SEARCH = "search"
+
+
 def write_raw_session(media_dir: Path, sid: str, period: int, number: int,
-                      diario: int, records: list, force: bool = False) -> bool:
-    """Write raw-<sid>-media.json unless unchanged. Returns True if written."""
+                      diario: int, records: list, force: bool = False,
+                      source: str = SOURCE_OPENDATA) -> bool:
+    """Write raw-<sid>-media.json unless unchanged. Returns True if written.
+
+    Records from the search fallback never replace a file from the open
+    data, the default source.
+    """
     out = media_dir / f"raw-{sid}-media.json"
     payload = {
         "meta": {
@@ -151,13 +164,17 @@ def write_raw_session(media_dir: Path, sid: str, period: int, number: int,
             "diarioNumber": diario,
             "docId": diario_doc_id(period, diario),
             "parliament": "ES",
+            "source": source,
             "fetched": datetime.now().isoformat("T", "seconds"),
         },
         "interventions": records,
     }
-    if out.exists() and not force:
+    if out.exists():
         old = json.loads(out.read_text())
-        if old.get("interventions") == records:
+        old_source = old.get("meta", {}).get("source", SOURCE_OPENDATA)
+        if source == SOURCE_SEARCH and old_source != SOURCE_SEARCH:
+            return False
+        if not force and old.get("interventions") == records:
             return False
     media_dir.mkdir(parents=True, exist_ok=True)
     with open(out, "w") as f:
@@ -165,36 +182,69 @@ def write_raw_session(media_dir: Path, sid: str, period: int, number: int,
     return True
 
 
-def update_interventions_period(period: int, media_dir: Path,
-                                force: bool = False, retry_count: int = 0) -> dict:
-    """Download the interventions feed and write per-session raw media files.
-
-    Returns {session_id: docId} for the sessions written/seen.
-    """
-    media_dir = Path(media_dir)
-    url = None
+def download_feed(retry_count: int = 0):
+    """The open data interventions feed as a list of records, or None."""
     should_retry = retry_count
-    raw = None
     while should_retry >= 0:
         try:
             url = discover_interventions_url()
             logger.info(f"Downloading interventions feed: {url}")
             raw = json.loads(fetch_url(url, referer=OPENDATA_PAGE,
                                        accept="application/json"))
-            break
         except Exception as e:
             should_retry -= 1
             if should_retry >= 0:
                 wait = random() * RETRY_MAX_WAIT_TIME
                 logger.warning(f"Download error ({type(e).__name__}: {e}) - retrying in {wait:.1f}s")
                 time.sleep(wait)
-            else:
-                logger.error(f"Could not download interventions feed: {type(e).__name__}: {e}")
-                return {}
-
-    if not isinstance(raw, list):
+                continue
+            logger.error(f"Could not download interventions feed: {type(e).__name__}: {e}")
+            return None
+        if isinstance(raw, list):
+            return raw
         logger.error(f"Unexpected interventions payload type: {type(raw).__name__}")
-        return {}
+        return None
+    return None
+
+
+def download_search(period: int, media_dir: Path, retry_count: int = 0,
+                    since: str = ""):
+    """Records of the plenary sittings from `since` (dd/mm/yyyy), else from
+    the newest one on file, onward, from the intervention search, or None."""
+    if not since:
+        newest = latest_session_date(media_dir, period)
+        since = newest.strftime("%d/%m/%Y") if newest else ""
+    logger.info(f"Listing plenary interventions of period {period} from the "
+                f"intervention search, from {since or 'the start of the legislature'}")
+    try:
+        return search_records(period, since, "", retry_count)
+    except Exception as e:
+        logger.error(f"Intervention search failed: {type(e).__name__}: {e}"
+                     + ("" if since else " - list a date range with "
+                        "scraper/fetch_interventions.py --source search --since dd/mm/yyyy"))
+        return None
+
+
+def update_interventions_period(period: int, media_dir: Path,
+                                force: bool = False, retry_count: int = 0,
+                                source: str = SOURCE_OPENDATA, since: str = "") -> dict:
+    """Download the interventions and write per-session raw media files.
+
+    The open data feed is the source; when it cannot be downloaded (or with
+    `source="search"`), the intervention search lists the sittings from the
+    newest one on file (or from `since`, dd/mm/yyyy) onward.
+    Returns {session_id: docId} for the sessions written/seen.
+    """
+    media_dir = Path(media_dir)
+    raw = download_feed(retry_count) if source == SOURCE_OPENDATA else None
+    if raw is None:
+        if source == SOURCE_OPENDATA:
+            logger.warning("Open data interventions feed unavailable - "
+                           "falling back to the intervention search")
+        source = SOURCE_SEARCH
+        raw = download_search(period, media_dir, retry_count, since)
+        if raw is None:
+            return {}
 
     sessions = split_pleno_sessions(raw, period)
     logger.info(f"Found {len(sessions)} plenary sessions ({len(raw)} total records) for period {period}")
@@ -205,7 +255,8 @@ def update_interventions_period(period: int, media_dir: Path,
     seen = {}
     for sid, sess in sorted(sessions.items()):
         written = write_raw_session(media_dir, sid, period, sess["number"],
-                                    sess["diario"], sess["records"], force=force)
+                                    sess["diario"], sess["records"], force=force,
+                                    source=source)
         seen[sid] = diario_doc_id(period, sess["diario"])
         if written:
             logger.debug(f"Wrote raw-{sid}-media.json ({len(sess['records'])} interventions, {seen[sid]})")
@@ -218,6 +269,11 @@ if __name__ == "__main__":
     parser.add_argument("--period", type=int, default=15, help="Legislature/period (default: 15)")
     parser.add_argument("--retry-count", type=int, default=2, help="Max download retries")
     parser.add_argument("--force", action="store_true", default=False, help="Rewrite even if unchanged")
+    parser.add_argument("--source", choices=[SOURCE_OPENDATA, SOURCE_SEARCH], default=SOURCE_OPENDATA,
+                        help="Open data feed (default; the search is the fallback) or the intervention search")
+    parser.add_argument("--since", type=str, default="",
+                        help="With --source search: first sitting date, dd/mm/yyyy "
+                             "(default: the newest sitting on file)")
     parser.add_argument("--debug", action="store_true", default=False)
     args = parser.parse_args()
     if args.media_dir is None:
@@ -225,4 +281,5 @@ if __name__ == "__main__":
         sys.exit(1)
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
     update_interventions_period(args.period, Path(args.media_dir),
-                                force=args.force, retry_count=args.retry_count)
+                                force=args.force, retry_count=args.retry_count,
+                                source=args.source, since=args.since)

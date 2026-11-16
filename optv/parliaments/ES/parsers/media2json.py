@@ -3,7 +3,8 @@
 # Convert the per-session raw interventions file (written by
 # scraper/fetch_interventions.py) into the intermediate "media" JSON stream:
 # one item per video clip (usually one per speech), carrying the video,
-# speaker, agenda and (coarse, HH:MM) timing. The proceedings stream supplies the transcript text;
+# speaker, agenda and clock timing (HH:MM from the open data, HH:MM:SS from
+# the intervention search fallback). The proceedings stream supplies the transcript text;
 # the merger joins the two by session + speaker surname.
 
 import logging
@@ -47,7 +48,7 @@ def _video_file_uri(mp4: str) -> str:
 
 
 def _parse_dt(sesion: str, hhmm: str):
-    """Combine SESION (dd/mm/yyyy) + HH:MM into a Europe/Madrid aware datetime.
+    """Combine SESION (dd/mm/yyyy) + HH:MM[:SS] into a Europe/Madrid aware datetime.
 
     Returns None if either part is missing/unparseable.
     """
@@ -57,33 +58,77 @@ def _parse_dt(sesion: str, hhmm: str):
         day, month, year = (int(x) for x in sesion.strip().split("/"))
     except ValueError:
         return None
-    hour, minute = 0, 0
+    hour, minute, second = 0, 0, 0
     have_time = False
     if hhmm and ":" in hhmm:
         try:
-            hour, minute = (int(x) for x in hhmm.strip().split(":")[:2])
+            hour, minute, *rest = (int(x) for x in hhmm.strip().split(":")[:3])
+            second = rest[0] if rest else 0
             have_time = True
         except ValueError:
             have_time = False
     try:
-        dt = datetime(year, month, day, hour, minute, tzinfo=MADRID)
+        dt = datetime(year, month, day, hour, minute, second, tzinfo=MADRID)
     except ValueError:
         return None
     return dt, have_time
 
 
-def parse_intervention(rec: dict, period: int, number: int) -> list:
+def _clips(rec: dict) -> list:
+    """(url, parsed video) per real MP4 of a record, placeholders dropped."""
+    return [(url, video) for url in video_urls(rec.get("ENLACEDESCARGADIRECTA"))
+            if (video := parse_video_url(url))]
+
+
+def _initiative(rec: dict) -> dict:
+    return {"numExpediente": collapse_ws(rec.get("NUMEXPEDIENTE")),
+            "title": collapse_ws(rec.get("OBJETOINICIATIVA"))}
+
+
+def merge_joint_debate_records(records: list) -> list:
+    """Collapse the feed's per-initiative copies of one intervention.
+
+    In a joint debate (debate conjunto) the feed lists each intervention once
+    per initiative debated: same MP4(s), speaker and times, different
+    OBJETOINICIATIVA / NUMEXPEDIENTE. Returns (record, other_initiatives)
+    pairs, one per intervention, at the position of its first copy. The kept
+    record is the copy with the lowest NUMEXPEDIENTE, so the agenda item does
+    not depend on the feed's order; the other copies' initiatives are
+    returned for `debug.jointInitiatives`. Records without video pass through
+    unchanged.
+    """
+    groups: dict = {}
+    ordered: list = []
+    for rec in records:
+        key = tuple(video["stem"] for _url, video in _clips(rec))
+        if key and key in groups:
+            groups[key].append(rec)
+            continue
+        group = [rec]
+        if key:
+            groups[key] = group
+        ordered.append(group)
+    out = []
+    for group in ordered:
+        group = sorted(group, key=lambda r: collapse_ws(r.get("NUMEXPEDIENTE")))
+        out.append((group[0], [_initiative(r) for r in group[1:]]))
+    return out
+
+
+def parse_intervention(rec: dict, period: int, number: int,
+                       joint_initiatives: list = None) -> list:
     """Convert one raw intervention record into media-stream items, one per clip.
 
     A record usually has one MP4. An intervention recorded in several clips
     (e.g. a minister's answer and rejoinder around the questioner's reply)
     lists them all; each clip becomes its own item, flagged with
     `debug.clipIndex` / `debug.clipCount`, sharing the record's speaker,
-    agenda and times. Returns [] for records the media stream cannot
+    agenda and times. `joint_initiatives` are the other initiatives of a joint
+    debate (see `merge_joint_debate_records`), kept in
+    `debug.jointInitiatives`. Returns [] for records the media stream cannot
     represent (placeholder URL without a video, or no usable date).
     """
-    clips = [(url, video) for url in video_urls(rec.get("ENLACEDESCARGADIRECTA"))
-             if (video := parse_video_url(url))]
+    clips = _clips(rec)
     if not clips:
         # No per-speech video — not a media-stream item. The proceedings
         # stream still carries this speaker's text into the merge.
@@ -94,6 +139,8 @@ def parse_intervention(rec: dict, period: int, number: int) -> list:
     end = _parse_dt(sesion, rec.get("FININTERVENCION", ""))
 
     debug: dict = {}
+    if joint_initiatives:
+        debug["jointInitiatives"] = deepcopy(joint_initiatives)
     if start is None:
         # No usable date — caller will drop.
         return []
@@ -107,8 +154,11 @@ def parse_intervention(rec: dict, period: int, number: int) -> list:
     else:
         end_dt, have_end_time = start_dt, False
     duration = (end_dt - start_dt).total_seconds()
-    # HH:MM resolution only — flag it so downstream knows timing is coarse.
-    debug["coarseTiming"] = True
+    # The open data gives HH:MM, the intervention search HH:MM:SS. Flag
+    # minute resolution so downstream knows the timing is coarse.
+    times = (rec.get("INICIOINTERVENCION") or "", rec.get("FININTERVENCION") or "")
+    if any(t.strip().count(":") < 2 for t in times):
+        debug["coarseTiming"] = True
 
     objeto = collapse_ws(rec.get("OBJETOINICIATIVA"))
     fase = collapse_ws(rec.get("FASE"))
@@ -183,8 +233,8 @@ def parse_media_data(raw: dict) -> dict:
 
     output = []
     later_clips = []
-    for idx, rec in enumerate(records):
-        items = parse_intervention(rec, period, number)
+    for idx, (rec, joint) in enumerate(merge_joint_debate_records(records)):
+        items = parse_intervention(rec, period, number, joint)
         if not items:
             logger.debug(f"Skipping intervention {idx} in {sid}: no video or no usable date")
             continue

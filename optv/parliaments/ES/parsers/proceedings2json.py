@@ -24,6 +24,7 @@ from spacy.lang.es import Spanish
 from optv.parliaments import get_rights as _get_rights
 from optv.parliaments import get_language as _get_language
 from optv.shared.sentence_split import split_long_sentences
+from optv.parliaments.ES.parsers.language import split_language_passes
 
 # Rule-based sentencizer, loaded once per process (matches DE proceedings2json).
 _nlp = Spanish()
@@ -39,8 +40,10 @@ PROC_INDEX_BASE = 1000
 
 _PAGE_SENTINEL = "\x00PAGE:{}\x00"
 _PAGE_TOKEN_RE = re.compile(r"\x00PAGE:(\d+)\x00")
-# Page anchor: <a name='(Página3)'> (sometimes wrapped in a centered <p>).
-_PAGE_ANCHOR_RE = re.compile(r"<a name='\(P[aá]gina(\d+)\)'>")
+# Page anchor: <a name='(Página3)'><b>Página 3</b></a> (usually wrapped in a
+# centered <p>); the visible "Página 3" label goes with it.
+_PAGE_ANCHOR_RE = re.compile(
+    r"<a name='\(P[aá]gina(\d+)\)'>(?:\s*<b>\s*P[aá]gina\s*\d+\s*</b>)?")
 # Speaker turn: name/role must start with >=2 uppercase letters so SUMARIO
 # narrative ("La señora secretaria ... da lectura") and inline mentions are
 # not mistaken for turns. Optional "(Surname)" tail for chair/government roles.
@@ -80,14 +83,37 @@ def extract_textointegro(html: str) -> tuple[str, str]:
 
 def html_to_text_with_pages(inner: str) -> str:
     """Flatten the textoCompleto HTML to text, replacing page anchors with
-    \\x00PAGE:N\\x00 sentinels and <br> with spaces."""
+    \\x00PAGE:N\\x00 sentinels and <br> (the paragraph separator) with
+    newlines."""
     # Page anchors -> sentinel (do before tag stripping).
     inner = _PAGE_ANCHOR_RE.sub(lambda m: _PAGE_SENTINEL.format(m.group(1)), inner)
-    inner = re.sub(r"<br\s*/?>", " ", inner, flags=re.I)
+    inner = re.sub(r"<br\s*/?>", "\n", inner, flags=re.I)
     inner = _TAG_RE.sub(" ", inner)
     inner = html_lib.unescape(inner)
     inner = _WS_RE.sub(" ", inner)
     return inner
+
+
+_SENTENCE_END = ".!?:)»\"…"
+
+
+def _paragraphs(body: str) -> list:
+    """Split a turn body into whitespace-normalised paragraphs.
+
+    A page break sits between paragraph separators even mid-sentence, so it
+    only counts as a paragraph break when the text before it ends a sentence
+    and the text after it starts one.
+    """
+    def page_break(m: re.Match) -> str:
+        before = m.string[:m.start()].rstrip()
+        after = m.string[m.end():].lstrip()
+        if (before and before[-1] in _SENTENCE_END
+                and after and (after[0].isupper() or after[0] in "¿¡(«\"")):
+            return "\n"
+        return " "
+    body = re.sub(r"\s*\x00PAGE:\d+\x00\s*", page_break, body)
+    paragraphs = (_WS_RE.sub(" ", p).strip() for p in body.split("\n"))
+    return [p for p in paragraphs if p]
 
 
 _OUTER_ROLE_TOKENS = re.compile(
@@ -190,18 +216,39 @@ def parse_proceedings_html(html: str, session_number: int, period: int,
 
     speeches = []
     for i, turn in enumerate(turns):
-        gender, namepart = turn.group(1), turn.group(2)
+        gender, namepart = turn.group(1), " ".join(turn.group(2).split())
         seg_start = turn.end()
         seg_end = turns[i + 1].start() if i + 1 < len(turns) else len(text)
-        body = text[seg_start:seg_end]
-        body = _PAGE_TOKEN_RE.sub(" ", body)
-        body = _WS_RE.sub(" ", body).strip()
-        if not body:
+        paragraphs = _paragraphs(text[seg_start:seg_end])
+        if not paragraphs:
             continue
         page = page_for(turn.start()) or 1
         person = parse_speaker(gender, namepart)
         origin = f"{doc_id}-{i + 1}"
-        sentences = _split_sentences(body)
+
+        def text_content(language: str, paras: list) -> dict:
+            body = " ".join(paras)
+            return {
+                "type": "proceedings",
+                "language": language,
+                "originTextID": origin,
+                "sourceURI": f"{pdf_base}#page={page}",
+                "creator": PROCEEDINGS_CREATOR,
+                "license": PROCEEDINGS_LICENSE,
+                "textBody": [{"type": "speech", "text": body,
+                              "sentences": _split_sentences(body)}],
+            }
+
+        # A co-official-language turn is the original followed by its
+        # Spanish version: one textContents entry each, original first.
+        passes = split_language_passes(paragraphs)
+        if passes:
+            language, original, spanish = passes
+            text_contents = [text_content(language, original),
+                             text_content(PROCEEDINGS_LANGUAGE, spanish)]
+        else:
+            language = PROCEEDINGS_LANGUAGE
+            text_contents = [text_content(PROCEEDINGS_LANGUAGE, paragraphs)]
         speeches.append({
             "parliament": PARLIAMENT,
             "electoralPeriod": {"number": period},
@@ -209,17 +256,10 @@ def parse_proceedings_html(html: str, session_number: int, period: int,
             "speechIndex": PROC_INDEX_BASE + i + 1,
             "originID": origin,
             "originTextID": origin,
+            "originalLanguage": language,
             "agendaItem": {"title": "Sesión plenaria", "officialTitle": "Sesión plenaria"},
             "people": [person],
-            "textContents": [{
-                "type": "proceedings",
-                "language": PROCEEDINGS_LANGUAGE,
-                "originTextID": origin,
-                "sourceURI": f"{pdf_base}#page={page}",
-                "creator": PROCEEDINGS_CREATOR,
-                "license": PROCEEDINGS_LICENSE,
-                "textBody": [{"type": "speech", "text": body, "sentences": sentences}],
-            }],
+            "textContents": text_contents,
             "documents": [],
             "debug": {"page": page},
         })

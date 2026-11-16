@@ -15,7 +15,9 @@ only what genuinely differs:
   ``…-anforanden.json`` proceedings-keyed discoverers) keep overriding it.
 - ``status()`` — text-bearing parliaments use the full probe (the DE behaviour,
   verbatim); video-only parliaments set ``HAS_TEXT = False`` to short-circuit to
-  ``no_text`` (no align/ner stages exist for them).
+  ``no_text`` (no align/ner stages exist for them). Media-spine parliaments,
+  where a few clips per session routinely have no matched text, set
+  ``TEXT_PROBE = "any"`` so such sessions still count as text-bearing.
 
 Subclasses keep re-exporting ``SessionStatus`` and the ``optv.shared.publish``
 helpers from their ``common.py`` for back-compat with callers (including the
@@ -38,6 +40,13 @@ class BaseConfig:
     MEDIA_GLOB_SUFFIX: str = "-media.json"
     # --- status knob: False ⇒ video-only (no transcript, no align/ner) ---
     HAS_TEXT: bool = True
+    # --- status knob: when a text-bearing session is ``no_text`` ---
+    # "every": no_text as soon as one speech lacks merged text (proceedings
+    # spine: an unmatched speech means the merge is incomplete).
+    # "any": no_text only when no speech has merged text (media spine: a few
+    # clips per session without a Diario turn are expected; align and NER
+    # skip those speeches and process the rest).
+    TEXT_PROBE: str = "every"
 
     def __init__(self, data_dir: Path, cache_dir: Path = None):
         data_dir = Path(data_dir)
@@ -112,7 +121,10 @@ class BaseConfig:
         Text-bearing parliaments run the full probe (proceedings-merge →
         ``no_text``, ``align-duration`` → ``aligned``, ``ner-duration`` →
         ``ner``). Video-only parliaments (``HAS_TEXT = False``) ship without a
-        transcript, so they short-circuit to ``no_text``.
+        transcript, so they short-circuit to ``no_text``. ``TEXT_PROBE``
+        decides whether one speech without merged text makes the whole
+        session ``no_text`` ("every") or only a session where no speech has
+        text ("any").
         """
         status = set()
         if self.file(session, 'media').exists():
@@ -141,6 +153,13 @@ class BaseConfig:
                 status.add(SessionStatus.no_text)
                 return status
             # Check for proceedingIndex information (indication that proceedings were merged)
+            if self.TEXT_PROBE == "any":
+                with_text = [s for s in data
+                             if s.get('debug', {}).get('proceedingIndex') is not None]
+                if not with_text:
+                    status.add(SessionStatus.no_text)
+                    return status
+                data = with_text
             for s in data:
                 if s.get('debug', {}).get('proceedingIndex') is None:
                     status.add(SessionStatus.no_text)
