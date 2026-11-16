@@ -227,6 +227,19 @@ def _concat_mp3(parts: list[Path], out: Path) -> None:
         list_file.unlink(missing_ok=True)
 
 
+# Continuation fetches per download_ffmpeg call for a download that ends short.
+_RESUME_ATTEMPTS = 3
+
+
+def _fold_into_part(part: Path, extra: list[Path], target: Path) -> None:
+    """Append ``extra`` audio segments to the partial download, then drop them."""
+    combined = _sidecar_path(target, "combined")
+    _concat_mp3([part, *extra], combined)
+    combined.replace(part)
+    for segment in extra:
+        segment.unlink(missing_ok=True)
+
+
 def download_ffmpeg(url: str, target: Path, *, required_duration: float = 0.0,
                     hls: bool = False, sample_rate: int = 22050, bitrate: str = "64k",
                     reconnect: bool = False, timeout: int = 3600) -> None:
@@ -238,6 +251,12 @@ def download_ffmpeg(url: str, target: Path, *, required_duration: float = 0.0,
     resume path still kicks in when a ``.part.mp3`` from a prior run is present.
     Works for both HLS masters (``hls=True``) and plain mp4 (``video_to_audio``
     via the always-present ``-vn``).
+
+    A result short of ``required_duration`` is resumed from its end, up to
+    ``_RESUME_ATTEMPTS`` continuation fetches per call (stopping early when one
+    adds no audio). Each continuation is folded into the ``.part.mp3`` at once,
+    so a call that still ends short keeps all its progress and the next run
+    continues from there.
     """
     if target.exists() and target.stat().st_size > 0 and _is_complete(
             _duration_seconds(target), required_duration):
@@ -245,48 +264,40 @@ def download_ffmpeg(url: str, target: Path, *, required_duration: float = 0.0,
     target.parent.mkdir(parents=True, exist_ok=True)
     _migrate_legacy_part_names(target)
     part = _part_path(target)
+    opts = dict(hls=hls, sample_rate=sample_rate, bitrate=bitrate,
+                reconnect=reconnect, timeout=timeout)
 
     if part.exists() and part.stat().st_size > 0:
-        part_dur = _duration_seconds(part)
-        if _is_complete(part_dur, required_duration):
-            part.rename(target)
-            return
-        # Resume: keep the partial, fetch the remainder from its end, concat.
-        logger.info("Resuming download %s from %.1fs (need %.1fs)",
-                    target.name, part_dur, required_duration)
-        segments = [part]
-        tail = _sidecar_path(target, "tail")
-        if tail.exists() and tail.stat().st_size > 0:
-            segments.append(tail)
-        total = sum(_duration_seconds(s) for s in segments)
-        if not _is_complete(total, required_duration):
-            dest = _sidecar_path(target, "tail_cont")
-            if not (dest.exists() and dest.stat().st_size > 0):
-                _ffmpeg_extract(url, dest, hls=hls, sample_rate=sample_rate,
-                                bitrate=bitrate, reconnect=reconnect, timeout=timeout,
-                                start_s=total)
-            if dest.exists() and dest.stat().st_size > 0:
-                segments.append(dest)
-            total = sum(_duration_seconds(s) for s in segments)
-        if not _is_complete(total, required_duration):
-            raise RuntimeError(
-                f"session audio still too short after resume: {total:.1f}s "
-                f"required={required_duration:.1f}s")
-        combined = _sidecar_path(target, "combined")
-        _concat_mp3(segments, combined)
-        combined.replace(target)
-        for s in segments:
-            s.unlink(missing_ok=True)
-        return
+        # Continuation segments an interrupted earlier run left beside the part.
+        leftovers = [s for s in (_sidecar_path(target, "tail"),
+                                 _sidecar_path(target, "tail_cont"))
+                     if s.exists() and s.stat().st_size > 0]
+        if leftovers:
+            _fold_into_part(part, leftovers, target)
+    else:
+        logger.info("Downloading %s → %s", "HLS" if hls else "audio", target.name)
+        _ffmpeg_extract(url, part, **opts)
 
-    # Fresh download.
-    logger.info("Downloading %s → %s", "HLS" if hls else "audio", target.name)
-    _ffmpeg_extract(url, part, hls=hls, sample_rate=sample_rate, bitrate=bitrate,
-                    reconnect=reconnect, timeout=timeout)
-    if not _is_complete(_duration_seconds(part), required_duration):
+    have = _duration_seconds(part)
+    # Without a required duration a short result can't be told from a short stream.
+    for _ in range(_RESUME_ATTEMPTS if required_duration > 0 else 0):
+        if _is_complete(have, required_duration):
+            break
+        logger.info("Resuming download %s from %.1fs (need %.1fs)",
+                    target.name, have, required_duration)
+        cont = _sidecar_path(target, "tail_cont")
+        cont.unlink(missing_ok=True)
+        _ffmpeg_extract(url, cont, start_s=have, **opts)
+        if _duration_seconds(cont) <= 1.0:
+            cont.unlink(missing_ok=True)
+            logger.warning("Resuming %s added no audio — stopping", target.name)
+            break
+        _fold_into_part(part, [cont], target)
+        have = _duration_seconds(part)
+    if not _is_complete(have, required_duration):
         raise RuntimeError(
-            f"session audio truncated after download: "
-            f"{_duration_seconds(part):.1f}s required={required_duration:.1f}s ({url})")
+            f"session audio too short after download: {have:.1f}s "
+            f"required={required_duration:.1f}s ({url})")
     part.rename(target)
 
 
@@ -354,7 +365,9 @@ def prepare_per_speech_audio(
     is trimmed from the existing slice, and any other change re-slices from the
     session audio. A slice without a record (cut before records existed) is
     re-sliced when it is longer than its window, otherwise it is adopted and
-    gets a record.
+    gets a record. Under ``force`` only a slice whose record matches its window
+    is reused (an unchanged window holds unchanged audio); every other slice,
+    and every per-speech source, is staged afresh.
 
     Returns ``(prepared, skipped_existing, skipped_no_data)``.
     """
@@ -386,17 +399,19 @@ def prepare_per_speech_audio(
             skipped_no_data += 1
             continue
 
-        if target.exists() and not force:
+        if target.exists() and (not force or spec.session_key is not None):
             if spec.session_key is None:
                 reuse = True
             else:
                 rec = _read_window(target)
-                if rec is None:
+                if rec is not None and _same_window(rec, spec):
+                    reuse = True
+                elif force:
+                    reuse = False
+                elif rec is None:
                     reuse = not _legacy_slice_too_long(target, spec)
                     if reuse:
                         _write_window(target, spec)
-                elif _same_window(rec, spec):
-                    reuse = True
                 elif _inside_window(rec, spec):
                     # The window shrank: cut the new slice from the old one.
                     slice_fn(target, float(spec.start) - float(rec["start"]),
@@ -409,7 +424,7 @@ def prepare_per_speech_audio(
                     continue
                 else:
                     reuse = False
-                if not reuse:
+                if not reuse and not force:
                     logger.info("  %s: window changed — re-slicing", target.name)
             if reuse:
                 if on_existing is not None:

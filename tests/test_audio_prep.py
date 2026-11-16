@@ -378,7 +378,7 @@ def test_make_align_hook_sources_richest_doc(tmp_path, monkeypatch):
 # Slice window records
 # --------------------------------------------------------------------------- #
 
-def _window_run(tmp_path, start, duration, *, calls):
+def _window_run(tmp_path, start, duration, *, calls, force=False):
     def extract(sp):
         return SpeechAudio("u", start=start, duration=duration, session_key="K")
 
@@ -391,7 +391,7 @@ def _window_run(tmp_path, start, duration, *, calls):
         calls.append(("slice", source.name, s, d))
         out.write_text(f"{s}+{d}")
 
-    return prepare_per_speech_audio([_speech(0)], tmp_path, extract=extract,
+    return prepare_per_speech_audio([_speech(0)], tmp_path, force=force, extract=extract,
                                     download_session=download, slice_fn=slice_fn)
 
 
@@ -441,3 +441,90 @@ def test_legacy_slice_matching_its_window_is_adopted(tmp_path, monkeypatch):
     assert _window_run(tmp_path, 100.0, 334.0, calls=calls) == (0, 1, 0)
     assert calls == []
     assert ap._read_window(_target(tmp_path, 0))["start"] == 100.0
+
+
+def test_force_reuses_slice_with_matching_window(tmp_path):
+    calls = []
+    _window_run(tmp_path, 100.0, 300.0, calls=calls)
+    calls.clear()
+    assert _window_run(tmp_path, 100.0, 300.0, calls=calls, force=True) == (0, 1, 0)
+    assert calls == []                      # no session download, no re-slice
+
+
+def test_force_reslices_a_changed_window_from_the_session(tmp_path):
+    calls = []
+    _window_run(tmp_path, 100.0, 300.0, calls=calls)
+    calls.clear()
+    assert _window_run(tmp_path, 100.0, 250.0, calls=calls, force=True) == (1, 0, 0)
+    assert calls[0] == ("download",)
+
+
+# --------------------------------------------------------------------------- #
+# download_ffmpeg resume (fake ffmpeg: a file's text is its duration in s)
+# --------------------------------------------------------------------------- #
+
+def _fake_ffmpeg(monkeypatch, chunks):
+    """Each extract writes the next chunk's duration; returns the start offsets."""
+    starts, chunks = [], list(chunks)
+
+    def extract(url, dest, *, start_s=0.0, **kw):
+        starts.append(start_s)
+        dest.write_text(str(chunks.pop(0)))
+
+    def duration(path):
+        return float(path.read_text()) if path.exists() and path.stat().st_size else 0.0
+
+    def concat(parts, out):
+        out.write_text(str(sum(float(p.read_text()) for p in parts)))
+
+    monkeypatch.setattr(ap, "_ffmpeg_extract", extract)
+    monkeypatch.setattr(ap, "_duration_seconds", duration)
+    monkeypatch.setattr(ap, "_concat_mp3", concat)
+    return starts
+
+
+def test_truncated_download_resumes_in_the_same_call(tmp_path, monkeypatch):
+    starts = _fake_ffmpeg(monkeypatch, [3000, 4000, 4000])
+    target = tmp_path / "s.mp3"
+    ap.download_ffmpeg("u", target, required_duration=10800)
+    assert starts == [0.0, 3000.0, 7000.0]
+    assert float(target.read_text()) == 11000
+    assert [p.name for p in tmp_path.iterdir()] == ["s.mp3"]
+
+
+def test_resume_keeps_progress_for_the_next_run(tmp_path, monkeypatch):
+    starts = _fake_ffmpeg(monkeypatch, [1000, 1000, 1000, 1000, 8000])
+    target = tmp_path / "s.mp3"
+    with pytest.raises(RuntimeError, match="too short"):
+        ap.download_ffmpeg("u", target, required_duration=10000)
+    assert float(ap._part_path(target).read_text()) == 4000
+    ap.download_ffmpeg("u", target, required_duration=10000)
+    assert starts[4] == 4000.0              # continues from the folded progress
+    assert target.exists() and not ap._part_path(target).exists()
+
+
+def test_resume_stops_when_a_continuation_adds_nothing(tmp_path, monkeypatch):
+    starts = _fake_ffmpeg(monkeypatch, [3000, 0])
+    target = tmp_path / "s.mp3"
+    with pytest.raises(RuntimeError, match="too short"):
+        ap.download_ffmpeg("u", target, required_duration=10000)
+    assert starts == [0.0, 3000.0]
+    assert not ap._sidecar_path(target, "tail_cont").exists()
+
+
+def test_leftover_continuation_is_folded_not_reused(tmp_path, monkeypatch):
+    # A short tail_cont from an older run used to be appended as-is forever.
+    starts = _fake_ffmpeg(monkeypatch, [5000])
+    target = tmp_path / "s.mp3"
+    ap._part_path(target).write_text("3000")
+    ap._sidecar_path(target, "tail_cont").write_text("2000")
+    ap.download_ffmpeg("u", target, required_duration=10000)
+    assert starts == [5000.0]
+    assert float(target.read_text()) == 10000
+
+
+def test_short_download_without_required_duration_is_not_resumed(tmp_path, monkeypatch):
+    starts = _fake_ffmpeg(monkeypatch, [0.5])
+    with pytest.raises(RuntimeError, match="too short"):
+        ap.download_ffmpeg("u", tmp_path / "s.mp3")
+    assert starts == [0.0]
