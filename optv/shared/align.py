@@ -137,7 +137,8 @@ def convert_video_to_audio(video_path: Path, audio_path: Path,
              '-f', 'mp3', '-y', str(audio_path)],
             capture_output=True, timeout=300)
         if result.returncode != 0:
-            logger.error(f"ffmpeg conversion failed: {result.stderr.decode()[:500]}")
+            # The banner comes first; the cause is at the end.
+            logger.error(f"ffmpeg conversion failed: {result.stderr.decode()[-500:]}")
             return False
         return audio_path.exists()
     except FileNotFoundError:
@@ -146,6 +147,20 @@ def convert_video_to_audio(video_path: Path, audio_path: Path,
     except subprocess.TimeoutExpired:
         logger.error(f"ffmpeg timed out converting {video_path}")
         return False
+
+
+def audio_stream_count(media: Path) -> Optional[int]:
+    """Number of audio streams in ``media`` via ffprobe, or None if unknown."""
+    try:
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error', '-select_streams', 'a',
+             '-show_entries', 'stream=index', '-of', 'csv=p=0', str(media)],
+            capture_output=True, timeout=30, text=True)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    return len(result.stdout.split())
 
 
 def track_audio_file(speech: dict, track: Optional[int], cachedir: Path) -> Path:
@@ -162,15 +177,16 @@ def stage_audio(speech: dict, cachedir: Path, tracks: list) -> dict:
 
     Track None is the single-track path: a cached MP3, else a cached MP4
     (aeneas reads video via ffmpeg), else the speech's audioFileURI, else
-    its video converted to MP3. Other tracks are extracted from the video;
-    a video downloaded here is fetched once for all tracks and removed once
-    every track converted.
+    its video converted to MP3. Other tracks are extracted from the video
+    (None when the video has no such track, e.g. a clip recorded before an
+    interpretation channel existed); a video downloaded here is fetched once
+    for all tracks and removed afterwards unless it is itself the audio
+    source.
     """
     staged: dict = {}
     mp4_path = cachedfile(speech, 'mp4', cachedir)
     video = None
     downloaded = False
-    converted_all = True
     for track in tracks:
         mp3_path = track_audio_file(speech, track, cachedir)
         if mp3_path.exists():
@@ -192,12 +208,20 @@ def stage_audio(speech: dict, cachedir: Path, tracks: list) -> dict:
                 downloaded = video is not None
         if video is None:
             staged[track] = (None, False)
-        elif convert_video_to_audio(video, mp3_path, track):
+            continue
+        if track:
+            streams = audio_stream_count(video)
+            if streams is not None and track >= streams:
+                logger.warning(f"{video.name} has {streams} audio track(s), "
+                               f"no track {track}")
+                staged[track] = (None, False)
+                continue
+        if convert_video_to_audio(video, mp3_path, track):
             staged[track] = (mp3_path, False)
         else:
-            converted_all = False
             staged[track] = (video if track is None else None, False)
-    if downloaded and converted_all and video.exists():
+    if (downloaded and video.exists()
+            and all(media != video for media, _cached in staged.values())):
         video.unlink()
     return staged
 
@@ -543,6 +567,8 @@ def align_audio(source: list, language: str, cachedir: Path = None,
             media, from_cache = staged[track]
             if media is None:
                 logger.debug("Can find no audio nor video.")
+                if track:
+                    speech.setdefault('debug', {})['alignError'] = f"no audio for track {track}"
                 continue
             speech_label = f"{speech['session']['number']}/{speech['speechIndex']}"
             if track is not None:

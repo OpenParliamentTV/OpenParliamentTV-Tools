@@ -93,3 +93,28 @@ def test_refine_coarse_duration(tmp_path, monkeypatch):
     far = _speech("es", original="es", duration=40.0)
     assert align._refine_coarse_duration(far, 40.0, staged) == 40.0
     assert far["media"]["duration"] == 40.0
+
+
+def test_stage_audio_skips_a_missing_track_and_drops_the_video(tmp_path, monkeypatch):
+    # Clips recorded before the interpretation channel existed carry one
+    # audio track: track 1 is reported missing, and the downloaded video
+    # (not itself an audio source here) is removed.
+    def fake_mediafile(speech, cachedir, mediatype='audio'):
+        if mediatype != 'video':
+            return None
+        path = align.cachedfile(speech, 'mp4', cachedir)
+        path.write_bytes(b"video")
+        return path
+
+    def fake_convert(video, audio, track=None):
+        Path(audio).write_bytes(b"audio")
+        return True
+
+    monkeypatch.setattr(align, "mediafile", fake_mediafile)
+    monkeypatch.setattr(align, "convert_video_to_audio", fake_convert)
+    monkeypatch.setattr(align, "audio_stream_count", lambda media: 1)
+    speech = _speech("ca", "es")
+    staged = align.stage_audio(speech, tmp_path, [0, 1])
+    assert staged[0][0].name == "1517940.mp3"
+    assert staged[1] == (None, False)
+    assert not align.cachedfile(speech, 'mp4', tmp_path).exists()
