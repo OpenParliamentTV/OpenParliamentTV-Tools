@@ -41,3 +41,6 @@ class Config(BaseConfig):
     # spine, so sessions carry proceedings text. Sessions are discovered from
     # bare ``{session}-media.json`` files (BaseConfig defaults).
     HAS_TEXT = True
+    # Media spine: the opening clip (a chair turn) and the odd unmatched clip
+    # carry no protocol text; the session is still aligned and NER'd.
+    TEXT_PROBE = "any"
