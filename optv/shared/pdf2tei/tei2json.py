@@ -10,9 +10,14 @@ parliament's parser).
 
 Turn shape (mirrors ``optv/parliaments/PT/parsers/proceedings2json.py``)::
 
-    {"index", "speaker", "surname", "matchKey", "personId", "role", "party",
-     "isChair", "originTextID", "agendaTitle", "sentences": [{"text": …}, …]}
+    {"index", "speaker", "name", "surname", "matchKey", "personId", "role",
+     "party", "isChair", "context", "originTextID", "agendaTitle",
+     "sentences": [{"text": …}, …], "bodies": [...]}
 
+``speaker`` is the protocol's speaker line (``"Präsident Alexander Dierks"``),
+``name`` the plain registry name (``"Alexander Dierks"``). Chair turns carry
+their ``context`` (``president`` / ``vice-president`` / ``interim-president``,
+from the role in the speaker line); other turns carry ``None``.
 ``personId`` is the last path segment of the speaker label's link
 (``u/@corresp``, e.g. a member profile URL), or "" when the label has none.
 """
@@ -26,7 +31,7 @@ from typing import Callable, Optional
 from lxml import etree
 
 from ..lang.de import (match_key_surname, spacy_sentencize, is_non_speech,
-                       join_segments)
+                       join_segments, pdf_chair_context)
 
 TEI_NS = "http://www.tei-c.org/ns/1.0"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
@@ -138,12 +143,16 @@ def tei_to_turns(data_root, person_root=None, org_root=None, *,
                 turns.append({
                     "index": idx,
                     "speaker": label,
+                    "name": name_for_key,
                     "surname": (pinfo.get("surname") or "").strip(),
                     "matchKey": match_key_surname(name_for_key),
                     "personId": corresp.rsplit("/", 1)[-1] if corresp else "",
                     "role": "" if not pinfo.get("is_gov") else "government",
                     "party": "" if is_chair else party,
                     "isChair": is_chair,
+                    # Per utterance, not per person: one person can preside in
+                    # one turn and speak as a member in another.
+                    "context": pdf_chair_context(label) if is_chair else None,
                     "originTextID": el.get(_XMLID) or "",
                     "agendaTitle": agenda,
                     # speech-only sentences (for the join / metrics) + the full

@@ -121,7 +121,10 @@ def test_join_text_to_spine_emits_comment_textbody():
     tb = merged[0]["textContents"][0]["textBody"]
     assert [b["type"] for b in tb] == ["speech", "comment"]
     assert tb[0]["speaker"] == "Anna Müller"
+    assert tb[0]["speakerstatus"] == "main-speaker"      # untagged body: spine speaker
     assert tb[1]["speaker"] is None and tb[1]["sentences"][0]["text"] == "(Beifall)"
+    assert tb[1]["speakerstatus"] is None
+    assert merged[0]["people"] == [{"label": "Anna Müller"}]   # no chairs: unchanged
 
 
 def test_tei_to_turns_reads_speaker_text_and_agenda():
@@ -302,3 +305,91 @@ def test_join_prefers_person_id_over_surname():
                               spine_person_ids=ids) == 3
     # Namesakes stay apart, a label variant matches on the id, no id: surname.
     assert [m["debug"].get("proceedingIndex") for m in merged] == [None, 1, 2, 3]
+
+
+# --------------------------------------------------------------------------- #
+# presiding officer: named from the protocol's chair lines
+# --------------------------------------------------------------------------- #
+
+def _u(key, name, surname, text, *, chair=None):
+    """A ``tei_to_turns`` utterance; ``chair`` is its context for a chair turn."""
+    return {"matchKey": key, "name": name, "surname": surname, "speaker": name,
+            "isChair": bool(chair), "context": chair, "agendaTitle": "A",
+            "originTextID": "u", "sentences": [{"text": text}],
+            "bodies": [{"type": "speech", "sentences": [{"text": text}]}]}
+
+
+def test_tei_to_turns_names_chair_and_context():
+    root = etree.Element(f"{{{TEI_NS}}}text", nsmap={None: TEI_NS, "xml": XML_NS})
+    div = etree.SubElement(etree.SubElement(root, f"{{{TEI_NS}}}body"),
+                           f"{{{TEI_NS}}}div", type="debateSection")
+    for label, who, ana in (("Erste Vizepräsidentin Ines Saborowski", "#p_ines", "#chair"),
+                            ("Ines Saborowski, CDU", "#p_ines", "#regular")):
+        etree.SubElement(div, f"{{{TEI_NS}}}note", type="speaker").text = label
+        u = etree.SubElement(div, f"{{{TEI_NS}}}u", who=who, ana=ana)
+        etree.SubElement(u, f"{{{TEI_NS}}}seg").text = "Text."
+    persons = etree.Element(f"{{{TEI_NS}}}listPerson", nsmap={None: TEI_NS, "xml": XML_NS})
+    person = etree.SubElement(persons, f"{{{TEI_NS}}}person")
+    person.set(f"{{{XML_NS}}}id", "p_ines")
+    pn = etree.SubElement(person, f"{{{TEI_NS}}}persName")
+    etree.SubElement(pn, f"{{{TEI_NS}}}forename").text = "Ines"
+    etree.SubElement(pn, f"{{{TEI_NS}}}surname").text = "Saborowski"
+    chair, member = tei_to_turns(root, persons, None, sentencize=lambda t: [t])
+    assert (chair["name"], chair["isChair"], chair["context"]) == \
+        ("Ines Saborowski", True, "vice-president")
+    # the context belongs to the utterance: the same person speaking as a member
+    assert (member["name"], member["isChair"], member["context"]) == \
+        ("Ines Saborowski", False, None)
+
+
+def test_merge_turns_tags_bodies_and_collects_chairs():
+    turns = [_u("dierks", "Alexander Dierks", "Dierks", "Ich eröffne.", chair="president"),
+             _u("nguyen", "Nam Duy Nguyen", "Nguyen", "Rede."),
+             _u("saborowski", "Ines Saborowski", "Saborowski", "Danke.", chair="vice-president"),
+             _u("dierks", "Alexander Dierks", "Dierks", "Weiter.", chair="president"),
+             _u("kromer", "Frank Kromer", "Kromer", "Zweite Rede.")]
+    first, second = merge_turns(turns, chain=False)
+    assert first["chairs"] == [
+        {"name": "Alexander Dierks", "firstname": "Alexander", "lastname": "Dierks",
+         "context": "president"},
+        {"name": "Ines Saborowski", "firstname": "Ines", "lastname": "Saborowski",
+         "context": "vice-president"}]
+    assert [(b["speakerName"], b.get("chairContext")) for b in first["bodies"]] == [
+        ("Alexander Dierks", "president"), ("Nam Duy Nguyen", None),
+        ("Ines Saborowski", "vice-president"), ("Alexander Dierks", "president")]
+    assert second["chairs"] == []
+
+
+def test_join_text_to_spine_names_chair_in_people_and_textbody():
+    turns = merge_turns([
+        _u("nguyen", "Nam Duy Nguyen", "Nguyen", "Rede."),
+        _u("dierks", "Alexander Dierks", "Dierks", "Danke.", chair="president")],
+        chain=False)
+    merged = [{"speechIndex": 1, "textContents": [], "debug": {},
+               "people": [{"label": "Nam Duy Nguyen", "context": "main-speaker"}]}]
+    join_text_to_spine(merged, ["nguyen"], turns, creator="C", license="L")
+    assert merged[0]["people"] == [
+        {"label": "Nam Duy Nguyen", "context": "main-speaker"},
+        {"label": "Alexander Dierks", "context": "president",
+         "firstname": "Alexander", "lastname": "Dierks"}]
+    tb = merged[0]["textContents"][0]["textBody"]
+    assert [(b["speaker"], b["speakerstatus"]) for b in tb] == [
+        ("Nam Duy Nguyen", "main-speaker"), ("Alexander Dierks", "president")]
+
+
+def test_join_text_to_spine_labels_absorbed_interjection():
+    # chain mode (DE-BW): the interjector's text stays in the rede, as "speaker"
+    turns = merge_turns([_u("mack", "Winfried Mack", "Mack", "Frage?"),
+                         _u("aras", "Muhterem Aras", "Aras", "Bitte.", chair="president"),
+                         _u("jung", "Christian Jung", "Jung", "Zwischenfrage."),
+                         _u("mack", "Winfried Mack", "Mack", "Antwort.")],
+                        chain=True, K=2)
+    assert len(turns) == 1
+    merged = [{"speechIndex": 1, "textContents": [], "debug": {},
+               "people": [{"label": "Winfried Mack", "context": "main-speaker"}]}]
+    join_text_to_spine(merged, ["mack"], turns, creator="C", license="L")
+    tb = merged[0]["textContents"][0]["textBody"]
+    assert [(b["speaker"], b["speakerstatus"]) for b in tb] == [
+        ("Winfried Mack", "main-speaker"), ("Muhterem Aras", "president"),
+        ("Christian Jung", "speaker"), ("Winfried Mack", "main-speaker")]
+    assert [p["label"] for p in merged[0]["people"]] == ["Winfried Mack", "Muhterem Aras"]

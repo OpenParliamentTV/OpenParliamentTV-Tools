@@ -2,7 +2,8 @@
 
 The media spine is the record source and never moves; this only fills
 ``textContents`` (and ``debug.proceedingIndex``) on the speeches whose surname
-key matches a proceedings turn, via the shared Needleman-Wunsch aligner. Used by
+key matches a proceedings turn, via the shared Needleman-Wunsch aligner, and adds
+the presiding officers named in the matched text to their ``people[]``. Used by
 every PDF-tier merger so the join lives in one place.
 """
 from __future__ import annotations
@@ -77,22 +78,62 @@ def load_turns(config, session: str) -> list[dict]:
         return []
 
 
-def _text_body(turn: dict, speaker: str, sentences: list) -> list[dict]:
+def _text_body(turn: dict, speaker: str, sentences: list,
+               status: str = "main-speaker") -> list[dict]:
     """Ordered textBody for a matched turn: the proceedings turn's typed
     speech/comment bodies (DE structure — comments kept for display, aligned only
-    if speech), or a single speech body when the turn carries no ``bodies``."""
+    if speech), or a single speech body when the turn carries no ``bodies``.
+
+    ``speaker``/``status`` are the spine speaker's label and context. A body the
+    rede took from a chair turn carries the chair's name and context instead, and
+    one from another speaker's turn (a Zwischenfrage absorbed in chain mode) that
+    speaker's name with ``speaker`` status (see :mod:`.merge`).
+    """
     bodies = turn.get("bodies")
     if not bodies:
-        return [{"type": "speech", "speaker": speaker, "sentences": sentences}]
+        return [{"type": "speech", "speaker": speaker, "speakerstatus": status,
+                 "sentences": sentences}]
+    main_key = turn.get("matchKey") or ""
     out = []
     for b in bodies:
+        sents = b.get("sentences", [])
         if b.get("type") == "comment":
-            out.append({"type": "comment", "speaker": None,
-                        "sentences": b.get("sentences", [])})
+            out.append({"type": "comment", "speaker": None, "speakerstatus": None,
+                        "sentences": sents})
+        elif b.get("chairContext") and b.get("speakerName"):
+            out.append({"type": "speech", "speaker": b["speakerName"],
+                        "speakerstatus": b["chairContext"], "sentences": sents})
+        elif (b.get("speakerName") and b.get("speakerKey")
+              and b["speakerKey"] != main_key):
+            out.append({"type": "speech", "speaker": b["speakerName"],
+                        "speakerstatus": "speaker", "sentences": sents})
         else:
             out.append({"type": "speech", "speaker": speaker,
-                        "sentences": b.get("sentences", [])})
+                        "speakerstatus": status, "sentences": sents})
     return out
+
+
+def _add_chairs(rec: dict, chairs: list[dict]) -> None:
+    """Append the rede's presiding officers to ``people[]`` (after the spine
+    speaker, deduplicated by label), as DE lists the chair of each speech."""
+    people = rec.setdefault("people", [])
+    labels = {p.get("label") for p in people}
+    for c in chairs or []:
+        name = c.get("name")
+        if not name or name in labels:
+            continue
+        person = {"label": name, "context": c.get("context") or "president"}
+        for key in ("firstname", "lastname"):
+            if c.get(key):
+                person[key] = c[key]
+        people.append(person)
+        labels.add(name)
+
+
+def _spine_speaker(rec: dict) -> tuple[str, str]:
+    """The spine record's speaker label and context."""
+    first = (rec.get("people") or [{}])[0]
+    return first.get("label") or "", first.get("context") or "main-speaker"
 
 
 def _same_speaker(a: tuple[str, str], b: tuple[str, str]) -> bool:
@@ -109,7 +150,8 @@ def join_text_to_spine(merged: list[dict], spine_keys: list[str], turns: list[di
                        *, creator: str, license: str, language: str = "de",
                        spine_person_ids: list[str] | None = None) -> int:
     """Surname NW join; fill ``textContents`` + ``debug.proceedingIndex`` on
-    matched spine records. ``spine_keys[i]`` is the match key for ``merged[i]``.
+    matched spine records and add the rede's presiding officers to their
+    ``people[]``. ``spine_keys[i]`` is the match key for ``merged[i]``.
     With ``spine_person_ids`` (a parliament-native person id per spine record,
     "" where there is none) a pair whose spine record and turn both carry a
     ``personId`` matches on that id instead of the surname.
@@ -130,14 +172,15 @@ def join_text_to_spine(merged: list[dict], spine_keys: list[str], turns: list[di
         if not sentences:
             continue
         rec = merged[si]
-        speaker = rec["people"][0]["label"] if rec.get("people") else ""
+        speaker, status = _spine_speaker(rec)
         rec["textContents"] = [{
             "type": "proceedings",
             "language": language,
             "creator": creator,
             "license": license,
-            "textBody": _text_body(turn, speaker, sentences),
+            "textBody": _text_body(turn, speaker, sentences, status),
         }]
+        _add_chairs(rec, turn.get("chairs"))
         rec.setdefault("debug", {})["proceedingIndex"] = turn.get("index")
         rec["debug"]["proceedingTextID"] = turn.get("originTextID")
     assign_join_confidence(merged)
@@ -161,13 +204,13 @@ def attach_text_by_index(merged: list[dict], turns: list[dict],
         sentences = turn.get("sentences") or []
         if not sentences:
             continue
-        speaker = rec["people"][0]["label"] if rec.get("people") else ""
+        speaker, status = _spine_speaker(rec)
         rec["textContents"] = [{
             "type": "proceedings",
             "language": language,
             "creator": creator,
             "license": license,
-            "textBody": _text_body(turn, speaker, sentences),
+            "textBody": _text_body(turn, speaker, sentences, status),
         }]
         rec.setdefault("debug", {})["proceedingIndex"] = turn.get("speechIndex")
         matched += 1

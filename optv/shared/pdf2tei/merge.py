@@ -14,21 +14,53 @@ The grouping rule is per-parliament:
   Zwischenfragen (the main resumes within ``K`` non-chair turns) in one rede
   (one clip = the whole exchange; DE-BW).
 
-Chair turns always attach their text to the current rede.
+Chair turns always attach their text to the current rede. Every absorbed speech
+body keeps who said it (``speakerName``/``speakerKey``, plus ``chairContext`` for
+a chair turn), and each rede lists its presiding officers in ``chairs``
+(``{name, firstname, lastname, context}``), so the spine join can attribute
+chair text to the chair and add them to ``people[]``.
 """
 from __future__ import annotations
 
 
 def _new(turn: dict) -> dict:
-    return {"main": None, "personId": "", "sentences": [], "bodies": [],
+    return {"main": None, "personId": "", "sentences": [], "bodies": [], "chairs": [],
             "agendaTitle": turn.get("agendaTitle", ""),
             "originTextID": turn.get("originTextID", ""), "speaker": turn.get("speaker", "")}
 
 
+def _chair(u: dict) -> dict | None:
+    """The presiding officer of a chair turn as ``{name, firstname, lastname,
+    context}``, or None for a non-chair turn or one without a name."""
+    name = (u.get("name") or "").strip()
+    if not u.get("isChair") or not name:
+        return None
+    surname = (u.get("surname") or "").strip()
+    first = name[:-len(surname)].strip() if surname and name.endswith(surname) else ""
+    chair = {"name": name, "context": u.get("context") or "president"}
+    if first:
+        chair["firstname"] = first
+    if surname:
+        chair["lastname"] = surname
+    return chair
+
+
 def _absorb(cur: dict, u: dict) -> None:
-    """Append a turn's speech sentences and full typed bodies into the rede."""
+    """Append a turn's speech sentences and full typed bodies into the rede,
+    tagging each speech body with the turn's speaker."""
     cur["sentences"] += u.get("sentences", [])
-    cur["bodies"] += u.get("bodies", [])
+    chair = _chair(u)
+    for b in u.get("bodies", []):
+        if b.get("type") == "comment":
+            cur["bodies"].append(b)
+            continue
+        tagged = {**b, "speakerName": (u.get("name") or "").strip(),
+                  "speakerKey": u.get("matchKey") or ""}
+        if chair:
+            tagged["chairContext"] = chair["context"]
+        cur["bodies"].append(tagged)
+    if chair and all(c["name"] != chair["name"] for c in cur["chairs"]):
+        cur["chairs"].append(chair)
 
 
 def merge_turns(turns: list[dict], *, chain: bool, K: int = 2) -> list[dict]:
@@ -95,4 +127,5 @@ def merge_turns(turns: list[dict], *, chain: bool, K: int = 2) -> list[dict]:
         "originTextID": r["originTextID"],
         "sentences": r["sentences"],
         "bodies": r["bodies"],
+        "chairs": r["chairs"],
     } for i, r in enumerate(redes)]
