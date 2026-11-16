@@ -3,10 +3,11 @@
 per Sitzung-day for video URL probing.
 
 The m7k AJAX endpoint ``result.php`` returns one ``<div class="result">``
-block per speech. It is capped at **499 results per query**, so we
-iterate one query per Tagung (~10–40 results each — well under the
-cap), keyed by the displayed Tagung number. Each per-Tagung response
-covers one or more calendar days; the parser splits by date.
+block per speech (``class="result crap"`` when m7k has no topic for it).
+It is capped at **499 results per query**, so we iterate one query per
+Tagung (~10–40 results each — well under the cap), keyed by the
+displayed Tagung number. Each per-Tagung response covers one or more
+calendar days; the parser splits by date.
 
 Raw saved layout::
 
@@ -47,10 +48,11 @@ from .fetch_archive import Archive
 logger = logging.getLogger(__name__)
 
 # Per-speech ``<div class="result" id="NNNNN">`` carries the speech ID and
-# the German date. We only need to enumerate speech IDs here so we know
-# which iframe pages to fetch; full parsing happens in media2json.
+# the German date (``class="result crap"`` for a speech without a topic). We
+# only need to enumerate speech IDs here so we know which iframe pages to
+# fetch; full parsing happens in media2json.
 _RESULT_HEADER_RE = re.compile(
-    r'<div\s+class="result"\s+id="(?P<id>\d+)"\s*>'
+    r'<div\s+class="result(?:\s[^"]*)?"\s+id="(?P<id>\d+)"\s*>'
     r'.*?<div\s+class="datum">(?P<datum>[^<]+)</div>',
     re.S | re.I,
 )

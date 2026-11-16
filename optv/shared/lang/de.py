@@ -138,6 +138,10 @@ TOC_SPEAKER_REF = re.compile(
     rf"|[\[(]\s*{_FACTION_IN_REF}\s*[\])]", re.IGNORECASE)
 TOC_RESULT_LINE = re.compile(r"^(\d+\.\s+(Annahme|Ablehnung|Überweisung|Fassung)\b"
                              r"|\(neu\)|Beschluss\b)", re.IGNORECASE)
+# PDF-bookmark agenda entries: the joint-debate header that precedes the
+# debated items, and the "a) " / "b) " marker of each lettered item.
+TOC_GROUP_HEADER = re.compile(r"^(Gemeinsame|Verbundene)\s+Beratung\s*$", re.IGNORECASE)
+TOC_ITEM_LETTER = re.compile(r"^[a-z]\)\s+")
 
 # Faction display labels (longest-first for matching) and xml:id slugs.
 FACTIONS = [

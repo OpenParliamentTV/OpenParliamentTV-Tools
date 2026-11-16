@@ -20,6 +20,11 @@ logger = logging.getLogger(__name__)
 USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
               "(+https://github.com/OpenParliamentTV)")
 
+# The m7k root serves no page of its own, but its ``iframe.php``, ``result.php``
+# and ``*-html-selector.php`` answer the same requests with the same data as the
+# redesign the Landtag's Mediathek page embeds
+# (``/m7k-web-redesign-testversion-fa-avit/``). Every m7k URL the pipeline
+# requests or emits (incl. ``media.sourcePage``) derives from this constant.
 M7K_BASE = "https://m7k.ltsh.de"
 LANDTAG_BASE = "https://www.landtag.ltsh.de"
 

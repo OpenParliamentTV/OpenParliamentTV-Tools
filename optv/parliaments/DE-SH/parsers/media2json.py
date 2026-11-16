@@ -34,18 +34,31 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.DE-SH.parsers"
 
+from ..scraper.common import M7K_BASE
+
 logger = logging.getLogger(__name__)
 
 MEDIA_LICENSE = _get_rights("DE-SH", stream="media")["license"]
 MEDIA_CREATOR = _get_rights("DE-SH", stream="media")["creator"]
 
 
-# One <div class="result" id="NNNNN"> per speech. We capture the inner
+# One <div class="result" id="NNNNN"> per speech; m7k marks a speech without a
+# topic (empty ``thema``) as ``class="result crap"``. We capture the inner
 # block; field-level regexes pick fields out of it.
 _RESULT_BLOCK_RE = re.compile(
-    r'<div\s+class="result"\s+id="(?P<id>\d+)"\s*>(?P<body>.*?)</div>\s*</a>',
+    r'<div\s+class="result(?:\s[^"]*)?"\s+id="(?P<id>\d+)"\s*>(?P<body>.*?)</div>\s*</a>',
     re.S | re.I,
 )
+
+# Chair slots: no faction and either no speaker or the bare body "Präsidium"
+# in the speaker field (the constituent sitting files its elections that way).
+_CHAIR_SLOT_REDNER = {"", "präsidium"}
+
+
+def is_chair_slot(rec: dict) -> bool:
+    """True for m7k rows that are chair time or breaks, not speeches."""
+    return (not (rec.get("gruppe") or "").strip()
+            and (rec.get("redner") or "").strip().casefold() in _CHAIR_SLOT_REDNER)
 
 _FIELD_PATTERNS: dict[str, re.Pattern] = {
     "wp":      re.compile(r'<div\s+class="wp">(?P<v>[^<]*)</div>', re.I),
@@ -125,7 +138,7 @@ def parse_iframe_html(html: str) -> dict[str, str]:
     return sources
 
 
-def _absolute(url: str, m7k_base: str = "https://m7k.ltsh.de") -> str:
+def _absolute(url: str, m7k_base: str = M7K_BASE) -> str:
     if url.startswith("http://") or url.startswith("https://"):
         return url
     if url.startswith("//"):
@@ -231,10 +244,10 @@ def parse_media_directory(media_dir: Path) -> None:
                 )
                 continue
             # m7k publishes structural placeholders (thema="Präsidium",
-            # "3 Minuten Beiträge", break markers) with empty redner and
-            # gruppe and no associated video. They are not speeches and
-            # do not have a <source> in their iframe — drop them.
-            if not rec.get("redner") and not rec.get("gruppe"):
+            # "3 Minuten Beiträge", break markers) with no speaker and no
+            # faction. Their iframe has a video window, but nobody speaks in
+            # it as a member — drop them (see is_chair_slot).
+            if is_chair_slot(rec):
                 skipped_chair_slots += 1
                 continue
             speech_rec = _build_speech_record(rec, iframe_dir, sit_no, wp_int_from_path)
@@ -243,7 +256,7 @@ def parse_media_directory(media_dir: Path) -> None:
             speeches_by_date.setdefault(iso, []).append(speech_rec)
     if skipped_chair_slots:
         logger.info(f"Skipped {skipped_chair_slots} structural placeholder entries "
-                    f"(chair time / breaks with no redner+gruppe)")
+                    f"(chair time / breaks without a speaking member)")
 
     # Emit one file per Sitzung.
     for iso, speeches in speeches_by_date.items():

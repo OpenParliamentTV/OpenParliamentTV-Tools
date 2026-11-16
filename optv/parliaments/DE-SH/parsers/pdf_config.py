@@ -21,6 +21,9 @@ CONFIG = ParliamentConfig(
         r"^(?P<role>Vizepräsidentin|Vizepräsident|Alterspräsidentin|Alterspräsident|"
         r"Präsidentin|Präsident)\s+(?P<name>[^:]+?)\s*:\s*(?P<rest>.*)$"),
     top_announce=None,  # SH rarely announces "Ich rufe TOP N"; rely on TOC.
+    # Agenda titles from the PDF bookmarks (one entry per agenda item, the
+    # contributions under it); early protocols without them use the TOC.
+    toc_layout="outline",
     known_factions=FACTIONS,
     speaker_inline=True,
     toc_noise=re.compile(

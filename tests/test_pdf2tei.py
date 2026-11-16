@@ -393,3 +393,58 @@ def test_join_text_to_spine_labels_absorbed_interjection():
         ("Winfried Mack", "main-speaker"), ("Muhterem Aras", "president"),
         ("Christian Jung", "speaker"), ("Winfried Mack", "main-speaker")]
     assert [p["label"] for p in merged[0]["people"]] == ["Winfried Mack", "Muhterem Aras"]
+
+
+# --------------------------------------------------------------------------- #
+# toc: PDF-bookmark agenda titles (toc_layout="outline")
+# --------------------------------------------------------------------------- #
+
+def _bookmarked_pdf(path, outline, pages=4):
+    import fitz
+    doc = fitz.open()
+    for _ in range(pages):
+        doc.new_page()
+    if outline:
+        doc.set_toc(outline)
+    doc.save(str(path))
+    return path
+
+
+def test_parse_toc_outline_groups_joint_debates(tmp_path):
+    import importlib
+    from optv.shared.pdf2tei import toc
+    cfg = importlib.import_module("optv.parliaments.DE-SH.parsers.pdf_config").CONFIG
+    pdf = _bookmarked_pdf(tmp_path / "p.pdf", [
+        [1, "20/131 Plenarprotokoll Schleswig-Holstein", 1],
+        [2, "Gemeinsame Beratung", 2],
+        [2, "a) Einführung eines Spritpreisdeckels", 2],
+        [2, "Mobilität muss bezahlbar sein", 2],
+        [2, "b) Dauerhafte Entlastungen für die Mitte der Gesellschaft", 2],
+        [3, "Serpil Midyatli [SPD]:", 2],
+        [3, "Vizepräsidentin Beate Raudies:", 3],
+        [2, "Häusliche Versorgung junger Menschen stärken", 3],
+        [2, "Kinder- und Jugendhospizarbeit weiter stärken", 3],
+        [3, "Dr. Heiner Garg [FDP]:", 3],
+        [2, "Tierschutz stärken", 4],
+        [3, "Präsidentin Kristina Herbst:", 4],
+    ])
+    assert cfg.toc_layout == "outline"
+    entries, offset = toc.parse_toc(pdf, cfg)
+    assert offset == 0
+    assert entries == [("Einführung eines Spritpreisdeckels", 1),
+                       ("Häusliche Versorgung junger Menschen stärken", 2),
+                       ("Tierschutz stärken", 3)]
+    assert toc.title_for_printed_page(entries, 2 + offset) == \
+        "Häusliche Versorgung junger Menschen stärken"
+
+
+def test_parse_toc_outline_falls_back_without_bookmarks(tmp_path, monkeypatch):
+    import importlib
+    from optv.shared.pdf2tei import toc
+    cfg = importlib.import_module("optv.parliaments.DE-SH.parsers.pdf_config").CONFIG
+    sentinel = ([("TOC title", 5)], 1)
+    monkeypatch.setattr(toc, "_parse_toc_page_tail", lambda *_: sentinel)
+    assert toc.parse_toc(_bookmarked_pdf(tmp_path / "none.pdf", []), cfg) == sentinel
+    # Bookmarks without contribution entries (no level 3) are not an agenda outline.
+    flat = _bookmarked_pdf(tmp_path / "flat.pdf", [[1, "Protokoll", 1], [2, "Anlage", 2]])
+    assert toc.parse_toc(flat, cfg) == sentinel

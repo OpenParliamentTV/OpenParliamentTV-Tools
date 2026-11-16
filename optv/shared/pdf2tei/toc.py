@@ -13,6 +13,8 @@ handles DE-SH's two-column TOC, where each title is its own wrapped entry.
 
 Products:
   * parse_toc(pdf_path, cfg) -> ([(title, start_page), ...], page_offset)
+    (``cfg.toc_layout == "outline"`` reads the PDF bookmarks instead, see
+    parse_toc_outline).
   * page_offset(pdf): printed_page - pdf_page_index, from footer (RP: standalone
     block, +1) or header (SH: leading 4-digit in the running header).
   * title_for_printed_page(toc, printed_page): latest TOP whose start <= page.
@@ -33,6 +35,8 @@ from ..lang.de import (
     TOC_HEADER_LINE as _HEADER_LINE,
     TOC_SPEAKER_REF as _SPEAKER_REF,
     TOC_RESULT_LINE as _RESULT_LINE,
+    TOC_GROUP_HEADER as _GROUP_HEADER,
+    TOC_ITEM_LETTER as _ITEM_LETTER,
 )
 
 # Trailing dot-leaders + page number(s): "... . . . 233", "... 8734, 8753" or
@@ -194,9 +198,52 @@ def parse_toc_indented(pdf_path, cfg) -> tuple[list[tuple[str, int]], int]:
     return sorted(((t, p) for t, p in seen.items()), key=lambda x: x[1]), offset
 
 
+def parse_toc_outline(pdf_path, cfg) -> tuple[list[tuple[str, int]], int]:
+    """Agenda titles from the PDF bookmarks (DE-SH): level 1 is the document,
+    level 2 the agenda items, level 3 every contribution (chair lines included).
+
+    A run of level-2 entries with no contribution between them was debated
+    together ("Gemeinsame Beratung / a) … / b) …", or two motions on one item),
+    so the run is one agenda section: its title is the first item, without the
+    joint-debate header and the "a) " marker. Pages are 0-based pdf indices, so
+    the returned offset is 0. Falls back to the front-matter TOC when the PDF has
+    no agenda-level bookmarks.
+    """
+    pdf = fitz.open(str(pdf_path))
+    outline = pdf.get_toc(simple=True)
+    if not any(lvl >= 3 for lvl, _, _ in outline):
+        return _parse_toc_page_tail(pdf_path, cfg)
+    groups: list[tuple[list[str], int]] = []
+    in_run = False
+    for lvl, title, page in outline:
+        if lvl == 2:
+            if not in_run:
+                groups.append(([], max(page - 1, 0)))
+                in_run = True
+            groups[-1][0].append(clean_block_text(title))
+        elif lvl > 2:
+            in_run = False
+    entries: list[tuple[str, int]] = []
+    for titles, page in groups:
+        items = [_ITEM_LETTER.sub("", t) for t in titles
+                 if t and not _GROUP_HEADER.match(t)]
+        if items:
+            entries.append((items[0], page))
+    if not entries:
+        return _parse_toc_page_tail(pdf_path, cfg)
+    return entries, 0
+
+
 def parse_toc(pdf_path, cfg) -> tuple[list[tuple[str, int]], int]:
-    if getattr(cfg, "toc_layout", "page-tail") == "indented":
+    layout = getattr(cfg, "toc_layout", "page-tail")
+    if layout == "indented":
         return parse_toc_indented(pdf_path, cfg)
+    if layout == "outline":
+        return parse_toc_outline(pdf_path, cfg)
+    return _parse_toc_page_tail(pdf_path, cfg)
+
+
+def _parse_toc_page_tail(pdf_path, cfg) -> tuple[list[tuple[str, int]], int]:
     pdf = fitz.open(str(pdf_path))
     body = _body_start_page(pdf, cfg)
     offset = page_offset(pdf)

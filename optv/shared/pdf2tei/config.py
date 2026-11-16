@@ -32,8 +32,9 @@ class ParliamentConfig:
     # ("Name (CSU): Sehr geehrte ...") rather than its own block ending ":".
     # Inline regexes then carry a (?P<rest>...) group = the speech after the label.
     speaker_inline: bool = False
-    # TOC layout: "page-tail" (RP/SH: each entry ends with its own page number)
-    # or "indented" (BY: the page is on a following sub-entry/speaker-ref line).
+    # TOC layout: "page-tail" (RP: each entry ends with its own page number),
+    # "indented" (BY: the page is on a following sub-entry/speaker-ref line) or
+    # "outline" (SH: the PDF bookmarks, falling back to "page-tail" without them).
     toc_layout: str = "page-tail"
     # Strip a leading TOP number ("1 Schulen schlagen Alarm …") before the title
     # checks (for a TOC that numbers every agenda item).
