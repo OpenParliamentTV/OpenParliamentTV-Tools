@@ -13,7 +13,7 @@ Writes ``original/media/{session_id}-items.json`` per session::
 
     {
       "session_id": "18117", "wp": 18, "sitzung": 117, "date": "2026-01-30",
-      "session_start_iso": "2026-01-30T10:00:00+02:00", "kid": "16904f0f-…",
+      "session_start_iso": "2026-01-30T10:00:00+01:00", "kid": "16904f0f-…",
       "video_page_url": "…?kid=16904f0f-…",
       "speeches": [
         {"top_redner_id","mdl_id","funktion_id","name","fraktion","funktion",
@@ -21,6 +21,10 @@ Writes ``original/media/{session_id}-items.json`` per session::
         ...
       ]
     }
+
+``session_start_iso`` is the page's value as fetched: the scheduled local start
+with the server's UTC offset on the day of the request.
+``parsers/media2json.py`` re-localises it to Europe/Berlin.
 """
 
 from __future__ import annotations

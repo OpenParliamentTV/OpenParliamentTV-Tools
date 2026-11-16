@@ -7,13 +7,11 @@ per-speech spine and the precise per-speech offsets, then parses, merges, and
 NEL-links the per-Sitzung speeches through the shared pipeline. Stage
 orchestration lives in ``optv.shared.workflow``.
 
-The verbatim Plenarprotokoll (``MMP18-{N}.pdf``) is now parsed via
-``optv.shared.pdf2tei`` and joined onto the media spine in the merger
-(``join_text_to_spine``), so ``align`` and ``ner`` are wired: ``_align`` slices
-each text-bearing speech's audio from the session HLS stream and runs aeneas.
-This text+align path is **experimental and unvalidated** — no Whisper-QC /
-text-fidelity audit has cleared it yet, and substantial refinement is still
-needed before platform integration.
+The HTML version of the Plenarprotokoll (``MMP18-{N}.html``) is parsed and
+joined onto the media spine per agenda item in the merger, so ``align`` and
+``ner`` are wired: ``_align`` slices each text-bearing speech's audio from the
+session HLS stream and runs aeneas. This text+align path is **experimental and
+unvalidated** — no Whisper-QC / text-fidelity audit has cleared it yet.
 """
 
 import logging

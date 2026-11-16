@@ -139,8 +139,8 @@ def parse_toc_indented(pdf_path, cfg) -> tuple[list[tuple[str, int]], int]:
     left-column block (x0 small) with no trailing page and not a vote/sub-entry;
     its start page is the first page-bearing line that follows it.
 
-    DE-NW numbers every TOP ("1 Schulen schlagen Alarm: …") and lays the TOC out
-    in TWO columns, so the single dominant-column heuristic fails — when
+    A TOC that numbers every TOP ("1 Schulen schlagen Alarm: …") and lays it out
+    in TWO columns defeats the single dominant-column heuristic — when
     ``toc_strip_leading_num`` is set we instead pick title candidates by the
     numbered-heading pattern (any column), strip the number, and anchor to the
     first following page-bearing line."""

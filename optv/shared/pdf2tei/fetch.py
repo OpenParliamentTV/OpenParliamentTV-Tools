@@ -6,7 +6,7 @@ return ``None`` when the scheme is unknown). The PDF is written to
 ``original/proceedings/{sid}.pdf``, which the proceedings parser then reads.
 
 URL schemes were read off ``_planning/protocols.csv``; several states follow a
-clean template (BW/NW/SH/NI — see :func:`session_wp_nth`), while BY/SN/HH publish
+clean template (BW/SH/NI — see :func:`session_wp_nth`), while BY/SN/HH publish
 via opaque viewer/document ids and are left for manual drop.
 """
 from __future__ import annotations

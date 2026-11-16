@@ -33,10 +33,10 @@ class ParliamentConfig:
     # Inline regexes then carry a (?P<rest>...) group = the speech after the label.
     speaker_inline: bool = False
     # TOC layout: "page-tail" (RP/SH: each entry ends with its own page number)
-    # or "indented" (BY/NW: the page is on a following sub-entry/speaker-ref line).
+    # or "indented" (BY: the page is on a following sub-entry/speaker-ref line).
     toc_layout: str = "page-tail"
     # Strip a leading TOP number ("1 Schulen schlagen Alarm …") before the title
-    # checks (NW numbers every agenda item).
+    # checks (for a TOC that numbers every agenda item).
     toc_strip_leading_num: bool = False
     # Opening-bracket characters that mark an interjection/comment line. Most
     # parliaments use "(" only; Berlin (DE-BE) prints interjections in "[ … ]".

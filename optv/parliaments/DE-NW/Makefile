@@ -6,8 +6,8 @@ MEDIADIR := $(DATADIR)/original/media
 MERGEDDIR := $(DATADIR)/cache/merged
 
 # Media is one intermediate JSON per Sitzung (18NNN-media.json), built from the
-# mediathek video page. There is no proceedings stream for DE-NW (PDF-only
-# Plenarprotokolle MMP18-{N}.pdf, no parser).
+# mediathek video page. The HTML Plenarprotokoll (original/proceedings/18NNN.html)
+# is parsed into 18NNN-proceedings.json and joined onto the media in the merger.
 MEDIA_DEST := $(wildcard $(MEDIADIR)/18*-media.json)
 MERGE_DEST := $(patsubst $(MEDIADIR)/%-media.json,$(MERGEDDIR)/%-merged.json,$(MEDIA_DEST))
 

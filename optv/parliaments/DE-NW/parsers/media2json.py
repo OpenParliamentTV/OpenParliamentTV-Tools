@@ -17,14 +17,21 @@ This pass, per speech:
 - carries the parliament-native ``mdlId`` (MdL id; ``funktionId`` for
   chair/government speakers) as ``origin_person_id`` — the DE-NI ``abg_id`` /
   NO ``personID`` class;
-- synthesises each speech's ``end_offset`` from the **next** speech's start
-  (the source's rendered ``end`` is unreliable for speeches that double as a
-  TOP "full length" link — the DE-BW approach); the last speech keeps its
-  rendered end;
+- sets each speech's ``end_offset`` to the **next** speech's start, which keeps
+  the chair's hand-over to the next speaker inside the clip. When the next listed
+  speech starts more than ``UNLISTED_GAP`` seconds after the speech's own
+  rendered end, an agenda item without a speech list lies in between (e.g. the
+  Fragestunde), so the speech's rendered end is used instead. The chair's own
+  entries (the opening of the sitting) always run to the next listed speech: the
+  chair conducts everything up to it, e.g. a swearing-in. The last speech keeps
+  its rendered end;
 - derives **real wall-clock** ``start_datetime``/``end_datetime`` from the
-  session start (``<time datetime="…+02:00">``) + the offset, when the session
-  start is known (``times_are_video_relative = False``); otherwise leaves them
-  ``None`` for the merger to fill video-relative;
+  session start + the offset (``times_are_video_relative = False``), when the
+  session start is known; otherwise leaves them ``None`` for the merger to fill
+  video-relative. The page's ``<time datetime>`` carries the scheduled local
+  start with the server's UTC offset on the day of the request, not the offset
+  of the sitting's date, so only its local date and time are used and they are
+  localised to ``Europe/Berlin`` (``berlin_session_start``);
 - assigns a deterministic global ``speech_index`` in chronological order.
 
 One record per speech is written to ``original/media/{sid}-media.json``.
@@ -37,8 +44,9 @@ import json
 import logging
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from optv.parliaments import get_rights as _get_rights
 
 if __package__ is None or __package__ == "":
@@ -77,16 +85,62 @@ def _split_name(raw_name: str) -> tuple[str, str, str]:
     return f"{firstname} {lastname}", firstname, lastname
 
 
-def _iso_offset(session_start_iso: str | None, offset: int | None) -> str | None:
-    """``session start + offset seconds`` as an ISO datetime, preserving the
-    source timezone. ``None`` when the session start or offset is unknown."""
-    if not session_start_iso or offset is None:
+BERLIN = ZoneInfo("Europe/Berlin")
+
+# Seconds between a speech's rendered end and the next listed speech's start
+# above which an agenda item without a speech list (Fragestunde, items without
+# debate) is assumed to lie in between.
+UNLISTED_GAP = 300
+
+# ``funktion`` of a chair entry ("Präsident", "Vizepräsidentin", …).
+_CHAIR_FUNKTION_RE = re.compile(r"^(?:Alters|Vize)?präsident(?:in)?$", re.IGNORECASE)
+
+
+def _berlin_start(session_start_iso: str | None) -> datetime | None:
+    if not session_start_iso:
         return None
     try:
-        base = datetime.fromisoformat(session_start_iso)
+        local = datetime.fromisoformat(session_start_iso).replace(tzinfo=None)
     except ValueError:
         return None
-    return (base + timedelta(seconds=int(offset))).isoformat()
+    return local.replace(tzinfo=BERLIN)
+
+
+def berlin_session_start(session_start_iso: str | None) -> str:
+    """The page's session start with the UTC offset of the sitting's date.
+
+    The source stamps the scheduled local start with the server's offset on the
+    day of the request; the local date and time are kept and localised to
+    ``Europe/Berlin``. Returns ``""`` when the input is missing or unparseable.
+    """
+    start = _berlin_start(session_start_iso)
+    return start.isoformat() if start else ""
+
+
+def _iso_offset(session_start_iso: str | None, offset: int | None) -> str | None:
+    """``session start + offset seconds`` as an ISO datetime in Europe/Berlin
+    time. ``None`` when the session start or offset is unknown."""
+    start = _berlin_start(session_start_iso)
+    if start is None or offset is None:
+        return None
+    instant = start.astimezone(timezone.utc) + timedelta(seconds=int(offset))
+    return instant.astimezone(BERLIN).isoformat()
+
+
+def _end_offset(start: int | None, rendered_end: int | None,
+                next_start: int | None, is_last: bool,
+                is_chair: bool = False) -> int | None:
+    """Window end for one speech (see the module docstring)."""
+    if start is None:
+        return None
+    rend = rendered_end if (rendered_end is not None and rendered_end > start) else None
+    if is_last:
+        return rend
+    if next_start is None or next_start <= start:
+        return None
+    if not is_chair and rend is not None and next_start - rend > UNLISTED_GAP:
+        return rend
+    return next_start
 
 
 def parse_session(items_path: Path) -> dict | None:
@@ -97,7 +151,7 @@ def parse_session(items_path: Path) -> dict | None:
     wp = int(manifest["wp"])
     sitzung_no = int(manifest["sitzung"])
     iso_date = manifest.get("date") or ""
-    session_start_iso = manifest.get("session_start_iso") or ""
+    session_start_iso = berlin_session_start(manifest.get("session_start_iso"))
     kid = manifest.get("kid", "")
     page_url = manifest.get("video_page_url", "")
     times_are_video_relative = not bool(session_start_iso)
@@ -112,13 +166,11 @@ def parse_session(items_path: Path) -> dict | None:
     speeches: list[dict] = []
     for i, sp in enumerate(raw):
         start = sp.get("start_offset")
-        # End = next speech's start; last speech keeps its (rendered) end.
-        if i + 1 < len(raw):
-            nxt = raw[i + 1].get("start_offset")
-            end = nxt if (nxt is not None and start is not None and nxt > start) else None
-        else:
-            rend = sp.get("rendered_end")
-            end = rend if (rend is not None and start is not None and rend > start) else None
+        is_last = i + 1 >= len(raw)
+        end = _end_offset(start, sp.get("rendered_end"),
+                          None if is_last else raw[i + 1].get("start_offset"),
+                          is_last,
+                          is_chair=bool(_CHAIR_FUNKTION_RE.match(sp.get("funktion") or "")))
 
         label, firstname, lastname = _split_name(sp.get("name", ""))
         faction = sp.get("fraktion") or ""

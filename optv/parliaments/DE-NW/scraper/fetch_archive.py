@@ -7,9 +7,9 @@ mediathek ``kid`` (session UUID):
 
 - ``kid`` — the session UUID,
 - ``video_page_url`` — ``…/home/mediathek/video.html?kid={kid}``,
-- ``sitzung`` / ``date`` / ``session_id`` — best-effort from the archive teaser
-  card (``fetch_media`` re-derives the authoritative values from each session's
-  own video page, which carries an ``<h2>{N}. Plenarsitzung</h2>`` header).
+- ``sitzung`` / ``date`` / ``session_id`` — from the archive teaser card
+  (``fetch_media`` re-derives the authoritative values from each session's own
+  video page, which carries an ``<h2>{N}. Plenarsitzung</h2>`` header).
 
 Two discovery paths:
 
@@ -17,9 +17,11 @@ Two discovery paths:
   the listed sessions are recorded directly with no archive paging — the fast
   path for a single test session.
 - **Archive pagination**: otherwise the paginated archive
-  (``…/archivierte-aufzeichnungen.html?art=plenarsitzung&page=N``) is walked
-  ``1..max`` (max read from page 1), and cards are scoped to the Wahlperiode by
-  teaser-card date.
+  (``…/archivierte-aufzeichnungen.html?art=plenarsitzung&page=N``) is walked from
+  page 1 (newest first) on every run and merged into the cached index. Cards
+  older than the scope start (the Wahlperiode's start, but not before the speech
+  list starts with sitting 67, ``SPEECH_LIST_START``) are skipped, and the walk
+  stops after the first page that holds only such cards.
 """
 
 from __future__ import annotations
@@ -38,6 +40,7 @@ if __package__ is None or __package__ == "":
     __package__ = "optv.parliaments.DE-NW.scraper"
 
 from .common import (
+    SPEECH_LIST_START,
     archive_max_page,
     archive_page_url,
     fetch_text,
@@ -51,6 +54,12 @@ logger = logging.getLogger(__name__)
 # WP 18 began with the constituent session on 1 June 2022 (election 15 May 2022).
 # Used to scope archive cards (which span every term back to 2014) to the WP.
 WP_START_DATE: dict[int, str] = {18: "2022-06-01"}
+
+
+def scope_start(period: int) -> str:
+    """Oldest card date to consider: the WP start, but not before the speech
+    list starts (older recordings have no per-speech spine)."""
+    return max(WP_START_DATE.get(period, ""), SPEECH_LIST_START)
 
 
 def _read_seed_file(metadata_dir: Path) -> list[str]:
@@ -84,56 +93,76 @@ def fetch_archive(*, period: int, media_dir: Path, metadata_dir: Path,
                   force: bool = False, retry_count: int = 20) -> dict:
     """Build (and cache) the candidate session index for ``period``.
 
-    Cached at ``metadata/archive-wp{period}.json``; rebuilt when missing or when
-    ``force`` is set. Seed kids are always merged in.
+    Cached at ``metadata/archive-wp{period}.json``. Without seeds (or with
+    ``force``) the archive is walked from page 1 and new cards are merged into
+    the cached index. Seed kids are merged into the cache too; a seeded run
+    without ``force`` returns only the seeded sessions (a targeted run).
     """
     metadata_dir.mkdir(parents=True, exist_ok=True)
     media_dir.mkdir(parents=True, exist_ok=True)
     out_path = metadata_dir / f"archive-wp{period}.json"
 
     by_kid: dict[str, dict] = {}
-
-    # Seed kids (from CLI + seed file) — recorded directly, no paging needed.
-    seeds: list[str] = list(seed_urls or []) + _read_seed_file(metadata_dir)
-    for s in seeds:
-        kid = parse_kid(s)
-        if kid:
-            by_kid[kid] = _entry(period, kid)
-
-    if out_path.exists() and not force and not seeds:
+    if out_path.exists():
         with out_path.open() as f:
             cached = json.load(f)
         for s in cached.get("sessions", []):
             by_kid[s["kid"]] = s
         logger.info(f"Loaded {len(by_kid)} cached candidate(s) from {out_path.name}")
 
-    # Paginate the archive only when we have neither a cache nor seeds (or when
-    # forced). Seeds alone are enough to drive a targeted single-session run.
-    if force or (not by_kid):
-        start = WP_START_DATE.get(period)
+    # Seed kids (from CLI + seed file) — recorded directly, no paging needed.
+    seeds: list[str] = list(seed_urls or []) + _read_seed_file(metadata_dir)
+    seed_kids: list[str] = []
+    for s in seeds:
+        kid = parse_kid(s)
+        if kid:
+            seed_kids.append(kid)
+            by_kid.setdefault(kid, _entry(period, kid))
+
+    # Walk the archive unless this is a seeded (targeted) run. Seeds alone are
+    # enough to drive a single-session run; ``force`` walks anyway.
+    if force or not seeds:
+        start = scope_start(period)
         html = fetch_text(archive_page_url(1), retry_count=retry_count)
         upper = max_pages or (archive_max_page(html) if html else None) or 1
-        logger.info(f"WP{period}: paginating archive over {upper} page(s)")
+        logger.info(f"WP{period}: walking the archive (up to {upper} page(s)) "
+                    f"back to {start}")
+        added = 0
         for page in range(1, upper + 1):
             page_html = html if page == 1 else fetch_text(
                 archive_page_url(page), retry_count=retry_count)
             if not page_html:
                 continue
-            for card in parse_archive_page(page_html):
-                if start and card.get("date") and card["date"] < start:
-                    continue   # older Wahlperiode
-                by_kid.setdefault(card["kid"], _entry(
-                    period, card["kid"], card.get("sitzung"), card.get("date")))
+            cards = parse_archive_page(page_html)
+            in_scope = [c for c in cards if not (c.get("date") and c["date"] < start)]
+            for card in in_scope:
+                kid = card["kid"]
+                if kid not in by_kid:
+                    added += 1
+                    by_kid[kid] = _entry(period, kid)
+                entry = by_kid[kid]
+                if card.get("sitzung") and not entry.get("sitzung"):
+                    entry["sitzung"] = card["sitzung"]
+                    entry["session_id"] = f"{period:02d}{card['sitzung']:03d}"
+                if card.get("date") and not entry.get("date"):
+                    entry["date"] = card["date"]
+            if cards and not in_scope:
+                logger.debug(f"archive page {page}: all cards before {start} — stop")
+                break
+        logger.info(f"WP{period}: {added} new candidate(s) from the archive")
 
-    sessions = sorted(by_kid.values(),
-                      key=lambda s: (s.get("sitzung") or 0, s["kid"]))
+    def _sorted(entries):
+        return sorted(entries, key=lambda s: (s.get("sitzung") or 0, s["kid"]))
+
     archive = {
         "wp": period,
         "built": datetime.now().isoformat("T", "seconds"),
-        "sessions": sessions,
+        "sessions": _sorted(by_kid.values()),
     }
     out_path.write_text(json.dumps(archive, indent=2, ensure_ascii=False))
-    logger.info(f"Wrote {out_path.name}: {len(sessions)} candidate session(s)")
+    logger.info(f"Wrote {out_path.name}: {len(archive['sessions'])} candidate session(s)")
+    if seed_kids and not force:
+        return {**archive, "sessions": _sorted(by_kid[k] for k in dict.fromkeys(seed_kids))}
     return archive
 
 

@@ -7,7 +7,9 @@ browser required / site blocks crawlers" is wrong — a plain UA-spoofed GET
 works). One page carries the full per-speech spine:
 
 - the session number sits in an ``<h2>117. Plenarsitzung</h2>`` header and the
-  session start in a ``<time datetime="2026-01-30T10:00:00+02:00">`` element;
+  scheduled session start in a ``<time datetime="2026-01-30T10:00:00+01:00">``
+  element. Its UTC offset is the server's on the day of the request, not the
+  sitting's (``parsers/media2json.py`` re-localises it to Europe/Berlin);
 - one **HLS stream per session** at ``/videos/{kid}/playlist.m3u8`` (master →
   360p/720p/1080p) — there is no per-speech or per-TOP file, so per-speech
   windows are offsets into that one stream (the SE/DE-SH ``#t=start,end`` model);
@@ -20,14 +22,15 @@ works). One page carries the full per-speech spine:
   ``mdlId``. ``fraktion`` is the party; ``topNr`` groups speeches into agenda
   items (the TOP title is the nearest preceding ``<h3 class="e-top__title">``).
 
+The speech list starts with sitting 67 (``SPEECH_LIST_START``); older video
+pages carry the recording but no ``TEST-REDNER`` comments.
+
 The base page only shows minute-resolution display times. The **precise**
 per-speech start offset (seconds) is rendered by the player only when a single
 speech is selected: requesting ``…&top-redner-id={id}`` emits
 ``player.offset({ start: 70, end: 4278, … })``. We therefore fetch one extra
-page per speech (``parse_offset``) for the precise ``start``; the rendered
-``end`` is unreliable for speeches that double as a TOP "full length" link, so
-the merger synthesises each window's end from the next speech's start (the
-DE-BW approach).
+page per speech (``parse_offset``) for the precise ``start`` and the rendered
+``end``; ``parsers/media2json.py`` derives each window's end from them.
 
 We use stdlib urllib with a polite User-Agent + a small retry/backoff loop.
 """
@@ -47,6 +50,9 @@ USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
               "(+https://github.com/OpenParliamentTV)")
 
 BASE = "https://www.landtag.nrw.de"
+
+# The Mediathek speech list (``TEST-REDNER``) starts with sitting 18/67.
+SPEECH_LIST_START = "2024-06-12"
 
 _LAST_FETCH_AT = 0.0
 POLITE_DELAY = 0.5
@@ -149,41 +155,50 @@ def _text(fragment: str) -> str:
 # Archive listing page
 # ---------------------------------------------------------------------------
 
+# One teaser card per recording: an image link and a title link (both
+# ``?kid=…``), a ``<time datetime="2026-10-15 10:00">`` with the local start and
+# the title "133. Plenarsitzung - Plenum".
 _ARCHIVE_CARD_RE = re.compile(
-    r'<a\s+href="[^"]*\?kid=(?P<kid>[0-9a-fA-F-]{36})"[^>]*>(?P<body>.*?)</a>',
-    re.S)
+    r'<article[^>]*class="[^"]*e-multiple-teaser[^"]*"[^>]*>(?P<body>.*?)</article>', re.S)
+_CARD_KID_RE = re.compile(r'\?kid=(?P<kid>[0-9a-fA-F-]{36})')
+_CARD_DATE_RE = re.compile(r'<time[^>]*datetime="(?P<date>\d{4}-\d{2}-\d{2})')
+_CARD_TITLE_RE = re.compile(
+    r'<a[^>]*class="[^"]*e-multiple-teaser__link[^"]*"[^>]*>(?P<t>.*?)</a>', re.S)
 _SITZUNG_TXT_RE = re.compile(r'(?P<nr>\d{1,3})\.\s*(?:Plenar)?[Ss]itzung')
-_DATE_TXT_RE = re.compile(r'(?P<d>\d{2})\.(?P<m>\d{2})\.(?P<y>\d{4})')
-_PAGE_REF_RE = re.compile(r'[?&]page=(\d+)')
+# Pagination links are written ``&amp;page=N`` and carry ``data-page="N"``.
+_PAGE_REF_RE = re.compile(r'[?&]page=(\d+)|data-page="(\d+)"')
 
 
 def archive_max_page(html: str) -> int | None:
-    """Highest ``?page=N`` referenced on an archive listing page."""
-    pages = [int(m.group(1)) for m in _PAGE_REF_RE.finditer(html or "")]
+    """Highest page number referenced on an archive listing page."""
+    pages = [int(a or b) for a, b in _PAGE_REF_RE.findall(unescape(html or ""))]
     return max(pages) if pages else None
 
 
 def parse_archive_page(html: str) -> list[dict]:
     """Parse one archive listing page into ``[{kid, sitzung, date}]``.
 
-    ``sitzung``/``date`` are best-effort (read from the teaser card text and
-    used only for WP scoping + logging); ``fetch_media`` re-derives the
+    ``sitzung``/``date`` come from the teaser card (used for WP scoping, the
+    early session filter and logging); ``fetch_media`` re-derives the
     authoritative Sitzung number and date from each session's own video page.
+    Cards come newest first.
     """
     out: list[dict] = []
     seen: set[str] = set()
     for m in _ARCHIVE_CARD_RE.finditer(html or ""):
-        kid = m.group("kid")
-        if kid in seen:
+        body = m.group("body")
+        km = _CARD_KID_RE.search(body)
+        if not km or km.group("kid") in seen:
             continue
+        kid = km.group("kid")
         seen.add(kid)
-        body = _text(m.group("body"))
-        sm = _SITZUNG_TXT_RE.search(body)
-        dm = _DATE_TXT_RE.search(body)
+        dm = _CARD_DATE_RE.search(body)
+        tm = _CARD_TITLE_RE.search(body)
+        sm = _SITZUNG_TXT_RE.search(_text(tm.group("t"))) if tm else None
         out.append({
             "kid": kid,
             "sitzung": int(sm.group("nr")) if sm else None,
-            "date": f"{dm.group('y')}-{dm.group('m')}-{dm.group('d')}" if dm else None,
+            "date": dm.group("date") if dm else None,
         })
     return out
 
@@ -192,7 +207,8 @@ def parse_archive_page(html: str) -> list[dict]:
 # Session video page
 # ---------------------------------------------------------------------------
 
-# The session start (full ISO datetime, with the source's TZ stamp).
+# The scheduled session start (full ISO datetime; the UTC offset is the
+# server's on the day of the request, not the sitting's).
 _SESSION_DT_RE = re.compile(
     r'<time[^>]*datetime="(?P<dt>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})"')
 # "117. Plenarsitzung" (may be followed by ", TOP 1" on a redner-selected page).

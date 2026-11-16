@@ -2,11 +2,14 @@
 """Emit Stage 2 JSON for one DE-NW Plenarsitzung from the intermediate media file.
 
 The mediathek session page provides the per-speech spine (speaker, MdL id, role,
-faction, per-TOP agenda title and a precise start offset). The Plenarprotokoll PDF
-(``MMP18-{N}.pdf``) is parsed via ``optv.shared.pdf2tei`` and joined onto that
-spine here (``join_text_to_spine``), so each matched speech carries verbatim
-``textContents`` (speeches with no text match keep ``textContents: []``). This
-text join is **experimental and unvalidated** — see manifest.
+faction, per-TOP agenda title and a precise start offset). The HTML
+Plenarprotokoll (``MMP18-{N}.html``, parsed by ``parsers/proceedings2json.py``
+into one rede per spine entry) is joined onto that spine here, per agenda item:
+the spine's ``topNr`` and the protocol's numbered agenda headings group both
+sides, and ``join_text_to_spine`` matches surnames within each group. Matched
+speeches carry verbatim ``textContents`` (speeches with no text match keep
+``textContents: []``). This text join is **experimental and unvalidated** — see
+manifest.
 
 DE-NW is the SE/DE-SH per-speech-offset model: one HLS stream per session and
 per-speech windows addressed by an HTML5 media-fragment ``#t=start,end`` on
@@ -15,8 +18,8 @@ in ``additionalInformation``. ``sourcePage`` is the session page with the
 per-speech ``&top-redner-id={id}`` query — already unique per speech, so the
 platform's sourcePage-keyed speech identity does not collapse distinct speeches.
 The speech ``dateStart``/``dateEnd`` are **real wall-clock** (session start from
-the page header + offset), so ``debug.timesAreVideoRelative`` is ``false`` (the
-source stamps ``+02:00`` even in winter — emitted as-is).
+the page header, localised to Europe/Berlin, + offset), so
+``debug.timesAreVideoRelative`` is ``false``.
 """
 
 from __future__ import annotations
@@ -133,6 +136,39 @@ def _build_media(speech: dict) -> dict:
     return media
 
 
+def _top_key(value) -> str:
+    return str(value or "").strip().lower()
+
+
+def join_text_by_agenda_item(merged: list[dict], speeches: list[dict],
+                             turns: list[dict]) -> int:
+    """Join proceedings turns onto the spine within each agenda item.
+
+    Spine speeches are grouped by their ``top_nr`` and turns by ``topNumber``
+    (the opening of the sitting has neither, key ``""``); ``join_text_to_spine``
+    then aligns surnames inside each group, so text never crosses into another
+    agenda item. Returns the number of matched speeches.
+    """
+    spine_groups: dict[str, list[int]] = {}
+    for i, sp in enumerate(speeches):
+        spine_groups.setdefault(_top_key(sp.get("top_nr")), []).append(i)
+    turn_groups: dict[str, list[dict]] = {}
+    for t in turns:
+        turn_groups.setdefault(_top_key(t.get("topNumber")), []).append(t)
+    matched = 0
+    for top, idx in spine_groups.items():
+        group_turns = turn_groups.get(top)
+        if not group_turns:
+            logger.debug(f"agenda item {top or '(opening)'}: no protocol text")
+            continue
+        keys = [_match_key(speeches[i].get("label") or speeches[i].get("name_raw") or "")
+                for i in idx]
+        matched += join_text_to_spine([merged[i] for i in idx], keys, group_turns,
+                                      creator=PROCEEDINGS_CREATOR,
+                                      license=PROCEEDINGS_LICENSE)
+    return matched
+
+
 def merge_session(session: str, config, options=None) -> Path:
     media_path = config.file(session, "media")
     if not media_path.exists():
@@ -203,10 +239,7 @@ def merge_session(session: str, config, options=None) -> Path:
     # Spine-join: attach proceedings text (if parsed) onto the fixed media spine.
     turns = load_turns(config, session)
     if turns:
-        spine_keys = [_match_key(sp.get("label") or sp.get("name_raw") or "") for sp in speeches]
-        matched = join_text_to_spine(merged, spine_keys, turns,
-                                     creator=PROCEEDINGS_CREATOR,
-                                     license=PROCEEDINGS_LICENSE)
+        matched = join_text_by_agenda_item(merged, speeches, turns)
         logger.info(f"{session}: matched {matched}/{len(merged)} speeches to "
                     f"{len(turns)} proceedings turns")
 
