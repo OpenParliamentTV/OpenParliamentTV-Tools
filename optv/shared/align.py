@@ -541,6 +541,11 @@ def align_audio(source: list, language: str, cachedir: Path = None,
                 logger.debug("All sentences already aligned")
                 continue
 
+        # ``alignError`` describes the latest attempt: drop one left by an
+        # earlier run; every failure below sets it again.
+        if isinstance(speech.get('debug'), dict):
+            speech['debug'].pop('alignError', None)
+
         # Pre-flight on the *declared* duration, before any download. If the
         # feed already says this speech's media is longer than the cap, skip
         # here: the cache-miss fallback below would otherwise pull the speech's

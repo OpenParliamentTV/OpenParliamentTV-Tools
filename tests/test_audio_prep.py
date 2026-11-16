@@ -372,3 +372,72 @@ def test_make_align_hook_sources_richest_doc(tmp_path, monkeypatch):
     hook(cfg, "21001", args)
 
     assert captured["data"][0]["id"] == "from-processed"
+
+
+# --------------------------------------------------------------------------- #
+# Slice window records
+# --------------------------------------------------------------------------- #
+
+def _window_run(tmp_path, start, duration, *, calls):
+    def extract(sp):
+        return SpeechAudio("u", start=start, duration=duration, session_key="K")
+
+    def download(url, target, *, required_duration=0.0):
+        calls.append(("download",))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("session")
+
+    def slice_fn(source, s, d, out):
+        calls.append(("slice", source.name, s, d))
+        out.write_text(f"{s}+{d}")
+
+    return prepare_per_speech_audio([_speech(0)], tmp_path, extract=extract,
+                                    download_session=download, slice_fn=slice_fn)
+
+
+def test_slice_gets_a_window_record_and_is_reused(tmp_path):
+    calls = []
+    _window_run(tmp_path, 100.0, 300.0, calls=calls)
+    record = ap._read_window(_target(tmp_path, 0))
+    assert record == {"session": md5_key("K"), "start": 100.0, "duration": 300.0}
+    calls.clear()
+    assert _window_run(tmp_path, 100.0, 300.0, calls=calls) == (0, 1, 0)
+    assert calls == []
+
+
+def test_shrunk_window_is_trimmed_from_the_old_slice(tmp_path):
+    calls = []
+    _window_run(tmp_path, 100.0, 5500.0, calls=calls)
+    calls.clear()
+    assert _window_run(tmp_path, 100.0, 334.0, calls=calls) == (1, 0, 0)
+    # Cut from the cached slice itself; no session download.
+    assert calls == [("slice", "190540.mp3", 0.0, 334.0)]
+    assert ap._read_window(_target(tmp_path, 0))["duration"] == 334.0
+
+
+def test_moved_window_is_resliced_from_the_session(tmp_path):
+    calls = []
+    _window_run(tmp_path, 100.0, 300.0, calls=calls)
+    calls.clear()
+    assert _window_run(tmp_path, 380.0, 300.0, calls=calls) == (1, 0, 0)
+    assert calls[0] == ("download",)
+    assert calls[1][0] == "slice" and calls[1][2:] == (380.0, 300.0)
+
+
+def test_legacy_slice_longer_than_its_window_is_resliced(tmp_path, monkeypatch):
+    _target(tmp_path, 0).parent.mkdir(parents=True)
+    _target(tmp_path, 0).write_text("legacy")
+    monkeypatch.setattr(ap, "_duration_seconds", lambda path: 5535.0)
+    calls = []
+    assert _window_run(tmp_path, 100.0, 334.0, calls=calls) == (1, 0, 0)
+    assert calls[0] == ("download",)
+
+
+def test_legacy_slice_matching_its_window_is_adopted(tmp_path, monkeypatch):
+    _target(tmp_path, 0).parent.mkdir(parents=True)
+    _target(tmp_path, 0).write_text("legacy")
+    monkeypatch.setattr(ap, "_duration_seconds", lambda path: 334.04)
+    calls = []
+    assert _window_run(tmp_path, 100.0, 334.0, calls=calls) == (0, 1, 0)
+    assert calls == []
+    assert ap._read_window(_target(tmp_path, 0))["start"] == 100.0

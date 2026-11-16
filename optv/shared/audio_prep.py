@@ -27,6 +27,7 @@ debug-annotation hooks.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import re
 import subprocess
@@ -99,6 +100,70 @@ def _duration_seconds(path: Path) -> float:
         return float((cp.stdout or "0").strip() or 0.0)
     except ValueError:
         return 0.0
+
+
+# A slice's window record: the window it was cut for, next to the slice.
+_WINDOW_TOLERANCE_S = 0.01
+# A legacy slice (no window record) longer than its window by more than this
+# was cut for a wider window and is stale.
+_LEGACY_SLICE_TOLERANCE_S = 1.0
+
+
+def _window_path(target: Path) -> Path:
+    """``1811567.mp3`` → ``1811567.window.json``."""
+    return target.with_name(f"{target.stem}.window.json")
+
+
+def _read_window(target: Path) -> Optional[dict]:
+    try:
+        return json.loads(_window_path(target).read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def _write_window(target: Path, spec: "SpeechAudio") -> None:
+    _window_path(target).write_text(json.dumps({
+        "session": md5_key(spec.session_key),
+        "start": float(spec.start),
+        "duration": None if spec.duration is None else float(spec.duration),
+    }))
+
+
+def _same_window(rec: dict, spec: "SpeechAudio") -> bool:
+    if rec.get("session") != md5_key(spec.session_key):
+        return False
+    if abs(float(rec.get("start") or 0.0) - float(spec.start)) > _WINDOW_TOLERANCE_S:
+        return False
+    old, new = rec.get("duration"), spec.duration
+    if old is None or new is None:
+        return old is None and new is None
+    return abs(float(old) - float(new)) <= _WINDOW_TOLERANCE_S
+
+
+def _inside_window(rec: dict, spec: "SpeechAudio") -> bool:
+    """True when ``spec``'s window lies within the recorded one (same session),
+    so the new slice can be cut from the old one without the session audio."""
+    if rec.get("session") != md5_key(spec.session_key):
+        return False
+    if rec.get("duration") is None or spec.duration is None:
+        return False
+    old_start, old_end = float(rec["start"]), float(rec["start"]) + float(rec["duration"])
+    new_start, new_end = float(spec.start), float(spec.start) + float(spec.duration)
+    return (new_start >= old_start - _WINDOW_TOLERANCE_S
+            and new_end <= old_end + _WINDOW_TOLERANCE_S)
+
+
+def _legacy_slice_too_long(target: Path, spec: "SpeechAudio") -> bool:
+    """A slice cut before window records existed: stale when it is longer than
+    the window it should hold. A shorter one is kept (the stream may end
+    early), as is one whose duration cannot be probed."""
+    if spec.duration is None:
+        return False
+    try:
+        duration = _duration_seconds(target)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return duration > float(spec.duration) + _LEGACY_SLICE_TOLERANCE_S
 
 
 def _is_complete(local_dur: float, required_duration: float) -> bool:
@@ -283,6 +348,14 @@ def prepare_per_speech_audio(
     with ``slice_fn``; a ``session_key`` of ``None`` means a per-speech source
     that is downloaded straight to the speech's cache file with no slice.
 
+    Each slice cut from a session gets a window record (``<slice>.window.json``:
+    session key hash, start, duration). A cached slice is reused while its
+    record matches the speech's window; a window that shrank inside the old one
+    is trimmed from the existing slice, and any other change re-slices from the
+    session audio. A slice without a record (cut before records existed) is
+    re-sliced when it is longer than its window, otherwise it is adopted and
+    gets a record.
+
     Returns ``(prepared, skipped_existing, skipped_no_data)``.
     """
     cachedir = Path(cachedir)
@@ -309,14 +382,40 @@ def prepare_per_speech_audio(
             # Drop a now-invalid slice from a previous run.
             if target.exists():
                 target.unlink()
+            _window_path(target).unlink(missing_ok=True)
             skipped_no_data += 1
             continue
 
         if target.exists() and not force:
-            if on_existing is not None:
-                on_existing(speech, target)
-            skipped_existing += 1
-            continue
+            if spec.session_key is None:
+                reuse = True
+            else:
+                rec = _read_window(target)
+                if rec is None:
+                    reuse = not _legacy_slice_too_long(target, spec)
+                    if reuse:
+                        _write_window(target, spec)
+                elif _same_window(rec, spec):
+                    reuse = True
+                elif _inside_window(rec, spec):
+                    # The window shrank: cut the new slice from the old one.
+                    slice_fn(target, float(spec.start) - float(rec["start"]),
+                             float(spec.duration), target)
+                    _write_window(target, spec)
+                    if on_prepared is not None:
+                        on_prepared(speech, target)
+                    prepared += 1
+                    logger.debug("  trimmed %s to its new window", target.name)
+                    continue
+                else:
+                    reuse = False
+                if not reuse:
+                    logger.info("  %s: window changed — re-slicing", target.name)
+            if reuse:
+                if on_existing is not None:
+                    on_existing(speech, target)
+                skipped_existing += 1
+                continue
 
         if spec.session_key is None:
             # Per-speech source: transcode the whole clip straight to target.
@@ -332,6 +431,8 @@ def prepare_per_speech_audio(
                                  required_duration=required.get(spec.session_key, 0.0))
                 seen.add(spec.session_key)
             slice_fn(session_audio, float(spec.start), float(spec.duration or 0.0), target)
+            if target.exists():
+                _write_window(target, spec)
 
         if on_prepared is not None:
             on_prepared(speech, target)
