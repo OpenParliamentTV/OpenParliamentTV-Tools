@@ -283,3 +283,14 @@ def test_text_enrichment_never_overwrites_new_values():
     new[0]["textContents"][0]["textBody"][0]["sentences"][0]["timeStart"] = 7.0
     carry_forward_text_enrichment(new, published)
     assert new[0]["textContents"][0]["textBody"][0]["sentences"][0]["timeStart"] == 7.0
+
+
+def test_text_enrichment_keeps_no_stale_align_error_on_a_realigned_speech():
+    # The published run failed to align the speech; the new run aligned it.
+    published = [_tspeech("A", ["Hallo Welt."])]
+    published[0]["media"] = {"videoFileURI": "https://cdn/a.m3u8"}
+    published[0].setdefault("debug", {})["alignError"] = "timeout"
+    new = [_aligned("A", ["Hallo Welt."])]
+    new[0]["debug"].pop("nerDuration")
+    carry_forward_text_enrichment(new, published)
+    assert "alignError" not in new[0]["debug"]

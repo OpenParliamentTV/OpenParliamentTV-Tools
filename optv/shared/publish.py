@@ -328,8 +328,14 @@ def carry_forward_documents(new_data: list, published_data: list) -> int:
 # depend only on the speech's sentence texts and its media, so they stay valid
 # across a re-merge that leaves both unchanged.
 _SENTENCE_ENRICHMENT_KEYS = ('timeStart', 'timeEnd', 'entities')
-_DEBUG_ENRICHMENT_KEYS = ('alignDuration', 'align-duration', 'alignError',
-                          'nerDuration', 'ner-duration')
+# Debug markers by the stage that writes them. A speech the new data already
+# carries a marker of a stage for was (re-)run by that stage, so none of that
+# stage's published markers are carried (a stale alignError must not land on
+# a freshly aligned speech).
+_DEBUG_ENRICHMENT_KEYS = (
+    ('alignDuration', 'align-duration', 'alignError'),
+    ('nerDuration', 'ner-duration'),
+)
 
 
 def _speech_sentences(speech: dict) -> list:
@@ -380,10 +386,13 @@ def carry_forward_text_enrichment(new_data: list, published_data: list) -> int:
                     n[key] = o[key]
                     filled = True
         prev_debug = prev.get('debug') or {}
-        for key in _DEBUG_ENRICHMENT_KEYS:
-            if key in prev_debug and key not in (speech.get('debug') or {}):
-                speech.setdefault('debug', {})[key] = prev_debug[key]
-                filled = True
+        for stage_keys in _DEBUG_ENRICHMENT_KEYS:
+            if any(key in (speech.get('debug') or {}) for key in stage_keys):
+                continue
+            for key in stage_keys:
+                if key in prev_debug:
+                    speech.setdefault('debug', {})[key] = prev_debug[key]
+                    filled = True
         prev_media, new_media = prev.get('media'), speech.get('media')
         if (isinstance(prev_media, dict) and isinstance(new_media, dict)
                 and 'aligned' in prev_media and 'aligned' not in new_media):
