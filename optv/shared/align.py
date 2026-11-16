@@ -63,12 +63,16 @@ def previous_current_next(iterable):
     """Make an iterator that yields an (previous, current, next) tuple per element.
 
     Returns None if the value does not make sense (i.e. previous before
-    first and next after last).
+    first and next after last). An empty iterable yields nothing (a speech
+    whose textContents entry has an empty textBody).
     Adapted from: https://gist.github.com/mortenpi/9604377
     """
     iterable=iter(iterable)
     prv = None
-    cur = next(iterable)
+    try:
+        cur = next(iterable)
+    except StopIteration:
+        return
     try:
         while True:
             nxt = next(iterable)
