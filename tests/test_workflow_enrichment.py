@@ -175,3 +175,53 @@ def test_publish_does_not_carry_enrichment_forward_under_rebuild(tmp_path):
 
     result = json.loads(processed.read_text())
     assert "confidence" not in result["data"][0]["debug"]  # removal persists
+
+
+def _published_aligned(origin, date_start):
+    s = _speech_with_text(origin, [{"label": "X"}],
+                          debug={"alignDuration": 5.0, "nerDuration": 1.0})
+    sent = s["textContents"][0]["textBody"][0]["sentences"][0]
+    sent.update(timeStart=1.0, timeEnd=2.0, entities=[])
+    s["originID"] = origin
+    s["dateStart"] = date_start
+    s["media"] = {"videoFileURI": "https://cdn/a.m3u8", "aligned": True}
+    return s
+
+
+def _spine_fixed_merge(origin, date_start):
+    s = _speech_with_text(origin, [{"label": "X"}])
+    s["originID"] = origin
+    s["dateStart"] = date_start
+    s["media"] = {"videoFileURI": "https://cdn/a.m3u8"}
+    return s
+
+
+def test_rebuild_publishes_spine_fix_and_keeps_alignment(tmp_path):
+    # A re-merge that only corrects a spine field (here dateStart) of an
+    # aligned/NER'd session: under --rebuild it is published with the
+    # unchanged speech's timing/NER kept.
+    cfg = _FakeConfig(tmp_path)
+    processed = cfg.file("19053", "processed")
+    _write_doc(processed, [_published_aligned("A", "2025-06-24T12:01:21")])
+    merged = cfg.file("19053", "merged")
+    _write_doc(merged, [_spine_fixed_merge("A", "2025-06-24T14:01:21+02:00")])
+
+    _publish_as_processed(cfg, SimpleNamespace(rebuild=True, validate=False), "19053", merged)
+
+    speech = json.loads(processed.read_text())["data"][0]
+    assert speech["dateStart"] == "2025-06-24T14:01:21+02:00"
+    assert speech["textContents"][0]["textBody"][0]["sentences"][0]["timeStart"] == 1.0
+    assert speech["debug"]["alignDuration"] == 5.0
+    assert speech["media"]["aligned"] is True
+
+
+def test_spine_fix_still_refused_without_rebuild(tmp_path):
+    cfg = _FakeConfig(tmp_path)
+    processed = cfg.file("19053", "processed")
+    _write_doc(processed, [_published_aligned("A", "2025-06-24T12:01:21")])
+    merged = cfg.file("19053", "merged")
+    _write_doc(merged, [_spine_fixed_merge("A", "2025-06-24T14:01:21+02:00")])
+
+    _publish_as_processed(cfg, SimpleNamespace(rebuild=False, validate=False), "19053", merged)
+
+    assert json.loads(processed.read_text())["data"][0]["dateStart"] == "2025-06-24T12:01:21"

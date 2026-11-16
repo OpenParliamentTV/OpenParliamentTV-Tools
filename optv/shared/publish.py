@@ -322,3 +322,72 @@ def carry_forward_documents(new_data: list, published_data: list) -> int:
             speech['documents'] = prev['documents']
             carried += 1
     return carried
+
+
+# Fields that time-alignment and NER write onto a speech, by location. They
+# depend only on the speech's sentence texts and its media, so they stay valid
+# across a re-merge that leaves both unchanged.
+_SENTENCE_ENRICHMENT_KEYS = ('timeStart', 'timeEnd', 'entities')
+_DEBUG_ENRICHMENT_KEYS = ('alignDuration', 'align-duration', 'alignError',
+                          'nerDuration', 'ner-duration')
+
+
+def _speech_sentences(speech: dict) -> list:
+    return [sentence
+            for tc in speech.get('textContents') or []
+            for item in tc.get('textBody') or [] if isinstance(item, dict)
+            for sentence in item.get('sentences') or [] if isinstance(sentence, dict)]
+
+
+def _speech_media_ref(speech: dict) -> tuple:
+    media = speech.get('media') or {}
+    return media.get('videoFileURI'), media.get('audioFileURI')
+
+
+def carry_forward_text_enrichment(new_data: list, published_data: list) -> int:
+    """Keep the published alignment/NER of every speech whose transcript and
+    media are unchanged, matching speeches by originID.
+
+    A re-merge that only corrects spine fields (times, URLs, ids) leaves a
+    speech's sentences and media as they were, so its published sentence
+    timings, entities and the align/NER debug markers still describe it. For
+    each such speech the fields are filled into ``new_data`` where it lacks
+    them (fill-only, like the other carry-forwards). A speech whose sentence
+    texts or media differ is left alone: its old enrichment is stale. Mutates
+    new_data; returns the number of speeches filled.
+    """
+    published_by_key = {}
+    for speech in published_data:
+        key = _speech_key(speech)
+        if key is not None:
+            published_by_key[key] = speech
+    carried = 0
+    for speech in new_data:
+        prev = published_by_key.get(_speech_key(speech))
+        if not prev:
+            continue
+        new_sents, old_sents = _speech_sentences(speech), _speech_sentences(prev)
+        if not new_sents or len(new_sents) != len(old_sents):
+            continue
+        if any(n.get('text') != o.get('text') for n, o in zip(new_sents, old_sents)):
+            continue
+        if _speech_media_ref(speech) != _speech_media_ref(prev):
+            continue
+        filled = False
+        for n, o in zip(new_sents, old_sents):
+            for key in _SENTENCE_ENRICHMENT_KEYS:
+                if key in o and key not in n:
+                    n[key] = o[key]
+                    filled = True
+        prev_debug = prev.get('debug') or {}
+        for key in _DEBUG_ENRICHMENT_KEYS:
+            if key in prev_debug and key not in (speech.get('debug') or {}):
+                speech.setdefault('debug', {})[key] = prev_debug[key]
+                filled = True
+        prev_media, new_media = prev.get('media'), speech.get('media')
+        if (isinstance(prev_media, dict) and isinstance(new_media, dict)
+                and 'aligned' in prev_media and 'aligned' not in new_media):
+            new_media['aligned'] = prev_media['aligned']
+            filled = True
+        carried += filled
+    return carried

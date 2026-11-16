@@ -22,6 +22,7 @@ from optv.shared.ner import extract_entities_from_file
 from optv.shared.publish import (
     carry_forward_documents,
     carry_forward_enrichments,
+    carry_forward_text_enrichment,
     carry_forward_wids,
     data_signature,
     is_demotion,
@@ -100,6 +101,18 @@ def _publish_as_processed(config, args, session: str, filepath: Path) -> Path:
     strip_legacy_textbody_ids(new_doc['data'])
 
     rebuild = bool(getattr(args, 'rebuild', False))
+
+    # A rebuild re-merge that only corrects spine fields (times, URLs, ids)
+    # would otherwise be refused as a demotion of an aligned/NER'd session, so
+    # spine fixes could never reach processed/. Timing and entities of a speech
+    # whose sentences and media are unchanged are still valid: keep them (any
+    # rebuilt align/NER stage later in the run re-derives them anyway). Only
+    # under --rebuild, so a routine run from a stale cache stays refused.
+    if rebuild:
+        kept = carry_forward_text_enrichment(new_doc['data'], published_data['data'])
+        if kept:
+            logger.warning(f"Kept alignment/NER of {kept} unchanged speech(es) while "
+                           f"publishing {session} from {filepath.name}")
 
     if is_demotion(new_doc['data'], published_data['data'],
                    allow_text_replace=rebuild):
@@ -567,7 +580,10 @@ def build_common_argparser(*, description: str) -> argparse.ArgumentParser:
     parser.add_argument("--rebuild", action="store_true", default=False,
                         help="Re-derive selected stages from scratch (replace/remove "
                              "derived data, not just fill gaps); implies --force. Never "
-                             "deletes cached files; never empties transcript text")
+                             "deletes cached files; never empties transcript text. A "
+                             "re-merge keeps the published alignment/NER of speeches "
+                             "whose text and media are unchanged, so spine corrections "
+                             "(times, URLs, ids) reach processed/")
     parser.add_argument("--cache-dir", type=str, default=None,
                         help="Cache directory (default DATADIR/cache)")
     parser.add_argument("--single-instance", action=argparse.BooleanOptionalAction,

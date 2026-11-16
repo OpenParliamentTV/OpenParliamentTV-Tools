@@ -3,7 +3,7 @@
 from optv.shared.publish import (
     data_has_timing, data_has_ner, data_has_documents, is_demotion,
     carry_forward_wids, carry_forward_enrichments, carry_forward_documents,
-    text_signature,
+    carry_forward_text_enrichment, text_signature,
 )
 
 
@@ -242,3 +242,44 @@ def test_unchanged_text_missing_ner_blocked_even_under_rebuild():
     new = [_tspeech("A", ["Hallo Welt."])]  # identical text, no NER
     assert is_demotion(new, published)
     assert is_demotion(new, published, allow_text_replace=True)
+
+
+def _aligned(origin, texts, video="https://cdn/a.m3u8"):
+    """Published speech with sentence timings, entities and align/NER markers."""
+    s = _tspeech(origin, texts, debug={"alignDuration": 5.0, "nerDuration": 1.0})
+    for i, sent in enumerate(s["textContents"][0]["textBody"][0]["sentences"]):
+        sent.update(timeStart=float(i), timeEnd=i + 0.5,
+                    entities=[{"label": "Bayern", "wid": "Q980"}])
+    s["media"] = {"videoFileURI": video, "aligned": True}
+    return s
+
+
+def test_text_enrichment_kept_for_unchanged_speech():
+    published = [_aligned("A", ["Hallo Welt.", "Servus."])]
+    new = [_tspeech("A", ["Hallo Welt.", "Servus."])]
+    new[0]["media"] = {"videoFileURI": "https://cdn/a.m3u8"}
+    assert carry_forward_text_enrichment(new, published) == 1
+    sents = new[0]["textContents"][0]["textBody"][0]["sentences"]
+    assert [(x["timeStart"], x["timeEnd"]) for x in sents] == [(0.0, 0.5), (1.0, 1.5)]
+    assert sents[0]["entities"] == [{"label": "Bayern", "wid": "Q980"}]
+    assert new[0]["debug"]["alignDuration"] == 5.0 and new[0]["debug"]["nerDuration"] == 1.0
+    assert new[0]["media"]["aligned"] is True
+    assert not is_demotion(new, published)
+
+
+def test_text_enrichment_not_kept_when_text_or_media_changed():
+    published = [_aligned("A", ["Hallo Welt."]), _aligned("B", ["Servus."])]
+    new = [_tspeech("A", ["Hallo, Welt."]), _tspeech("B", ["Servus."])]
+    new[0]["media"] = {"videoFileURI": "https://cdn/a.m3u8"}
+    new[1]["media"] = {"videoFileURI": "https://cdn/other.m3u8"}  # another clip
+    assert carry_forward_text_enrichment(new, published) == 0
+    assert "timeStart" not in new[0]["textContents"][0]["textBody"][0]["sentences"][0]
+    assert "alignDuration" not in new[1]["debug"]
+
+
+def test_text_enrichment_never_overwrites_new_values():
+    published = [_aligned("A", ["Hallo Welt."])]
+    new = [_aligned("A", ["Hallo Welt."])]
+    new[0]["textContents"][0]["textBody"][0]["sentences"][0]["timeStart"] = 7.0
+    carry_forward_text_enrichment(new, published)
+    assert new[0]["textContents"][0]["textBody"][0]["sentences"][0]["timeStart"] == 7.0
