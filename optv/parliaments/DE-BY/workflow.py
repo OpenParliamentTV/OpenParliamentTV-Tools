@@ -2,7 +2,7 @@
 """DE-BY Bayerischer Landtag workflow.
 
 Drives the "Plenum Online" PrimeFaces accordion (``sitzungsablauf_accordion``)
-to build a session index, fetches the per-TOP ``meta_vod`` playlists, then
+to build a session index, fetches the per-TOP playlists, then
 parses, merges, and NEL-links the per-Sitzung speeches through the shared
 pipeline. Stage orchestration lives in ``optv.shared.workflow``.
 
@@ -52,6 +52,7 @@ def _download(config, args):
         metadata_dir=config.dir('nel_data', create=True),
         force=args.force,
         retry_count=args.retry_count,
+        session_filter=args.limit_session,
     )
     fetch_media_for_archive(
         archive=archive,

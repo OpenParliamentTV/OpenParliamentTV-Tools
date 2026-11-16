@@ -2,7 +2,7 @@
 """Stage per-speech DE-BY audio into per-speech MP3s for aeneas.
 
 Unlike the session-stream parliaments (one long stream sliced per speech), each
-DE-BY speech already has its OWN HLS stream — the Plenum Online meta_vod item's
+DE-BY speech already has its OWN HLS stream — the Plenum Online playlist item's
 ``.csmil``, surfaced as the spine's ``media.videoFileURI``. So there is nothing
 to slice: we just transcode each speech's stream to a mono mp3 at the cache path
 ``optv.shared.align`` looks for. The shared driver handles this via a

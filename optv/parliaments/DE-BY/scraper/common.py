@@ -1,23 +1,31 @@
 """HTTP + JSF-Ajax session helper for the Bayerischer Landtag "Plenum Online".
 
-The session/TOP index is a PrimeFaces 13 JSF app
-(``sitzungsablauf_accordion.xhtml`` on ``www1.bayern.landtag.de``). There is
-**no** directory listing or JSON index for the per-TOP playlists; the
-``meta_vod_*.json`` URLs are only rendered into a TOP panel when that panel is
-expanded (the accordion is ``dynamic=true, cache=false``). So we drive the
-stateful Ajax conversation:
+The session/TOP index is a PrimeFaces JSF app (``sitzungsablauf_accordion.xhtml``
+under ``www.bayern.landtag.de/plon2-webanzeige``). There is **no** directory
+listing or JSON index for the playlists; their URLs are only rendered into a TOP
+panel when that panel is expanded (the accordion is ``dynamic=true,
+cache=false``). So we drive the stateful Ajax conversation:
 
-1. **GET** the accordion → seed the ``PLON-Webanzeige`` session cookie, the
-   ``_csrf`` hidden field, and the ``jakarta.faces.ViewState``. The
-   ``<select id="sitzunggremium_input">`` dropdown is the session index
-   (``sitzungGremiumId`` → date).
+1. **GET** the accordion → seed the session cookie, the ``_csrf`` hidden field,
+   and the ``jakarta.faces.ViewState``. The ``<select id="sitzunggremium_input">``
+   dropdown is the session index (``sitzungGremiumId`` → date).
 2. **valueChange** POST on ``sitzunggremium`` → load one session's Sitzungsablauf
-   (renders the TOP headers + the Tagesordnung link carrying the citation
-   ``sitzungsnr``). TOP panel bodies stay collapsed.
+   (renders the TOP headers and the heading "Sitzungsablauf für die N.
+   Plenarsitzung", which carries the citation Sitzungsnr). TOP panel bodies stay
+   collapsed.
 3. **tabChange** POST per TOP (with the dynamic-load params
    ``accordion_contentLoad`` / ``accordion_newTab`` / ``accordion_tabindex``) →
-   lazy-load the panel, whose ``openTV1OndemandWindow(playerUrl, metaFileUrl,
-   startId)`` onclick handlers carry the ``meta_vod`` playlist URL.
+   lazy-load the panel. Each debated item in the panel has a playlist; its
+   ``openTV1OndemandWindow…(playerUrl, playlistUrl, startId)`` onclick handlers
+   carry the playlist URL. Up to sitting 87 the handler is
+   ``…ForStreamingInfoFromMetafile`` with a ``meta_vod_{N}.json`` file, from
+   sitting 88 ``…ForStreamingInfoFromDatabase`` with ``streaming?topId={N}``.
+   Both return the same ``items[]`` JSON, and ``N`` is the same TOP-item id.
+
+A TOP panel can hold several playlists — the debate on urgent motions
+(Dringlichkeitsanträge) has one per motion. Each speech row carries the
+speaker's biography link (``…/profil/{ID}``, absent for state ministers) and a
+download button with the speech's ``aktionId``.
 
 Stdlib ``urllib`` + ``http.cookiejar``; the session cookie and the ViewState
 carry the conversation state. No browser, no external dependency (mirrors the
@@ -40,7 +48,7 @@ logger = logging.getLogger(__name__)
 USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
               "(+https://github.com/OpenParliamentTV)")
 
-PLON_BASE = "https://www1.bayern.landtag.de/plon-webanzeige"
+PLON_BASE = "https://www.bayern.landtag.de/plon2-webanzeige"
 ACCORDION_URL = f"{PLON_BASE}/views/sitzung/sitzungsablauf_accordion.xhtml"
 
 # Wahlperiode → (first sitting day inclusive, last day exclusive or None).
@@ -52,7 +60,7 @@ WP_DATE_RANGE: dict[int, tuple[str, str | None]] = {
 }
 
 # Polite delay between successive requests to the Landtag's shared infra.
-POLITE_DELAY = 0.5
+POLITE_DELAY = 1.0
 _LAST_FETCH_AT = 0.0
 
 
@@ -106,7 +114,7 @@ class PlonSession:
 
     # -- JSF conversation --------------------------------------------------
     def get_text(self, url: str) -> str:
-        """Plain GET (e.g. for a ``meta_vod_*.json`` playlist on the CDN/site)."""
+        """Plain GET (e.g. for a playlist JSON on the site)."""
         req = Request(url, headers={"User-Agent": USER_AGENT})
         return self._request(req)
 
@@ -193,12 +201,26 @@ _TAB_HEADER_RE = re.compile(
     r'(?P<inner>.*?)<div[^>]*id="accordion:(?P=idx):[a-z0-9_]+"',
     re.I | re.S,
 )
-# openTV1OndemandWindow('playerUrl','metaFileUrl',' startId')
+# openTV1OndemandWindow…('playerUrl','playlistUrl', 'startId') — the handler
+# name varies (…ForStreamingInfoFromMetafile up to sitting 87,
+# …ForStreamingInfoFromDatabase from sitting 88).
 _ONCLICK_RE = re.compile(
-    r"openTV1OndemandWindow\('[^']*','(?P<meta>[^']*)','?\s*(?P<start>\d+)'?\)",
+    r"openTV1OndemandWindow\w*\('(?P<player>[^']*)','(?P<url>[^']*)',\s*'?\s*(?P<start>\d+)'?\)",
     re.I,
 )
-_SITZUNGSNR_RE = re.compile(r'sitzungsnr=(\d+)', re.I)
+# Speech-row video button: nested client id accordion:i:itemParts:p:j_idtX:r:j_idtY.
+# The sub-item header button (accordion:i:itemParts:p:j_idtX) is not nested.
+_ROW_BUTTON_RE = re.compile(
+    r'<button id="accordion:\d+:itemParts:\d+:j_idt\d+:\d+:j_idt\d+"[^>]*'
+    r'onclick="[^"]*?openTV1OndemandWindow\w*\(\'[^\']*\',\'(?P<url>[^\']*)\','
+    r'\s*\'?\s*(?P<start>\d+)\'?\)',
+    re.I,
+)
+_DOWNLOAD_RE = re.compile(r"openDownloadWindow\('[^']*','(?P<aktion>[^']*)'\)")
+_PROFILE_RE = re.compile(r'/profil/(\d+)"')
+_ROW_LABEL_RE = re.compile(r'<span style="font-size:14px;display:inline;[^"]*">([^<]+)</span>')
+_PLAYLIST_ID_RE = re.compile(r'(?:meta_vod_(\d+)\.json|[?&]topId=(\d+))', re.I)
+_HEADING_RE = re.compile(r'Sitzungsablauf\s+f(?:ü|&uuml;|&#252;)r\s+die\s+(\d+)\.\s*Plenarsitzung', re.I)
 
 
 def parse_session_options(accordion_html: str) -> list[tuple[int, str]]:
@@ -230,22 +252,76 @@ def parse_tab_headers(session_html: str) -> list[dict]:
 
 
 def parse_sitzungsnr(session_html: str) -> int | None:
-    m = _SITZUNGSNR_RE.search(session_html)
+    """Sitzungsnr from the heading "Sitzungsablauf für die N. Plenarsitzung".
+
+    The Tagesordnung link in the same view carries ``sitzungsnr=`` too, but in a
+    multi-day plenary week it points to the agenda of the week's first day, so
+    it is wrong for the second and third day and is not used.
+    """
+    m = _HEADING_RE.search(session_html)
     return int(m.group(1)) if m else None
 
 
-def parse_tab_meta(panel_html: str) -> tuple[str | None, int]:
-    """Return ``(meta_vod_url, speech_count)`` for one expanded TOP panel.
+def playlist_id(url: str) -> str | None:
+    """TOP-item id of a playlist URL (``meta_vod_{N}.json`` or ``topId={N}``)."""
+    m = _PLAYLIST_ID_RE.search(url or "")
+    if not m:
+        return None
+    return m.group(1) or m.group(2)
 
-    Each speech links to the same per-TOP ``meta_vod`` playlist with a distinct
-    ``startId``; ``speech_count`` is the number of those links.
+
+def _is_whole_top(url: str) -> bool:
+    return "gesamt=true" in url
+
+
+def _parse_rows(panel_html: str) -> dict[str, list[dict]]:
+    """Speech rows per playlist URL: ``{url: [{start_id, label, profile_id, aktion_id}]}``."""
+    rows: dict[str, list[dict]] = {}
+    buttons = list(_ROW_BUTTON_RE.finditer(panel_html))
+    for i, m in enumerate(buttons):
+        url = htmllib.unescape(m.group("url"))
+        if _is_whole_top(url):
+            continue
+        # The row's own cells: the image <td> and the label <td> before the button.
+        td = panel_html.rfind("<td>", 0, m.start())
+        td = panel_html.rfind("<td>", 0, td)
+        cell = panel_html[td:m.start()] if td >= 0 else ""
+        prof = _PROFILE_RE.findall(cell)
+        labels = [_clean_text(x) for x in _ROW_LABEL_RE.findall(cell)]
+        # The row's download button follows its video button, before the next row.
+        end = buttons[i + 1].start() if i + 1 < len(buttons) else len(panel_html)
+        dl = _DOWNLOAD_RE.search(panel_html, m.end(), end)
+        rows.setdefault(url, []).append({
+            "start_id": int(m.group("start")),
+            "label": labels[-1] if labels else None,
+            "profile_id": prof[-1] if prof else None,
+            "aktion_id": dl.group("aktion") if dl else None,
+        })
+    return rows
+
+
+def parse_tab_playlists(panel_html: str) -> list[dict]:
+    """Return the playlists of one expanded TOP panel, in panel order.
+
+    Each entry is ``{tid, url, player_url, rows}``: ``tid`` the TOP-item id,
+    ``url`` the playlist JSON URL, ``player_url`` the on-demand player page, and
+    ``rows`` the speech rows (``start_id``, ``label``, ``profile_id``,
+    ``aktion_id``). The ``gesamt=true`` variant (the whole item as one stream)
+    is skipped. A TOP panel usually has one playlist, the urgent-motions debate
+    one per motion.
     """
-    metas: list[str] = []
-    starts: set[str] = set()
+    rows = _parse_rows(panel_html)
+    out: list[dict] = []
+    seen: set[str] = set()
     for m in _ONCLICK_RE.finditer(panel_html):
-        metas.append(m.group("meta"))
-        starts.add(m.group("start"))
-    if not metas:
-        return None, 0
-    # One distinct meta_vod per TOP in practice; take the first.
-    return htmllib.unescape(metas[0]), len(starts)
+        url = htmllib.unescape(m.group("url"))
+        if _is_whole_top(url) or url in seen:
+            continue
+        seen.add(url)
+        out.append({
+            "tid": playlist_id(url),
+            "url": url,
+            "player_url": htmllib.unescape(m.group("player")),
+            "rows": rows.get(url, []),
+        })
+    return out

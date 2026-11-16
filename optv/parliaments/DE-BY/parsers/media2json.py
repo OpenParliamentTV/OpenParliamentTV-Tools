@@ -3,17 +3,21 @@
 
 Inputs per session (written by the scraper):
 
-- ``original/media/{session_id}-tops.json`` — the TOP manifest (index, title,
-  playlist filename) for one Sitzung.
-- ``original/media/{session_id}/meta_vod_*.json`` — the raw "Plenum Online"
-  playlists, one per TOP, each ``items[]`` = ``{id, title, hls}`` where
-  ``title`` is the speaker (with a party parenthetical for MdLs) and ``hls`` is
-  the per-speech HLS master playlist.
+- ``original/media/{session_id}-tops.json`` — the TOP manifest for one Sitzung:
+  per TOP its index, title and playlists, each with the playlist file, the
+  player URL and the speech rows scraped from the panel (``start_id``, speaker
+  member id ``profile_id``, speech ``aktion_id``).
+- ``original/media/{session_id}/playlist_{N}.json`` — the raw "Plenum Online"
+  playlists, ``items[]`` = ``{id, title, hls}`` where ``id`` is the speech's
+  ``startId``, ``title`` the speaker (with a party parenthetical for MdLs) and
+  ``hls`` the per-speech HLS master playlist.
 
-Each speech's start time is taken from the 14-digit timestamp embedded in the
-HLS filename (``…/20250702122334_…/master.m3u8``). There is no end/duration in
-the source. One record per speech is emitted to
-``original/media/{session_id}-media.json``.
+Each speech's start time is the 14-digit timestamp embedded in the HLS filename
+(``…/20250702110145_…/master.m3u8``), which is UTC; it is emitted in
+Europe/Berlin local time with its offset. There is no end/duration in the
+source. A TOP with several playlists (the urgent-motions debate, one per motion)
+yields a ``sub_index``/``sub_title`` per playlist. One record per speech is
+emitted to ``original/media/{session_id}-media.json``.
 """
 
 from __future__ import annotations
@@ -23,8 +27,10 @@ import json
 import logging
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
+from zoneinfo import ZoneInfo
 from optv.parliaments import get_rights as _get_rights
 
 if __package__ is None or __package__ == "":
@@ -33,19 +39,25 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.DE-BY.parsers"
 
+from ..scraper.fetch_media import MANIFEST_FORMAT
+
 logger = logging.getLogger(__name__)
 
 MEDIA_LICENSE = _get_rights("DE-BY", stream="media")["license"]
 MEDIA_CREATOR = _get_rights("DE-BY", stream="media")["creator"]
 
-PLAYER_URL = ("https://www.bayern.landtag.de/plon-webanzeige/views/ondemand/"
+# Fallback only; the player URL is scraped from each playlist's onclick.
+PLAYER_URL = ("https://www.bayern.landtag.de/plon2-webanzeige/views/ondemand/"
               "ondemand-playlist-param.html")
+BERLIN = ZoneInfo("Europe/Berlin")
+# Characters JavaScript's encodeURIComponent leaves unescaped (besides _.-~,
+# which quote() always keeps).
+_URI_COMPONENT_SAFE = "!*'()"
 
 # Trailing "(Party)" in the speaker title, e.g. "Franz Schmid (AfD)".
 _PARTY_RE = re.compile(r'^(?P<name>.*?)\s*\((?P<party>[^()]+)\)\s*$')
 # 14-digit YYYYMMDDHHMMSS in the HLS filename.
 _HLS_TS_RE = re.compile(r'/(\d{14})_')
-_META_ID_RE = re.compile(r'meta_vod_(\d+)\.json', re.I)
 
 
 def _split_name_party(title: str) -> tuple[str, str]:
@@ -61,27 +73,39 @@ def _split_name_party(title: str) -> tuple[str, str]:
     return title, ""
 
 
-def _hls_datetime(hls: str) -> tuple[str | None, str | None]:
-    """Return ``(iso_datetime, "HH:MM:SS")`` from the HLS filename timestamp."""
+def _hls_datetime(hls: str) -> tuple[str | None, str | None, str | None]:
+    """Return ``(local_iso, "HH:MM:SS" local, utc_iso)`` from the HLS filename.
+
+    The 14-digit timestamp is the clip start in UTC; ``local_iso`` is
+    Europe/Berlin with its offset (``2025-07-02T13:01:45+02:00``).
+    """
     m = _HLS_TS_RE.search(hls or "")
     if not m:
-        return None, None
+        return None, None, None
     try:
-        dt = datetime.strptime(m.group(1), "%Y%m%d%H%M%S")
+        utc = datetime.strptime(m.group(1), "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
     except ValueError:
-        return None, None
-    return dt.isoformat("T", "seconds"), dt.strftime("%H:%M:%S")
+        return None, None, None
+    local = utc.astimezone(BERLIN)
+    return (local.isoformat(timespec="seconds"), local.strftime("%H:%M:%S"),
+            utc.isoformat(timespec="seconds"))
 
 
-def _meta_vod_id(filename: str) -> str | None:
-    m = _META_ID_RE.search(filename or "")
-    return m.group(1) if m else None
+def source_page(player_url: str | None, playlist_url: str, start_id) -> str:
+    """Player page for one speech, built like the site's own onclick handler
+    (``playerUrl + '?playlist=' + encodeURIComponent(url) + '&startId=' + n``)."""
+    encoded = quote(playlist_url, safe=_URI_COMPONENT_SAFE)
+    return f"{player_url or PLAYER_URL}?playlist={encoded}&startId={start_id}"
 
 
 def parse_session(tops_path: Path) -> dict | None:
     """Build the intermediate media doc for one ``{session_id}-tops.json``."""
     with tops_path.open() as f:
         manifest = json.load(f)
+    if manifest.get("format") != MANIFEST_FORMAT:
+        logger.warning(f"{tops_path.name}: manifest format {manifest.get('format')!r} is not "
+                       f"{MANIFEST_FORMAT} — re-run the download stage")
+        return None
 
     session_id = manifest["session_id"]
     iso_date = manifest["date"]
@@ -91,48 +115,61 @@ def parse_session(tops_path: Path) -> dict | None:
 
     speeches: list[dict] = []
     for top in manifest.get("tops", []):
-        playlist_file = top.get("playlist")
-        if not playlist_file:
-            continue  # TOP without video (e.g. "Eröffnung")
-        playlist_path = raw_dir / playlist_file
-        if not playlist_path.exists():
-            logger.warning(f"{session_id} TOP {top['index']}: missing playlist {playlist_file}")
-            continue
-        with playlist_path.open() as f:
-            playlist = json.load(f)
-        meta_id = _meta_vod_id(playlist_file)
-        meta_url = top.get("meta_vod_url") or ""
-        for item in playlist.get("items", []):
-            name, party = _split_name_party(item.get("title", ""))
-            hls = item.get("hls", "")
-            start_dt, start_clock = _hls_datetime(hls)
-            item_id = item.get("id")
-            speeches.append({
-                "speech_id": f"{meta_id}_{item_id}",
-                "date": iso_date,
-                "wp": wp,
-                "sitzung_no": sitzungsnr,
-                "top_index": top["index"],
-                "top_title": top.get("title") or playlist.get("title", "").strip(),
-                "speaker_raw": (item.get("title") or "").strip(),
-                "redner": name,
-                "gruppe": party,
-                "start_clock": start_clock or "",
-                "start_datetime": start_dt,
-                "videoFileURI": hls,
-                "meta_vod_id": meta_id,
-                "meta_vod_url": meta_url,
-                "item_id": item_id,
-                "sourcePage": f"{PLAYER_URL}?playlist={meta_url}&startId={item_id}",
-            })
+        playlists = top.get("playlists") or []
+        multi = len(playlists) > 1
+        for k, pl in enumerate(playlists, start=1):
+            playlist_path = raw_dir / pl["file"]
+            if not playlist_path.exists():
+                logger.warning(f"{session_id} TOP {top['index']}: missing playlist {pl['file']}")
+                continue
+            with playlist_path.open() as f:
+                playlist = json.load(f)
+            items = playlist.get("items", [])
+            rows = {r["start_id"]: r for r in pl.get("rows", [])}
+            if len(rows) != len(items):
+                logger.warning(f"{session_id} TOP {top['index']} playlist {pl['tid']}: "
+                               f"{len(items)} items but {len(rows)} speech rows")
+            tid = pl["tid"]
+            for item in items:
+                name, party = _split_name_party(item.get("title", ""))
+                hls = item.get("hls", "")
+                start_dt, start_clock, start_utc = _hls_datetime(hls)
+                item_id = item.get("id")
+                row = rows.get(item_id) or {}
+                rec = {
+                    "speech_id": f"{tid}_{item_id}",
+                    "date": iso_date,
+                    "wp": wp,
+                    "sitzung_no": sitzungsnr,
+                    "top_index": top["index"],
+                    "top_title": top.get("title") or (playlist.get("title") or "").strip(),
+                    "speaker_raw": (item.get("title") or "").strip(),
+                    "redner": name,
+                    "gruppe": party,
+                    "profile_id": row.get("profile_id"),
+                    "aktion_id": row.get("aktion_id"),
+                    "start_clock": start_clock or "",
+                    "start_datetime": start_dt,
+                    "start_utc": start_utc,
+                    "videoFileURI": hls,
+                    "playlist_id": tid,
+                    "playlist_url": pl["url"],
+                    "item_id": item_id,
+                    "sourcePage": source_page(pl.get("player_url"), pl["url"], item_id),
+                }
+                if multi:
+                    rec["sub_index"] = k
+                    rec["sub_title"] = (playlist.get("title") or "").strip()
+                speeches.append(rec)
 
     if not speeches:
         logger.info(f"{session_id} ({iso_date}): no speeches with video — skipping")
         return None
 
-    # Deterministic speechIndex by start time, then TOP/item order as tiebreak.
-    speeches.sort(key=lambda s: (s.get("start_datetime") or "",
+    # Deterministic speechIndex by start instant, then TOP/playlist/item order.
+    speeches.sort(key=lambda s: (s.get("start_utc") or "",
                                  s.get("top_index") or 0,
+                                 s.get("sub_index") or 0,
                                  s.get("item_id") or 0))
     for idx, s in enumerate(speeches, start=1):
         s["speech_index"] = idx

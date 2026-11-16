@@ -1,11 +1,15 @@
 #! /usr/bin/env python3
 """Emit Stage 2 JSON for one DE-BY Sitzung from the intermediate media file.
 
-There is no proceedings stream to merge — Plenarprotokolle are PDF-only and no
-parser exists yet (see manifest ``supported_stages``). The "Plenum Online"
-per-TOP playlists already provide per-speech segmentation with speaker, party,
-agenda title and a per-speech HLS master, so the "merge" here is a translation
-pass from the intermediate shape into Stage 2 with ``textContents: []``.
+The "Plenum Online" playlists are the spine: they already provide per-speech
+segmentation with speaker, party, member id, agenda title and a per-speech HLS
+master, so the spine is a translation pass from the intermediate shape into
+Stage 2. The Plenarprotokoll text (PDF → TEI via ``optv.shared.pdf2tei``) is
+then joined onto that fixed spine with ``join_text_to_spine``; unmatched
+speeches keep ``textContents: []``.
+
+Times are absolute wall clock: each clip's start (UTC in the source) is emitted
+in Europe/Berlin with its offset, so ``debug.timesAreVideoRelative`` is false.
 """
 
 from __future__ import annotations
@@ -97,16 +101,30 @@ def _build_person(speech: dict) -> dict:
     party = (speech.get("gruppe") or "").strip()
     if party:
         person["faction"] = {"label": party}
+    if speech.get("profile_id"):
+        person["originPersonID"] = str(speech["profile_id"])
     return person
 
 
 def _build_agenda(speech: dict) -> dict:
+    """One agendaItem per TOP; per motion when the TOP has several playlists.
+
+    The urgent-motions debate (one playlist per Dringlichkeitsantrag) becomes
+    ``TOP-{n}-{k}`` with the motion title from the playlist; the type is still
+    classified from the TOP header.
+    """
     title = (speech.get("top_title") or "").strip()
+    sub_title = (speech.get("sub_title") or "").strip()
     out: dict = {
         "officialTitle": title or "(ohne Titel)",
         "title": title or "(ohne Titel)",
         "id": f"TOP-{speech.get('top_index')}",
     }
+    if speech.get("sub_index"):
+        out["id"] = f"TOP-{speech.get('top_index')}-{speech['sub_index']}"
+        if sub_title:
+            out["officialTitle"] = f"{title}: {sub_title}" if title else sub_title
+            out["title"] = sub_title
     native, core = classify_de_by(title)
     if native:
         out["nativeType"] = native
@@ -123,9 +141,10 @@ def _build_media(speech: dict) -> dict:
         "originMediaID": speech["speech_id"],
     }
     extras = {
-        "metaVodId": speech.get("meta_vod_id"),
-        "playlistURI": speech.get("meta_vod_url"),
+        "playlistId": speech.get("playlist_id"),
+        "playlistURI": speech.get("playlist_url"),
         "startId": speech.get("item_id"),
+        "aktionId": speech.get("aktion_id"),
         "clockStart": speech.get("start_clock"),
     }
     extras = {k: v for k, v in extras.items() if v not in (None, "")}
@@ -153,8 +172,8 @@ def merge_session(session: str, config, options) -> Path:
     sitzung_no = int(media_doc["meta"]["sitzung"])
 
     starts = [s.get("start_datetime") for s in speeches if s.get("start_datetime")]
-    earliest = min(starts) if starts else f"{session_date}T00:00:00"
-    latest = max(starts) if starts else f"{session_date}T23:59:59"
+    earliest = min(starts, key=datetime.fromisoformat) if starts else f"{session_date}T00:00:00"
+    latest = max(starts, key=datetime.fromisoformat) if starts else f"{session_date}T23:59:59"
 
     merged: list[dict] = []
     for sp in speeches:
@@ -186,7 +205,9 @@ def merge_session(session: str, config, options) -> Path:
                 "rednerRaw": sp.get("speaker_raw"),
                 "gruppeRaw": sp.get("gruppe"),
                 "clockStart": sp.get("start_clock"),
-                "metaVodId": sp.get("meta_vod_id"),
+                "playlistId": sp.get("playlist_id"),
+                "aktionId": sp.get("aktion_id"),
+                "timesAreVideoRelative": False,
             },
         }
         merged.append(record)

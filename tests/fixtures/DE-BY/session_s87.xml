@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<partial-response><changes><update id="sitzungsablaufAccordionForm"><![CDATA[
+<h2>Sitzungsablauf für die 87. Plenarsitzung des Bayerischen Landtags am</h2>
+<a href="https://www.bayern.landtag.de/webangebot3/views/tagesordnungdirektanzeige/tagesordnungdirektanzeige.xhtml?gremium=PL&amp;sitzungsdatum=21.07.2026&amp;sitzungsnr=85&amp;nachtragsnr=0&amp;typ=pdf" target="_blank" title="Tagesordnung zur 85. Sitzung des Bayerischen Landtags">Tagesordnung</a>
+<div id="accordion:0:j_idt68_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="button" aria-expanded="false" aria-controls="accordion:0:j_idt68" tabindex="0" style="background-color:"><span class="ui-icon ui-icon-triangle-1-e"></span>
+                            <div class="ui-grid ui-grid-responsive">
+                                <div class="ui-grid-row">
+                                        <div class="ui-grid-col-1"><span style="font-size:15px;"></span>
+                                        </div>
+
+                                    <div class="ui-grid-col-12"><span style="font-size:15px;">Eröffnung</span><span style="font-size:15px;"> 09:00 Uhr</span>
+                                    </div>
+                                </div>
+                            </div></div><div id="accordion:0:j_idt68" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="region" aria-labelledby="accordion:0:j_idt68_header" aria-hidden="true"></div>
+<div id="accordion:1:j_idt68_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="button" aria-expanded="false" aria-controls="accordion:1:j_idt68" tabindex="0" style="background-color:"><span class="ui-icon ui-icon-triangle-1-e"></span>
+                            <div class="ui-grid ui-grid-responsive">
+                                <div class="ui-grid-row">
+                                        <div class="ui-grid-col-1"><span style="font-size:15px;">TOP 36</span>
+                                        </div>
+
+                                    <div class="ui-grid-col-12"><span style="font-size:15px;">Beratung der zum Plenum eingereichten Dringlichkeitsanträge</span>
+                                    </div>
+                                </div>
+                            </div></div><div id="accordion:1:j_idt68" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="region" aria-labelledby="accordion:1:j_idt68_header" aria-hidden="true"></div>
+]]></update></changes></partial-response>
