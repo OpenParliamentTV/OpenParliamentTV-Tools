@@ -16,7 +16,7 @@ import logging
 import re
 import time
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional
 
 import requests
 
@@ -59,31 +59,43 @@ def download_pdf(url: str, dest: Path, *, force: bool = False,
     return None
 
 
+def _media_date(config, sid: str) -> Optional[str]:
+    """Sitting date from a session's media meta, or None."""
+    mf = config.file(sid, 'media')
+    if mf.exists():
+        try:
+            return (json.loads(mf.read_text()).get('meta') or {}).get('date')
+        except (json.JSONDecodeError, OSError):
+            pass
+    return None
+
+
 def run_template_fetch(config, url_for: Callable[[str, Optional[str]], Optional[str]],
                        *, force: bool = False, retry_count: int = 3,
-                       session_filter: Optional[str] = None) -> None:
+                       session_filter: Optional[str] = None,
+                       sessions: Optional[Iterable[tuple[str, Optional[str]]]] = None
+                       ) -> None:
     """Fetch a protocol PDF for every discovered session.
 
     Sessions come from the media files already on disk (proceedings download runs
     right after media in the workflow), so ``url_for`` gets the session id and the
-    sitting date (from the media meta, for the date-bearing schemes). Sessions
-    whose ``url_for`` returns ``None`` are logged as needing a manual PDF drop.
+    sitting date (from the media meta, for the date-bearing schemes). A parliament
+    whose media files are only written by the later parse stage passes
+    ``sessions`` (``(session_id, date)`` pairs) instead, so a new sitting's PDF is
+    fetched in the same run. Sessions whose ``url_for`` returns ``None`` are
+    logged as needing a manual PDF drop.
     """
     proc_dir = config.dir('proceedings', create=True)
     missing: list[str] = []
-    for sid in config.sessions():
+    pairs = sessions if sessions is not None else ((sid, None) for sid in config.sessions())
+    for sid, date in pairs:
         if session_filter and not re.match(session_filter, sid):
             continue
         dest = proc_dir / f"{sid}.pdf"
         if dest.exists() and dest.stat().st_size > 0 and not force:
             continue
-        date = None
-        mf = config.file(sid, 'media')
-        if mf.exists():
-            try:
-                date = (json.loads(mf.read_text()).get('meta') or {}).get('date')
-            except (json.JSONDecodeError, OSError):
-                pass
+        if sessions is None:
+            date = _media_date(config, sid)
         url = url_for(sid, date)
         if not url:
             missing.append(sid)

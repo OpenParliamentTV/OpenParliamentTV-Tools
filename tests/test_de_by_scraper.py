@@ -13,6 +13,7 @@ from __future__ import annotations
 import importlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from optv.shared.validators import validate_stage2
 
@@ -275,3 +276,25 @@ def test_parse_and_merge_end_to_end(tmp_path):
 
     findings = validate_stage2(doc, schema="full", semantic=True)
     assert [f for f in findings if f["severity"] == "error"] == []
+
+
+# --------------------------------------------------------------------------- #
+# Proceedings fetch: same run as the media fetch
+# --------------------------------------------------------------------------- #
+
+def test_protocol_fetched_from_manifest_before_media_file(tmp_path, monkeypatch):
+    """The TOP manifest exists right after the media fetch; the -media.json only
+    after the parse stage. The protocol URL is built from the manifest."""
+    fetch = importlib.import_module("optv.shared.pdf2tei.fetch")
+    proceedings = importlib.import_module("optv.parliaments.DE-BY.scraper.fetch_proceedings")
+    config = Config(tmp_path)
+    media_dir = config.dir("media", create=True)
+    (media_dir / "19087-tops.json").write_text(json.dumps(
+        {"format": 2, "session_id": "19087", "date": "2026-07-23", "sitzungsnr": 87, "tops": []}))
+    calls = []
+    monkeypatch.setattr(fetch, "download_pdf", lambda url, dest, **kw: calls.append((url, dest.name)))
+
+    proceedings.fetch_proceedings(config, SimpleNamespace(force=False, retry_count=1,
+                                                          limit_session=None))
+
+    assert calls == [(proceedings._BASE + "?date=230726&sitznr=087&wp=19", "19087.pdf")]
