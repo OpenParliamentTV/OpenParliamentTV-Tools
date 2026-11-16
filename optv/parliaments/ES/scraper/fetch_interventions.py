@@ -1,16 +1,20 @@
 #! /usr/bin/env python3
 
 # Download the Congreso de los Diputados open-data "interventions" feed and
-# split the Pleno (plenary) records into one raw media file per session.
+# split the plenary records into one raw media file per session.
 #
 # The feed (IntervencionesCronologicamente__<timestamp>.json) is a flat list of
 # per-speech records, each carrying a direct MP4 URL (ENLACEDESCARGADIRECTA),
-# speaker (ORADOR/CARGOORADOR), HH:MM times and the session document id. We:
+# speaker (ORADOR/CARGOORADOR), HH:MM times and the Diario document id. We:
 #   1. discover the current dated filename from the open-data portal page,
-#   2. download the JSON (browser UA — Cloudflare 403s otherwise),
-#   3. keep only Pleno records (doc id DSCD-<leg>-PL-<n>), dropping Votación rows,
-#   4. write raw-<period><nnn>-media.json per session for media2json + the
-#      proceedings scraper to consume.
+#   2. download the JSON (browser UA — www.congreso.es refuses other clients),
+#   3. group the records by Diario (doc id DSCD-<leg>-PL-<n>), dropping Votación
+#      rows, and keep the plenary Diarios: the "PL" series also holds the
+#      Diputación Permanente sittings and numbers both in one sequence, so the
+#      Diario number is not the plenary session number. The session number
+#      comes from the MP4 path ({leg}_000400_{session}_…, organ 400 = Pleno),
+#   4. write raw-<period><session>-media.json per plenary session (meta.docId
+#      keeps the Diario id) for media2json + the proceedings scraper.
 
 import logging
 logger = logging.getLogger(__name__)
@@ -31,12 +35,18 @@ if __package__ is None or __package__ == "":
 
 from .common import fetch_url
 
+_repo_root = str(Path(__file__).resolve().parents[4])
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+from optv.parliaments.ES.parsers.common import PLENO_ORGAN, parse_video_url, video_urls
+
 OPENDATA_PAGE = "https://www.congreso.es/es/opendata/intervenciones"
 HOST = "https://www.congreso.es"
 RETRY_MAX_WAIT_TIME = 10
 
-# Doc id like "DSCD-15-PL-1" (Diario de Sesiones del Congreso de los Diputados,
-# legislature 15, PLeno, session 1). Committee/joint docs use CO/CI/CM/DSCG.
+# Doc id like "DSCD-15-PL-184" (Diario de Sesiones del Congreso de los
+# Diputados, legislature 15, Pleno y Diputación Permanente, Diario number 184).
+# Committee/joint docs use CO/CI/CM/DSCG.
 DOC_ID_RE = re.compile(r'DSCD-(\d+)-PL-(\d+)')
 
 
@@ -58,7 +68,7 @@ def discover_interventions_url(kind: str = "Cronologicamente") -> str:
 
 
 def pleno_session(record: dict):
-    """Return (period, session_number) for a Pleno record, else None.
+    """Return (period, diario_number) for a record of the Pleno Diario series, else None.
 
     Reads the document id from ENLACEPDF (most reliable) or ENLACETEXTOINTEGRO.
     """
@@ -70,32 +80,67 @@ def pleno_session(record: dict):
 
 
 def session_id(period: int, number: int) -> str:
-    """5-char session id: period (2) + session number (3), e.g. 15001."""
+    """5-char session id: period (2) + plenary session number (3), e.g. 15001."""
     return f"{period}{number:03d}"
 
 
-def split_pleno_sessions(records: list, period: int) -> dict:
-    """Group Pleno intervention records by session id.
+def diario_doc_id(period: int, diario: int) -> str:
+    return f"DSCD-{period}-PL-{diario}"
 
-    Drops non-Pleno docs, other legislatures, and Votación rows (no speaker).
-    Returns {session_id: [records...]} preserving feed order within a session.
+
+def split_pleno_sessions(records: list, period: int) -> dict:
+    """Group plenary intervention records by session id.
+
+    Drops other legislatures, Votación rows (no speaker), Diputación
+    Permanente Diarios, and Diarios without any per-speech video (their
+    session number is not in the feed, and there is no media to publish).
+
+    Returns {session_id: {"number": plenary session number,
+    "diario": Diario number, "records": [...]}}, feed order within a session.
     """
-    sessions: dict = {}
+    diarios: dict = {}
     for rec in records:
         if (rec.get("TIPOINTERVENCION") or "").strip().lower() == "votación":
             continue
         info = pleno_session(rec)
         if info is None:
             continue
-        rec_period, number = info
+        rec_period, diario = info
         if rec_period != period:
             continue
-        sessions.setdefault(session_id(period, number), []).append(rec)
+        diarios.setdefault(diario, []).append(rec)
+
+    sessions: dict = {}
+    for diario, recs in sorted(diarios.items()):
+        doc_id = diario_doc_id(period, diario)
+        videos = [v for v in (parse_video_url(u) for r in recs
+                              for u in video_urls(r.get("ENLACEDESCARGADIRECTA"))) if v]
+        if not videos:
+            logger.info(f"{doc_id}: no per-speech video - skipped")
+            continue
+        organs = {v["organ"] for v in videos}
+        if PLENO_ORGAN not in organs:
+            organo = sorted({(r.get("ORGANO") or "").strip() for r in recs})
+            logger.info(f"{doc_id}: not a plenary sitting ({', '.join(organo)}) - skipped")
+            continue
+        if len(organs) > 1:
+            logger.warning(f"{doc_id}: videos of several organs {sorted(organs)} - using the plenary ones")
+        numbers = {v["session"] for v in videos if v["organ"] == PLENO_ORGAN}
+        if len(numbers) > 1:
+            logger.warning(f"{doc_id}: several plenary session numbers {sorted(numbers)} - skipped")
+            continue
+        number = numbers.pop()
+        sid = session_id(period, number)
+        if sid in sessions:
+            logger.error(f"{doc_id}: plenary session {number} already taken by "
+                         f"{diario_doc_id(period, sessions[sid]['diario'])} - skipped")
+            continue
+        sessions[sid] = {"number": number, "diario": diario, "records": recs}
     return sessions
 
 
 def write_raw_session(media_dir: Path, sid: str, period: int, number: int,
-                      records: list, force: bool = False) -> bool:
+                      diario: int, records: list, force: bool = False) -> bool:
     """Write raw-<sid>-media.json unless unchanged. Returns True if written."""
     out = media_dir / f"raw-{sid}-media.json"
     payload = {
@@ -103,7 +148,8 @@ def write_raw_session(media_dir: Path, sid: str, period: int, number: int,
             "session": sid,
             "period": period,
             "sessionNumber": number,
-            "docId": f"DSCD-{period}-PL-{number}",
+            "diarioNumber": diario,
+            "docId": diario_doc_id(period, diario),
             "parliament": "ES",
             "fetched": datetime.now().isoformat("T", "seconds"),
         },
@@ -151,14 +197,18 @@ def update_interventions_period(period: int, media_dir: Path,
         return {}
 
     sessions = split_pleno_sessions(raw, period)
-    logger.info(f"Found {len(sessions)} Pleno sessions ({len(raw)} total records) for period {period}")
+    logger.info(f"Found {len(sessions)} plenary sessions ({len(raw)} total records) for period {period}")
+    if not sessions:
+        legs = sorted({info[0] for info in map(pleno_session, raw) if info})
+        logger.warning(f"Feed holds no plenary session of period {period}; "
+                       f"Diario legislatures in the feed: {legs}")
     seen = {}
-    for sid, records in sorted(sessions.items()):
-        number = records[0] and pleno_session(records[0])[1]
-        written = write_raw_session(media_dir, sid, period, number, records, force=force)
-        seen[sid] = f"DSCD-{period}-PL-{number}"
+    for sid, sess in sorted(sessions.items()):
+        written = write_raw_session(media_dir, sid, period, sess["number"],
+                                    sess["diario"], sess["records"], force=force)
+        seen[sid] = diario_doc_id(period, sess["diario"])
         if written:
-            logger.debug(f"Wrote raw-{sid}-media.json ({len(records)} interventions)")
+            logger.debug(f"Wrote raw-{sid}-media.json ({len(sess['records'])} interventions, {seen[sid]})")
     return seen
 
 

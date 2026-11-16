@@ -2,31 +2,27 @@
 
 # Convert the per-session raw interventions file (written by
 # scraper/fetch_interventions.py) into the intermediate "media" JSON stream:
-# one record per speech, carrying the per-speech video, speaker, agenda and
-# (coarse, HH:MM) timing. The proceedings stream supplies the transcript text;
+# one item per video clip (usually one per speech), carrying the video,
+# speaker, agenda and (coarse, HH:MM) timing. The proceedings stream supplies the transcript text;
 # the merger joins the two by session + speaker surname.
 
 import logging
 logger = logging.getLogger(__name__)
 
 import argparse
+from copy import deepcopy
 from datetime import datetime
 import json
-import os
 from pathlib import Path
 import sys
 from zoneinfo import ZoneInfo
 
-try:
-    from parsers.common import parse_orador
-except ModuleNotFoundError:
-    base_dir = Path(__file__).resolve().parent.parent
-    sys.path.insert(0, str(base_dir))
-    from parsers.common import parse_orador
-
 _repo_root = str(Path(__file__).resolve().parents[4])
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
+from optv.parliaments.ES.parsers.common import (
+    collapse_ws, intervention_page_url, parse_orador, parse_video_url, video_urls,
+)
 from optv.shared.agenda_types import annotate_agenda_item, classify_es
 from optv.parliaments import get_rights as _get_rights
 
@@ -35,6 +31,19 @@ PARLIAMENT = "ES"
 # Single Aviso Legal covers both video and proceedings reuse.
 MEDIA_LICENSE = _get_rights("ES", stream="media")["license"]
 MEDIA_CREATOR = _get_rights("ES", stream="media")["creator"]
+
+# The open data links the MP4s on www.congreso.es, which refuses non-browser
+# clients; static.congreso.es serves the same paths without that restriction
+# and is the host the audiovisual archive's sitting pages link.
+_WWW_VIDEO_PREFIX = "https://www.congreso.es/audiovisual/"
+_STATIC_VIDEO_PREFIX = "https://static.congreso.es/audiovisual/"
+
+
+def _video_file_uri(mp4: str) -> str:
+    mp4 = mp4.strip()
+    if mp4.startswith(_WWW_VIDEO_PREFIX):
+        return _STATIC_VIDEO_PREFIX + mp4[len(_WWW_VIDEO_PREFIX):]
+    return mp4
 
 
 def _parse_dt(sesion: str, hhmm: str):
@@ -63,31 +72,22 @@ def _parse_dt(sesion: str, hhmm: str):
     return dt, have_time
 
 
-def _video_id(mp4: str) -> str:
-    """Return the video id (filename stem) of a real per-speech MP4, else ''.
+def parse_intervention(rec: dict, period: int, number: int) -> list:
+    """Convert one raw intervention record into media-stream items, one per clip.
 
-    Some interventions carry a placeholder URL with an empty id
-    (".../video/leg/400//cortes/.mp4") — i.e. no video. Those return ''.
+    A record usually has one MP4. An intervention recorded in several clips
+    (e.g. a minister's answer and rejoinder around the questioner's reply)
+    lists them all; each clip becomes its own item, flagged with
+    `debug.clipIndex` / `debug.clipCount`, sharing the record's speaker,
+    agenda and times. Returns [] for records the media stream cannot
+    represent (placeholder URL without a video, or no usable date).
     """
-    if not mp4:
-        return ""
-    filename = os.path.basename(mp4)
-    stem = filename[:-4] if filename.lower().endswith(".mp4") else os.path.splitext(filename)[0]
-    return stem.strip()
-
-
-def parse_intervention(rec: dict, period: int, number: int) -> dict:
-    """Convert one raw intervention record into a media-stream item.
-
-    Returns {} for records the media stream cannot represent (no real video,
-    or no usable date).
-    """
-    mp4 = rec.get("ENLACEDESCARGADIRECTA", "")
-    media_id = _video_id(mp4)
-    if not media_id:
+    clips = [(url, video) for url in video_urls(rec.get("ENLACEDESCARGADIRECTA"))
+             if (video := parse_video_url(url))]
+    if not clips:
         # No per-speech video — not a media-stream item. The proceedings
         # stream still carries this speaker's text into the merge.
-        return {}
+        return []
 
     sesion = rec.get("SESION", "")
     start = _parse_dt(sesion, rec.get("INICIOINTERVENCION", ""))
@@ -95,8 +95,8 @@ def parse_intervention(rec: dict, period: int, number: int) -> dict:
 
     debug: dict = {}
     if start is None:
-        # No usable date — fall back to nothing; caller will drop.
-        return {}
+        # No usable date — caller will drop.
+        return []
     start_dt, have_start_time = start
     if not have_start_time:
         debug["no-start-time"] = True
@@ -110,8 +110,8 @@ def parse_intervention(rec: dict, period: int, number: int) -> dict:
     # HH:MM resolution only — flag it so downstream knows timing is coarse.
     debug["coarseTiming"] = True
 
-    objeto = (rec.get("OBJETOINICIATIVA") or "").strip()
-    fase = (rec.get("FASE") or "").strip()
+    objeto = collapse_ws(rec.get("OBJETOINICIATIVA"))
+    fase = collapse_ws(rec.get("FASE"))
     title = objeto or fase or "Sesión plenaria"
     agenda = {
         "title": title,
@@ -122,25 +122,55 @@ def parse_intervention(rec: dict, period: int, number: int) -> dict:
 
     person = parse_orador(rec.get("ORADOR", ""), rec.get("CARGOORADOR", ""))
 
-    item: dict = {
-        "parliament": PARLIAMENT,
-        "electoralPeriod": {"number": period},
-        "session": {"number": number},
-        "agendaItem": agenda,
-        "dateStart": start_dt.isoformat("T", "seconds"),
-        "dateEnd": end_dt.isoformat("T", "seconds"),
-        "media": {
-            "videoFileURI": mp4,
-            "sourcePage": rec.get("ENLACEDIFERIDO", ""),
-            "duration": duration,
-            "license": MEDIA_LICENSE,
-            "originMediaID": media_id,
-            "creator": MEDIA_CREATOR,
-        },
-        "people": [person] if person.get("label") else [],
-        "debug": debug,
-    }
-    return item
+    items = []
+    for k, (url, video) in enumerate(clips):
+        item_debug = dict(debug)
+        if len(clips) > 1:
+            item_debug["clipIndex"] = k
+            item_debug["clipCount"] = len(clips)
+        items.append({
+            "parliament": PARLIAMENT,
+            "electoralPeriod": {"number": period},
+            "session": {"number": number},
+            "agendaItem": deepcopy(agenda),
+            "dateStart": start_dt.isoformat("T", "seconds"),
+            "dateEnd": end_dt.isoformat("T", "seconds"),
+            "media": {
+                "videoFileURI": _video_file_uri(url),
+                # The feed's own share link (ENLACEDIFERIDO) drops a digit of
+                # the intervention id, so build it from the MP4 file name.
+                "sourcePage": intervention_page_url(video["leg"], video["iid"]),
+                "duration": duration,
+                "license": MEDIA_LICENSE,
+                "originMediaID": video["stem"],
+                "creator": MEDIA_CREATOR,
+            },
+            "people": [deepcopy(person)] if person.get("label") else [],
+            "debug": item_debug,
+        })
+    return items
+
+
+def _iid(item: dict) -> int:
+    return int(item["media"]["originMediaID"].rsplit("_", 1)[1])
+
+
+def _insert_later_clip(output: list, item: dict) -> None:
+    """Insert a record's 2nd+ clip after the item with the next-lower
+    intervention id (the turns recorded between the clips), keeping the
+    order of all other items. Its times are clamped to its predecessor's so
+    dateStart stays monotonic."""
+    lower = [(_iid(o), i) for i, o in enumerate(output) if _iid(o) < _iid(item)]
+    pos = max(lower)[1] + 1 if lower else 0
+    if pos > 0:
+        prev_start = output[pos - 1]["dateStart"]
+        if datetime.fromisoformat(item["dateStart"]) < datetime.fromisoformat(prev_start):
+            item["dateStart"] = prev_start
+            if datetime.fromisoformat(item["dateEnd"]) < datetime.fromisoformat(prev_start):
+                item["dateEnd"] = prev_start
+            item["media"]["duration"] = (datetime.fromisoformat(item["dateEnd"])
+                                         - datetime.fromisoformat(item["dateStart"])).total_seconds()
+    output.insert(pos, item)
 
 
 def parse_media_data(raw: dict) -> dict:
@@ -152,15 +182,19 @@ def parse_media_data(raw: dict) -> dict:
     records = raw.get("interventions", [])
 
     output = []
+    later_clips = []
     for idx, rec in enumerate(records):
-        item = parse_intervention(rec, period, number)
-        if not item:
-            logger.debug(f"Skipping intervention {idx} in {sid}: no usable date")
+        items = parse_intervention(rec, period, number)
+        if not items:
+            logger.debug(f"Skipping intervention {idx} in {sid}: no video or no usable date")
             continue
-        item["_order"] = idx  # stable tiebreaker for equal HH:MM timestamps
-        output.append(item)
+        items[0]["_order"] = idx  # stable tiebreaker for equal HH:MM timestamps
+        output.append(items[0])
+        later_clips.extend(items[1:])
 
     output.sort(key=lambda i: (i["dateStart"], i["_order"]))
+    for item in sorted(later_clips, key=_iid):
+        _insert_later_clip(output, item)
     for i, item in enumerate(output):
         item.pop("_order", None)
         item["speechIndex"] = i + 1

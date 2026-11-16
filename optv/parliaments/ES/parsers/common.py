@@ -42,13 +42,62 @@ def fix_faction(abbr: str) -> str:
     return FACTION_LABELS.get(abbr, abbr)
 
 
+def collapse_ws(text: str) -> str:
+    """Collapse runs of whitespace (incl. the hard line breaks of the open
+    data text fields) into single spaces."""
+    return " ".join((text or "").split())
+
+
+# Organ code of the Pleno in the audiovisual paths. The Diputación Permanente
+# (500) shares the Diario "PL" series but numbers its sittings separately.
+PLENO_ORGAN = 400
+
+# Per-speech MP4 file name: {leg}_{organ:06}_{sitting}_{x}_{y}_{intervention}.mp4,
+# e.g. .../leg15/400/15_000400_178/cortes/15_000400_178_0_27272_772999.mp4.
+_VIDEO_STEM_RE = re.compile(r'/((\d+)_(\d+)_(\d+)_\d+_\d+_(\d+))\.mp4$', re.I)
+
+
+def video_urls(field: str) -> list:
+    """Split an ENLACEDESCARGADIRECTA value into its MP4 URLs.
+
+    The field usually holds one URL; an intervention recorded in several clips
+    lists them newline-separated.
+    """
+    return (field or "").split()
+
+
+def parse_video_url(url: str):
+    """Return {leg, organ, session, iid, stem} from one per-speech MP4 URL, else None.
+
+    `session` is the sitting number of the organ (the plenary session number
+    for organ 400), `iid` the intervention id and `stem` the file name without
+    extension. Placeholder URLs without a video (".../400//cortes/.mp4",
+    ".../leg__/400/__10000000/cortes/__10000000.mp4") return None.
+    """
+    m = _VIDEO_STEM_RE.search((url or "").strip())
+    if not m:
+        return None
+    return {
+        "leg": int(m.group(2)),
+        "organ": int(m.group(3)),
+        "session": int(m.group(4)),
+        "iid": m.group(5),
+        "stem": m.group(1),
+    }
+
+
+def intervention_page_url(leg: int, iid: str) -> str:
+    """Share link that opens the sitting's video page at the intervention."""
+    return f"https://app.congreso.es/v1/{leg}{iid}I"
+
+
 # CARGOORADOR → (person type, whether the cargo itself is a meaningful role).
 # Diputado/a is the default MP capacity (no extra role); ministers and the
 # government presidency are members of government; chair roles stay MPs but
 # carry the cargo as a role.
 def classify_cargo(cargo: str):
     """Return (type, role) for a CARGOORADOR string."""
-    c = (cargo or "").strip()
+    c = collapse_ws(cargo)
     cl = c.lower()
     if not c:
         return ("person", None)
@@ -81,7 +130,7 @@ def parse_orador(orador: str, cargo: str = "") -> dict:
     Diario gives only an uppercase surname), so it is always populated.
     """
     person: dict = {"context": "main-speaker"}
-    name = (orador or "").strip()
+    name = collapse_ws(orador)
     party = None
     m = _PARTY_SUFFIX_RE.search(name)
     if m:

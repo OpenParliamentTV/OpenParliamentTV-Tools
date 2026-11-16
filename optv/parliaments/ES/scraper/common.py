@@ -2,10 +2,13 @@
 
 # Shared HTTP helpers for the ES scrapers.
 #
-# congreso.es sits behind Cloudflare: a bare urllib/curl request gets a 403,
-# but a request carrying a realistic browser User-Agent is served normally
-# (verified 2026-05-22 — no challenge solving needed). The HTML text view
-# additionally round-trips a cookie, so we keep a per-process cookie jar.
+# www.congreso.es (open data portal and files, Diario HTML, the open data's
+# MP4 links) sits behind Akamai, which answers requests without a browser
+# User-Agent (urllib's or curl's default, a generic tool name) with a 403
+# "Access Denied"; a realistic browser User-Agent is served without any
+# challenge. app.congreso.es (archive sitting pages) and static.congreso.es
+# (MP4s) serve any client. The HTML text view additionally round-trips a
+# cookie, so we keep a per-process cookie jar.
 
 import logging
 logger = logging.getLogger(__name__)
@@ -13,7 +16,7 @@ logger = logging.getLogger(__name__)
 import http.cookiejar
 import urllib.request
 
-# A realistic desktop Chrome UA. congreso.es 403s requests without one.
+# A realistic desktop Chrome UA. www.congreso.es 403s requests without one.
 USER_AGENT = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
               "AppleWebKit/537.36 (KHTML, like Gecko) "
               "Chrome/124.0.0.0 Safari/537.36")

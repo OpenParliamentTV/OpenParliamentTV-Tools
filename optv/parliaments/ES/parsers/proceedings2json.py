@@ -46,6 +46,12 @@ _PAGE_ANCHOR_RE = re.compile(r"<a name='\(P[aá]gina(\d+)\)'>")
 # not mistaken for turns. Optional "(Surname)" tail for chair/government roles.
 _SPEAKER_RE = re.compile(
     r"(El señor|La señora)\s+([A-ZÁÉÍÓÚÑÜÇ]{2}[^:<\x00]{0,180}?):")
+# Diario header: "Sesión plenaria núm. 178" or, for the Diputación
+# Permanente sittings that share the Diario series, "Sesión de la Diputación
+# Permanente núm. 2".
+_SITTING_RE = re.compile(
+    r"Sesi[oó]n (plenaria|de la Diputaci[oó]n Permanente) n[uú]m\.\s*(\d+)")
+_DOC_ID_RE = re.compile(r"DSCD-\d+-PL-\d+")
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"[ \t ]+")
 
@@ -145,9 +151,20 @@ def parse_speaker(gender: str, namepart: str) -> dict:
 
 def parse_proceedings_html(html: str, session_number: int, period: int,
                            doc_id: str, source_uri: str) -> dict:
-    """Parse the HTML into the proceedings stream dict."""
+    """Parse the HTML into the proceedings stream dict.
+
+    `session_number` is the plenary session number; `doc_id` the Diario id
+    (DSCD-<leg>-PL-<n>, the text document) the scraper recorded from the feed.
+    Without it, the Diario's own `cve:` is used (minus a correction suffix
+    such as "-C1").
+    """
     cve, inner = extract_textointegro(html)
-    doc_id = doc_id or cve
+    cve_base = _DOC_ID_RE.match(cve or "")
+    cve_base = cve_base.group(0) if cve_base else ""
+    if cve_base and doc_id and cve_base != doc_id:
+        logger.warning(f"Diario id {cve} differs from the expected {doc_id}")
+    doc_id = doc_id or cve_base
+    _check_sitting_header(_header_text(html), session_number, doc_id)
     text = html_to_text_with_pages(inner)
 
     turns = list(_SPEAKER_RE.finditer(text))
@@ -218,6 +235,27 @@ def parse_proceedings_html(html: str, session_number: int, period: int,
     }
 
 
+def _header_text(html: str) -> str:
+    """Flattened Diario header (cabecera) preceding the textoCompleto block."""
+    start = html.find('<div class="textoIntegro">')
+    if start < 0:
+        return ""
+    end = html.find('<p class="textoCompleto">', start)
+    region = html[start:end if end > 0 else start + 5000]
+    return _WS_RE.sub(" ", html_lib.unescape(_TAG_RE.sub(" ", region)))
+
+
+def _check_sitting_header(header: str, session_number: int, doc_id: str) -> None:
+    """Warn if the Diario header names another sitting than the session."""
+    m = _SITTING_RE.search(header)
+    if not m:
+        logger.warning(f"{doc_id}: no sitting number in the Diario header")
+    elif not m.group(1).startswith("plenaria"):
+        logger.warning(f"{doc_id}: Diputación Permanente sitting {m.group(2)}, not a plenary session")
+    elif int(m.group(2)) != session_number:
+        logger.warning(f"{doc_id}: header gives plenary session {m.group(2)}, expected {session_number}")
+
+
 def _now() -> str:
     from datetime import datetime
     return datetime.now().isoformat("T", "seconds")
@@ -233,6 +271,19 @@ def _empty_proceedings(doc_id: str, session_number: int, period: int) -> dict:
 _FILE_RE = re.compile(r"(\d{2})(\d{3})-proceedings\.html$")
 
 
+def _expected_doc_id(source: Path) -> str:
+    """Diario id the scraper recorded for this session (raw media meta), else ''.
+
+    The file name carries the plenary session number, not the Diario number.
+    """
+    sid = source.name[:-len("-proceedings.html")]
+    raw = source.parent.parent / "media" / f"raw-{sid}-media.json"
+    try:
+        return json.loads(raw.read_text()).get("meta", {}).get("docId") or ""
+    except (OSError, ValueError):
+        return ""
+
+
 def parse_proceedings_directory(directory: Path, args=None) -> None:
     """Parse *-proceedings.html into *-proceedings.json when out of date."""
     directory = Path(directory)
@@ -245,7 +296,7 @@ def parse_proceedings_directory(directory: Path, args=None) -> None:
             logger.warning(f"Cannot derive period/session from {source.name} - skipping")
             continue
         period, session_number = int(m.group(1)), int(m.group(2))
-        doc_id = f"DSCD-{period}-PL-{session_number}"
+        doc_id = _expected_doc_id(source)
         logger.info(f"Parsing {source.name}")
         data = parse_proceedings_html(source.read_text(encoding="utf-8", errors="replace"),
                                       session_number, period, doc_id, source_uri=str(source))
@@ -269,7 +320,7 @@ if __name__ == "__main__":
         else:
             m = _FILE_RE.search(source.name)
             period, session_number = (int(m.group(1)), int(m.group(2))) if m else (15, 0)
-            doc_id = f"DSCD-{period}-PL-{session_number}"
+            doc_id = _expected_doc_id(source)
             data = parse_proceedings_html(source.read_text(encoding="utf-8", errors="replace"),
                                           session_number, period, doc_id, source_uri=str(source))
             json.dump(data, sys.stdout, indent=2, ensure_ascii=False)

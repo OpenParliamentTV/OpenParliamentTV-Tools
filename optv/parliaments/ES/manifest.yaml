@@ -5,7 +5,7 @@ locale:                         # consumed by optv.shared.{align,ner}
   spacy_model: es_core_news_md          # python -m spacy download es_core_news_md
   aeneas_language: spa                  # ISO 639-3 for aeneas/espeak
   entityfishing_language: es            # 2-letter for entityfishing
-periods: [15]                   # XV Legislature (Aug 2023–present); only term with per-speech video
+periods: [15]                   # XV Legislature (2023-08-17 to dissolution 2026-10-06); the open data feed holds only the legislature in progress
 # NEL works once a locally-built entities.json sits in <data_dir>/metadata/.
 # 2026-05-23: first dump built directly from Wikidata SPARQL (all Spanish
 # Congress MPs ever, 3 830 persons; 11 hand-mapped XV parliamentary groups).
