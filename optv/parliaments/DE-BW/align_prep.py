@@ -13,4 +13,4 @@ manifest).
 from optv.shared.audio_prep import make_fragment_prepare
 
 # Base mp4 (not HLS) — ffmpeg extracts the audio track with -vn.
-prepare_per_speech_audio = make_fragment_prepare(hls=False)
+prepare_per_speech_audio = make_fragment_prepare(hls=False, reconnect=True)
