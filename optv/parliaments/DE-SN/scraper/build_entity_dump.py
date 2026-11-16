@@ -5,8 +5,8 @@ Two sources, joined on German label:
 
 1. **Wikidata SPARQL** — everyone who has held the position
    ``P39 wd:Q17334379`` ("member of the Landtag of Saxony" / Mitglied des
-   Sächsischen Landtags). Provides the QID plus German and English label
-   variants.
+   Sächsischen Landtags). Provides the QID plus the German and English labels
+   and the German aliases (multi-word only).
 2. **Hand-curated party list** for the factions represented in WP 8 (since the
    September 2024 election): CDU, AfD, BSW, SPD, BÜNDNISGRÜNE (Grüne), Die Linke.
 
@@ -55,12 +55,15 @@ logger = logging.getLogger(__name__)
 
 # Q17334379 = "member of the Landtag of Saxony" (Mitglied des Sächsischen Landtags).
 SPARQL_DE_SN_MPS = """
-SELECT DISTINCT ?person ?label_de ?label_en WHERE {
+SELECT ?person ?label_de ?label_en
+       (GROUP_CONCAT(DISTINCT ?alias_de; separator="|") AS ?aliases_de) WHERE {
   ?person p:P39 ?stmt .
   ?stmt ps:P39 wd:Q17334379 .
   OPTIONAL { ?person rdfs:label ?label_de  FILTER(LANG(?label_de)="de") }
   OPTIONAL { ?person rdfs:label ?label_en  FILTER(LANG(?label_en)="en") }
+  OPTIONAL { ?person skos:altLabel ?alias_de  FILTER(LANG(?alias_de)="de") }
 }
+GROUP BY ?person ?label_de ?label_en
 """
 
 # Factions represented in WP 8 (since September 2024). The party shortcode in
@@ -110,7 +113,11 @@ def fetch_wikidata_de_sn_mps() -> list[dict]:
         de = (_bind(b, "label_de") or "").strip()
         en = (_bind(b, "label_en") or "").strip()
         label = de or en or qid
-        alts = [s for s in {en} - {label, ""} if s]
+        # German aliases cover name changes (e.g. "Ines Saborowski" for the
+        # label "Ines Saborowski-Richter"); single-word aliases (bare surnames)
+        # are left out so they never become a person key.
+        aliases = [a.strip() for a in (_bind(b, "aliases_de") or "").split("|")]
+        alts = sorted({s for s in [en, *aliases] if len(s.split()) > 1} - {label})
         members[qid] = {
             "id": qid,
             "label": label,

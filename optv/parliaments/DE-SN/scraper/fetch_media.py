@@ -6,14 +6,22 @@ The Saxony mediathek archive is a single paginated list scoped to a Wahlperiode
 ``scraper/common.parse_list_page``), so one pagination pass yields every
 per-speech field — there is no separate session-page or per-speech offset GET.
 
-Items are strictly newest-first and a Sitzung's speeches are contiguous in the
-listing, so a targeted single-session fetch can stop as soon as it has paged
-past the requested Sitzung. Writes ``original/media/{session_id}-raw.json`` per
-session, where ``session_id = {wp:02d}{sitzung:03d}`` (e.g. ``08025``):
+Items are sorted by Sitzungsnummer (highest first) and chronologically within a
+sitting, so a Sitzung's speeches are contiguous and a targeted single-session
+fetch can stop as soon as it has paged past the requested Sitzung.
+
+Each item's Wahlperiode is derived from its date (``common.derive_wp``): the
+list filter files WP 8's constituent sitting (2024-10-01) under WP 7, at the end
+of the WP 7 list after WP 7's own first sitting. A WP run therefore keeps only
+the items whose derived WP matches, and picks up its constituent sitting from
+the tail of the previous WP's list (a few pages, walked backwards).
+
+Writes ``original/media/{session_id}-raw.json`` per session, where
+``session_id = {wp:02d}{sitzung:03d}`` (e.g. ``08025``):
 
     {
       "session_id": "08025", "wp": 8, "sitzung": 25, "date": "2026-02-05",
-      "speeches": [ {id, date, time, top_no, thema, speaker_raw, faction_raw,
+      "speeches": [ {id, wp, date, time, top_no, thema, speaker_raw, faction_raw,
                      speech_type, smil_url, start_offset, end_offset,
                      source_page, tagesordnung_url}, ... ]
     }
@@ -34,13 +42,74 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.DE-SN.scraper"
 
-from .common import PAGE_SIZE, fetch_text, list_page_url, parse_list_page
+from .common import (PAGE_SIZE, WP_START_DATES, fetch_text, last_page_start,
+                     list_page_url, parse_list_page)
 
 logger = logging.getLogger(__name__)
+
+# Safety cap for the backwards walk over the previous WP's list tail.
+MAX_TAIL_PAGES = 20
 
 
 def _session_id(wp: int, sitzung: int) -> str:
     return f"{wp:02d}{sitzung:03d}"
+
+
+def _collect_predecessor_tail(period: int, *, retry_count: int = 20) -> list[dict]:
+    """Return the items of WP ``period`` that the list files under ``period - 1``.
+
+    The constituent sitting sorts last in the previous WP's list (sitting 1,
+    after that WP's own sitting 1), so the walk starts at the last page and goes
+    backwards until it reaches an item dated before WP ``period`` began.
+    Returns [] when either WP's start date is unknown.
+    """
+    prev = period - 1
+    cutoff = WP_START_DATES.get(period)
+    if cutoff is None or prev not in WP_START_DATES:
+        return []
+    first = fetch_text(list_page_url(str(prev), 0), retry_count=retry_count)
+    last = last_page_start(first)
+    if last is None:
+        return []
+    found: list[dict] = []
+    start = last
+    for _ in range(MAX_TAIL_PAGES):
+        if start < 0:
+            break
+        html = first if start == 0 else fetch_text(
+            list_page_url(str(prev), start), retry_count=retry_count)
+        records = parse_list_page(html, wp=prev)
+        found.extend(r for r in records if r["wp"] == period)
+        if not records or any((r.get("date") or "") < cutoff for r in records):
+            break
+        start -= PAGE_SIZE
+    else:
+        logger.warning(f"WP {prev} list tail: stopped after {MAX_TAIL_PAGES} pages")
+    if found:
+        logger.info(f"Picked up {len(found)} WP {period} item(s) filed under WP {prev}")
+    return found
+
+
+def _write_raw(media_dir: Path, sid: str, speeches: list[dict], *,
+               force: bool = False) -> bool:
+    """Write one session's raw manifest; return False when it exists (no force)."""
+    out = Path(media_dir) / f"{sid}-raw.json"
+    if out.exists() and not force:
+        logger.info(f"{sid}: raw.json exists — skipping (use --force to refetch)")
+        return False
+    speeches = sorted(speeches, key=lambda s: (s.get("date") or "", s.get("start_offset") or 0))
+    dates = sorted({s["date"] for s in speeches if s.get("date")})
+    payload = {
+        "session_id": sid,
+        "wp": speeches[0]["wp"],
+        "sitzung": speeches[0]["sitzung"],
+        "date": dates[0] if dates else None,
+        "dates": dates,
+        "speeches": speeches,
+    }
+    out.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+    logger.info(f"Wrote {out.name} ({len(speeches)} speeches, {dates})")
+    return True
 
 
 def fetch_media(*, media_dir: Path, period: int, limit_session: str | None = None,
@@ -56,8 +125,19 @@ def fetch_media(*, media_dir: Path, period: int, limit_session: str | None = Non
     media_dir.mkdir(parents=True, exist_ok=True)
 
     buckets: dict[str, list[dict]] = {}
-    target_seen = False
 
+    def _add(rec: dict) -> str | None:
+        if rec.get("sitzung") is None:
+            return None
+        sid = _session_id(rec["wp"], rec["sitzung"])
+        buckets.setdefault(sid, []).append(rec)
+        return sid
+
+    for rec in _collect_predecessor_tail(period, retry_count=retry_count):
+        _add(rec)
+
+    target_seen = False
+    rekeyed = 0
     for page_no in range(max_pages):
         start = page_no * PAGE_SIZE
         url = list_page_url(str(period), start)
@@ -70,11 +150,11 @@ def fetch_media(*, media_dir: Path, period: int, limit_session: str | None = Non
 
         page_has_target = False
         for rec in records:
-            if rec.get("sitzung") is None:
+            if rec["wp"] != period:
+                rekeyed += 1      # belongs to another WP by date
                 continue
-            sid = _session_id(period, rec["sitzung"])
-            buckets.setdefault(sid, []).append(rec)
-            if limit_session and re.match(limit_session, sid):
+            sid = _add(rec)
+            if sid and limit_session and re.match(limit_session, sid):
                 target_seen = True
                 page_has_target = True
 
@@ -83,28 +163,14 @@ def fetch_media(*, media_dir: Path, period: int, limit_session: str | None = Non
         if limit_session and target_seen and not page_has_target:
             logger.info("Paged past the requested session — stopping")
             break
+    if rekeyed:
+        logger.info(f"Skipped {rekeyed} item(s) of the WP {period} list dated in another WP")
 
     written: list[str] = []
     for sid, speeches in sorted(buckets.items()):
         if limit_session and not re.match(limit_session, sid):
             continue
-        out = media_dir / f"{sid}-raw.json"
-        if out.exists() and not force:
-            logger.info(f"{sid}: raw.json exists — skipping (use --force to refetch)")
-            written.append(sid)
-            continue
-        speeches.sort(key=lambda s: (s.get("date") or "", s.get("start_offset") or 0))
-        dates = sorted({s["date"] for s in speeches if s.get("date")})
-        payload = {
-            "session_id": sid,
-            "wp": period,
-            "sitzung": speeches[0]["sitzung"],
-            "date": dates[0] if dates else None,
-            "dates": dates,
-            "speeches": speeches,
-        }
-        out.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
-        logger.info(f"Wrote {out.name} ({len(speeches)} speeches, {dates})")
+        _write_raw(media_dir, sid, speeches, force=force)
         written.append(sid)
     return written
 

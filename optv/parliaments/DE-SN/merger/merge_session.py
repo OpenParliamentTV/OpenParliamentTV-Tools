@@ -12,10 +12,12 @@ DE-SN is the SE/DE-SH/DE-BW per-speech-offset model: one daily recording,
 per-speech windows addressed by an HTML5 media-fragment ``#t=start,end`` on
 ``videoFileURI`` plus ``startOffset``/``endOffset`` in ``additionalInformation``.
 Unlike DE-BW, both offsets are present in the source and each item carries a real
-wall-clock time, so ``dateStart``/``dateEnd`` are absolute (``debug.
-timesAreVideoRelative = False``). The per-speech ``sourcePage`` is the
-Einzelbeitrag URL — already unique per speech, so the platform's sourcePage-keyed
-speech identity does not collapse distinct speeches.
+wall-clock time, so ``dateStart``/``dateEnd`` are absolute, German local time with
+its Europe/Berlin UTC offset (``debug.timesAreVideoRelative = False``). The
+presiding officer is not in the mediathek list; the text join adds them to
+``people[]`` from the Plenarprotokoll's chair lines. The per-speech
+``sourcePage`` is the Einzelbeitrag URL — already unique per speech, so the
+platform's sourcePage-keyed speech identity does not collapse distinct speeches.
 """
 
 from __future__ import annotations
@@ -36,7 +38,7 @@ if __package__ is None or __package__ == "":
 
 from optv.shared.agenda_types import classify_de_sn
 
-from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
+from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE, local_iso
 from optv.parliaments import get_rights as _get_rights
 from optv.shared.lang.de import match_key_surname as _match_key
 from optv.shared.pdf2tei.spine_join import load_turns, join_text_to_spine
@@ -143,12 +145,14 @@ def merge_session(session: str, config, options=None) -> Path:
 
     starts = [s.get("start_datetime") for s in speeches if s.get("start_datetime")]
     ends = [s.get("end_datetime") for s in speeches if s.get("end_datetime")]
-    earliest = min(starts) if starts else f"{session_date}T00:00:00"
-    latest = max(ends) if ends else f"{session_date}T23:59:59"
+    day_start = local_iso(session_date, "00:00:00")
+    earliest = min(starts, key=datetime.fromisoformat) if starts else day_start
+    latest = (max(ends, key=datetime.fromisoformat) if ends
+              else local_iso(session_date, "23:59:59"))
 
     merged: list[dict] = []
     for sp in speeches:
-        date_start = sp.get("start_datetime") or f"{session_date}T00:00:00"
+        date_start = sp.get("start_datetime") or day_start
         date_end = sp.get("end_datetime") or date_start
         record: dict = {
             "parliament": PARLIAMENT_ID,

@@ -14,9 +14,14 @@ by a plain JSON REST API we can query:
 
 So ``url_for`` resolves the session id → download URL via two API calls and
 returns ``None`` (graceful manual-drop fallback) if anything is missing.
+
+Session ids come from the raw manifests ``fetch_media`` writes in the same
+download stage (the ``-media.json`` files only follow in the parse stage), so a
+new sitting's protocol is fetched in the run that fetches its video.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Optional
@@ -71,7 +76,21 @@ def url_for(session_id: str, date: Optional[str]) -> Optional[str]:
     return _resolve_pdf_url(wp, nth)
 
 
+def manifest_sessions(config) -> list[tuple[str, Optional[str]]]:
+    """``(session_id, ISO date)`` of every session with a raw media manifest."""
+    out = []
+    for path in sorted(config.dir('media').glob('*-raw.json')):
+        try:
+            manifest = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if manifest.get("session_id"):
+            out.append((manifest["session_id"], manifest.get("date")))
+    return out
+
+
 def fetch_proceedings(config, args) -> None:
     run_template_fetch(config, url_for, force=getattr(args, "force", False),
                        retry_count=getattr(args, "retry_count", 3),
-                       session_filter=getattr(args, "limit_session", None))
+                       session_filter=getattr(args, "limit_session", None),
+                       sessions=manifest_sessions(config))

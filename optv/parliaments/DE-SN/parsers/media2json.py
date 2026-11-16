@@ -5,15 +5,16 @@ Input per session (written by the scraper):
 
 - ``original/media/{session_id}-raw.json`` — the per-speech records scraped from
   the mediathek list: speaker (natural ``Firstname Lastname`` order), faction
-  badge, speech-time category, TOP number + short ``thema`` text, Sitzungsnummer,
+  badge, speech-time category, TOP number + TOP title (``thema``), Sitzungsnummer,
   date + wall-clock time, the daily HLS ``smil`` URL and per-speech
   ``start_offset``/``end_offset`` (seconds into that daily stream).
 
 This pass: splits the speaker into first/last; routes the faction badge to a
 party (or to a government role for "Staatsregierung"); derives the speaker
 ``context`` from the speech-time category; computes a **real wall-clock**
-``start_datetime`` from the item's date + time and an ``end_datetime`` from the
-offset span; and assigns a deterministic ``speech_index`` ordered by
+``start_datetime`` from the item's date + time (German local time, emitted with
+its Europe/Berlin UTC offset) and an ``end_datetime`` from the offset span; and
+assigns a deterministic ``speech_index`` ordered by
 (date, start_offset). Unlike DE-BW (video-relative), the source carries a real
 per-speech wall-clock, so ``timesAreVideoRelative`` is False downstream. One
 record per speech is emitted to ``original/media/{session_id}-media.json``.
@@ -28,6 +29,8 @@ import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
 from optv.parliaments import get_rights as _get_rights
 
 if __package__ is None or __package__ == "":
@@ -36,10 +39,15 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.DE-SN.parsers"
 
+from ..scraper.common import split_speaker_type
+
 logger = logging.getLogger(__name__)
 
 MEDIA_LICENSE = _get_rights("DE-SN", stream="media")["license"]
 MEDIA_CREATOR = _get_rights("DE-SN", stream="media")["creator"]
+
+# The mediathek's clock times are German local time without an offset.
+BERLIN = ZoneInfo("Europe/Berlin")
 
 # Faction badges that are NOT a party group: the government bench and
 # unattached members. These route to a role rather than a faction.
@@ -49,19 +57,26 @@ _FRAKTIONSLOS = {"fraktionslos", "fraktionslose", "parteilos"}
 _HONORIFICS = ("Dr. ", "Prof. ", "Prof. Dr. ", "Dr. Dr. ", "Dr. h. c. ")
 
 # Structural placeholder rows the mediathek lists alongside real Redebeiträge:
-# session-boundary / break markers carried in the speaker field (e.g.
-# "ENDE der Sitzung - Fragestunde", "Beginn der Sitzung"). Not speeches.
+# session-boundary / break / vote-count markers carried in the speaker field or
+# the speech type (e.g. "ENDE der Sitzung - Fragestunde", "Unbekannter Redner -
+# Unterbrechung der Sitzung/Mittagspause", "Unbekannter Redner - Auszählung der
+# Stimmen", "Unbekannter Redner - Überlegungspause"). Not speeches.
 _MARKER_RE = re.compile(
     r'\b(ENDE|Beginn|Anfang|Fortsetzung|Unterbrechung)\s+der\s+Sitzung\b|'
-    r'\bSitzungspause\b|\bMittagspause\b|\bUnterbrechung\b', re.I)
-# A speaker field that tacks the interjection type onto the name, e.g.
-# "Unbekannter Redner - Zwischenfrage" → ("Unbekannter Redner", "Zwischenfrage").
-_SUFFIX_TYPE_RE = re.compile(
-    r'^(?P<name>.*?)\s+-\s+(?P<type>Zwischenfrage|Kurzintervention|Nachfrage)\s*$', re.I)
+    r'\bSitzungspause\b|\bMittagspause\b|\bUnterbrechung\b|'
+    r'\bAuszählung\b|\bÜberlegungspause\b', re.I)
+# Placeholder name for turns the mediathek does not attribute.
+_UNKNOWN_SPEAKER = "Unbekannter Redner"
 
 
-def _is_marker(speaker_raw: str) -> bool:
-    return bool(_MARKER_RE.search(speaker_raw or ""))
+def _is_marker(speaker_raw: str, speech_type: str = "") -> bool:
+    return bool(_MARKER_RE.search(f"{speaker_raw or ''} {speech_type or ''}"))
+
+
+def local_iso(date: str, time: str) -> str:
+    """``("2026-02-05", "10:04:09")`` → ``"2026-02-05T10:04:09+01:00"``."""
+    dt = datetime.strptime(f"{date}T{time}", "%Y-%m-%dT%H:%M:%S").replace(tzinfo=BERLIN)
+    return dt.isoformat("T", "seconds")
 
 
 def _strip_honorifics(name: str) -> str:
@@ -100,8 +115,10 @@ def _speaker_context(speech_type: str, speaker_raw: str = "") -> str:
     The mediathek archives substantive speaking turns ("Debatte", "Aktuelle
     Debatte", "Sonderredezeit") as main speakers and brief follow-ups
     ("Kurzintervention", "Zwischenfrage") as secondary speakers (the type is
-    sometimes carried in the speaker field rather than the category). Chair
-    turns are not archived as Einzelbeiträge, so there is no president context.
+    sometimes carried in the speaker field rather than the category). The list
+    has no chair turns: the session page lists them, but unnamed ("amtierender
+    Präsident"), so the presiding officer is taken from the Plenarprotokoll in
+    the text join (``join_text_to_spine``) instead.
     """
     t = f"{speech_type or ''} {speaker_raw or ''}".lower()
     if "kurzintervention" in t or "zwischenfrage" in t or "nachfrage" in t:
@@ -121,16 +138,20 @@ def parse_session(raw_path: Path) -> dict | None:
     skipped = 0
     for rec in manifest.get("speeches", []):
         speaker_raw = rec.get("speaker_raw", "")
-        # Drop session-boundary / break placeholder rows (not Redebeiträge).
-        if _is_marker(speaker_raw):
+        faction_raw = (rec.get("faction_raw") or "").strip()
+        speech_type = rec.get("speech_type", "")
+        if not faction_raw and not speech_type:
+            # Badge-less title in a raw manifest written before the scraper
+            # split it: "Unbekannter Redner - Standard" → name + type.
+            speaker_raw, speech_type = split_speaker_type(speaker_raw)
+        # Drop session-boundary / break / vote-count placeholder rows.
+        if _is_marker(speaker_raw, speech_type):
             skipped += 1
             continue
-        # "Unbekannter Redner - Zwischenfrage" → name "Unbekannter Redner",
-        # type signal "Zwischenfrage" (folded into the context derivation).
-        m = _SUFFIX_TYPE_RE.match(speaker_raw)
-        name_for_split = m.group("name").strip() if m else speaker_raw
-        label, firstname, lastname = _split_name(name_for_split)
-        faction_raw = (rec.get("faction_raw") or "").strip()
+        if speaker_raw == _UNKNOWN_SPEAKER:
+            label, firstname, lastname = speaker_raw, "", ""
+        else:
+            label, firstname, lastname = _split_name(speaker_raw)
         fl = faction_raw.lower()
         if fl in _NON_FACTION:
             gruppe, role = "", faction_raw          # government bench
@@ -143,11 +164,11 @@ def parse_session(raw_path: Path) -> dict | None:
         end = rec.get("end_offset")
         end = int(end) if end is not None else None
 
-        # Real wall-clock from the item's date + time; end = start + offset span.
+        # Real wall-clock from the item's date + time (Europe/Berlin);
+        # end = start + offset span.
         start_dt = end_dt = None
         if rec.get("date") and rec.get("time"):
-            start_dt = datetime.strptime(
-                f"{rec['date']}T{rec['time']}", "%Y-%m-%dT%H:%M:%S")
+            start_dt = datetime.fromisoformat(local_iso(rec["date"], rec["time"]))
             span = (end - start) if (end is not None and end > start) else 0
             end_dt = start_dt + timedelta(seconds=span)
 
@@ -159,14 +180,14 @@ def parse_session(raw_path: Path) -> dict | None:
             "einzelbeitrag_id": rec["id"],
             "top_no": rec.get("top_no"),
             "top_title": rec.get("thema", "").strip(),
-            "speech_type": rec.get("speech_type", ""),
+            "speech_type": speech_type,
             "name_raw": rec.get("speaker_raw", ""),
             "label": label,
             "firstname": firstname,
             "lastname": lastname,
             "role": role,
             "gruppe": gruppe,
-            "context": _speaker_context(rec.get("speech_type", ""), speaker_raw),
+            "context": _speaker_context(speech_type, speaker_raw),
             "start_offset": start,
             "end_offset": end,
             "start_clock": rec.get("time", ""),

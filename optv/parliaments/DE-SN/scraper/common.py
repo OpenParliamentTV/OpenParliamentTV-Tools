@@ -7,9 +7,10 @@ single paginated list:
     /de/mediathek-und-publikationen/videos/plenarvideos/index.cshtml
         ?electoral_term_id={8|7|alle}&start=N           (20 items per page)
 
+sorted by Sitzungsnummer (highest first) and chronologically within a sitting,
 and — crucially — **each list item is fully self-contained**: one
 ``<article class="xm_teaser …">`` per speech carrying the speaker, the faction
-badge, the speech-time category, the TOP number + a short ``thema`` text, the
+badge, the speech-time category, the TOP number + the TOP title (``thema``), the
 Sitzungsnummer, the date + wall-clock time, the daily HLS ``<source>`` URL
 (``stream-o01.envia-tel.net/vod/smil:{YYYYMMDD}.smil/playlist.m3u8``) and the
 per-speech ``data-component-options='{"startPosition":S,"endPosition":E}'``
@@ -44,6 +45,12 @@ LIST_URL = (f"{BASE}/de/mediathek-und-publikationen/videos/plenarvideos/"
 EINZELBEITRAG_URL = (f"{BASE}/de/mediathek-und-publikationen/videos/plenarvideos/"
                      "videoeinzelbeitrag")
 PAGE_SIZE = 20
+
+# First sitting day of each Wahlperiode (the constituent sitting). The list's
+# ``electoral_term_id`` filter files WP 8's constituent sitting (2024-10-01)
+# under WP 7, so an item's WP is derived from its date rather than taken from
+# the filter. Add the next WP's start date when it is constituted.
+WP_START_DATES = {7: "2019-10-01", 8: "2024-10-01"}
 
 _LAST_FETCH_AT = 0.0
 POLITE_DELAY = 0.5
@@ -89,6 +96,28 @@ def list_page_url(electoral_term_id: str, start: int) -> str:
     return f"{LIST_URL}?electoral_term_id={electoral_term_id}&start={start}"
 
 
+def derive_wp(date: str | None, listed_wp: int) -> int:
+    """The Wahlperiode an item belongs to, from its ``YYYY-MM-DD`` date.
+
+    Returns the highest WP in ``WP_START_DATES`` that started on or before
+    ``date``, but never lower than ``listed_wp`` (the list filter), so items of
+    a WP missing from the table keep the filter's WP.
+    """
+    if not date:
+        return listed_wp
+    started = [wp for wp, start in WP_START_DATES.items() if start <= date]
+    return max([listed_wp, *started]) if started else listed_wp
+
+
+_PAGINATION_START_RE = re.compile(r'[?&;]start=(\d+)')
+
+
+def last_page_start(html: str) -> int | None:
+    """The ``start`` offset of the last list page, from the pagination links."""
+    starts = [int(s) for s in _PAGINATION_START_RE.findall(html)]
+    return max(starts) if starts else None
+
+
 # ---------------------------------------------------------------------------
 # List-item parsing (one <article class="xm_teaser …"> per speech)
 # ---------------------------------------------------------------------------
@@ -107,10 +136,11 @@ _SITZUNG_RE = re.compile(r'Sitzungsnummer\s+(?P<nr>\d+)', re.I)
 _DATETIME_RE = re.compile(
     r'vom\s+(?P<d>\d{2})\.(?P<m>\d{2})\.(?P<y>\d{4})\s+'
     r'(?P<H>\d{2}):(?P<M>\d{2}):(?P<S>\d{2})', re.I)
-# short per-speech thema text in the teaser body
+# the TOP title (thema) in the teaser body
 _THEMA_RE = re.compile(
     r'<div\s+class="xm_teaser__text[^"]*"[^>]*>\s*<p>(?P<thema>.*?)</p>', re.S)
-# modal id == einzelbeitrag id (YYYYMMDDHHMM)
+# modal id == einzelbeitrag id: YYYYMMDD + (startPosition − 10), e.g.
+# 202609171127 for startPosition 1137 on 2026-09-17 (variable length)
 _MODAL_ID_RE = re.compile(r'modal-content-(?P<id>\d{8,14})')
 # player config + daily HLS source
 _OPTS_RE = re.compile(
@@ -126,9 +156,24 @@ def _text(fragment: str) -> str:
     return re.sub(r'\s+', ' ', unescape(_TAG_RE.sub(' ', fragment))).strip()
 
 
+def split_speaker_type(text: str) -> tuple[str, str]:
+    """``"Unbekannter Redner - Standard"`` → ``("Unbekannter Redner", "Standard")``.
+
+    Titles without a faction badge carry the speech type after the last
+    ``" - "``. Hyphenated names (``Neuhaus-Wartenberg``) have no spaces around
+    the hyphen and stay intact.
+    """
+    name, sep, speech_type = text.rpartition(" - ")
+    if not sep or not name.strip():
+        return text.strip(), ""
+    return name.strip(), speech_type.strip()
+
+
 def _parse_title(inner_html: str) -> tuple[str, str, str]:
     """``"Dirk Panter <span class=badge…>SPD</span> - Sonderredezeit"`` →
-    ``(speaker, faction, speech_type)``. Faction/speech_type may be empty."""
+    ``(speaker, faction, speech_type)``; a title without a badge
+    (``"Unbekannter Redner - Standard"``) splits at the last ``" - "``.
+    Faction/speech_type may be empty."""
     badge = _BADGE_RE.search(inner_html)
     faction = unescape(badge.group("faction")).strip() if badge else ""
     if badge:
@@ -136,8 +181,7 @@ def _parse_title(inner_html: str) -> tuple[str, str, str]:
         tail = _text(inner_html[badge.end():])
         speech_type = tail.lstrip("- ").strip()
     else:
-        speaker = _text(inner_html)
-        speech_type = ""
+        speaker, speech_type = split_speaker_type(_text(inner_html))
     return speaker, faction, speech_type
 
 
@@ -146,7 +190,9 @@ def parse_list_page(html: str, *, wp: int) -> list[dict]:
 
     Returns one dict per ``xm_teaser`` article that carries a video player.
     Items without a daily-HLS ``<source>`` or player offsets are skipped
-    (livestream placeholders, "no video" rows).
+    (livestream placeholders, "no video" rows). ``wp`` is the list filter's
+    Wahlperiode; each record's ``wp`` is derived from its date
+    (:func:`derive_wp`).
     """
     blocks = _ARTICLE_SPLIT_RE.split(html)[1:]   # drop the pre-first-article chrome
     records: list[dict] = []
@@ -175,12 +221,13 @@ def parse_list_page(html: str, *, wp: int) -> list[dict]:
         thema = _THEMA_RE.search(block)
         to_link = _TO_LINK_RE.search(block)
         speech_id = mid.group("id")
+        date = f"{dt.group('y')}-{dt.group('m')}-{dt.group('d')}" if dt else None
 
         records.append({
             "id": speech_id,
-            "wp": wp,
+            "wp": derive_wp(date, wp),
             "sitzung": int(sitz.group("nr")) if sitz else None,
-            "date": (f"{dt.group('y')}-{dt.group('m')}-{dt.group('d')}" if dt else None),
+            "date": date,
             "time": (f"{dt.group('H')}:{dt.group('M')}:{dt.group('S')}" if dt else None),
             "top_no": top.group("top") if top else None,
             "thema": _text(thema.group("thema")) if thema else "",
