@@ -448,3 +448,15 @@ def test_parse_toc_outline_falls_back_without_bookmarks(tmp_path, monkeypatch):
     # Bookmarks without contribution entries (no level 3) are not an agenda outline.
     flat = _bookmarked_pdf(tmp_path / "flat.pdf", [[1, "Protokoll", 1], [2, "Anlage", 2]])
     assert toc.parse_toc(flat, cfg) == sentinel
+
+
+def test_de_bw_stellv_praesident_is_vice_chair():
+    import importlib
+    from optv.shared.lang.de import pdf_chair_context
+    cfg = importlib.import_module("optv.parliaments.DE-BW.parsers.pdf_config").CONFIG
+    m = cfg.chair_speaker.match("Stellv. Präsident Dr. Wolfgang Reinhart: Wir fahren fort.")
+    assert m and m.group("name") == "Dr. Wolfgang Reinhart"
+    assert pdf_chair_context(m.group("role")) == "vice-president"
+    assert pdf_chair_context("Stellv. Präsidentin") == "vice-president"
+    assert pdf_chair_context("Präsidentin") == "president"
+    assert pdf_chair_context("Erster Vizepräsident") == "vice-president"

@@ -90,11 +90,11 @@ CHAIR_ROLE_CONTEXT = {
 
 def pdf_chair_context(role_text: str) -> str:
     """Map any chair role label to a speaker context, handling ordinals
-    ('Erster Vizepräsident', 'Präsidentin', 'Alterspräsident', …)."""
+    ('Erster Vizepräsident', 'Stellv. Präsidentin', 'Alterspräsident', …)."""
     r = role_text.lower()
     if "alterspräsident" in r:
         return "interim-president"
-    if "vizepräsident" in r:
+    if "vizepräsident" in r or r.startswith("stellv"):
         return "vice-president"
     if "präsident" in r:
         return "president"

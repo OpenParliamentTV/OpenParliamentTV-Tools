@@ -24,6 +24,7 @@ CONFIG = ParliamentConfig(
     chair_speaker=re.compile(
         r"^(?P<role>(?:Erste|Zweite|Dritte|Vierte)\s+Vizepräsidentin|"
         r"(?:Erster|Zweiter|Dritter|Vierter)\s+Vizepräsident|"
+        r"Stellv\.\s*Präsidentin|Stellv\.\s*Präsident|"
         r"Vizepräsidentin|Vizepräsident|Präsidentin|Präsident)\s+"
         r"(?P<name>[^:]+?)\s*:\s*(?P<rest>.*)$"),
     top_announce=None,  # TOC/heading-based agenda works better than chair announcements.
