@@ -7,6 +7,9 @@ detecting a column split from the block x-coordinate distribution and sorting
 The optional ``drop_line`` predicate filters running headers/footers (and empty
 blocks). It is injected so the backend stays language-agnostic; the German tier
 passes :func:`optv.shared.lang.de.is_running_header`.
+
+A block whose first line carries link annotations (e.g. a speaker label linked
+to the member's profile page) lists their URIs under ``links``.
 """
 from __future__ import annotations
 
@@ -33,6 +36,17 @@ def _column_split(page) -> float | None:
     return None
 
 
+def _lead_links(block_rect, page_links) -> list[str]:
+    """URIs of the links that start on the block's first line, in reading order
+    (a link starting further down belongs to the block's body text)."""
+    out = []
+    for rect, uri in page_links:
+        if (block_rect.intersects(rect) and rect.y0 < block_rect.y0 + 0.5 * rect.height
+                and uri not in out):
+            out.append(uri)
+    return out
+
+
 def extract(pdf_path: Path, drop_line: Optional[Callable[[str], bool]] = None) -> list[dict]:
     from .. common import clean_block_text
     drop = drop_line or (lambda _t: False)
@@ -41,6 +55,9 @@ def extract(pdf_path: Path, drop_line: Optional[Callable[[str], bool]] = None) -
     for pno in range(doc.page_count):
         page = doc[pno]
         split = _column_split(page)
+        page_links = sorted(((fitz.Rect(link["from"]), link["uri"])
+                             for link in page.get_links() if link.get("uri")),
+                            key=lambda x: (x[0].y0, x[0].x0))
         blocks = [b for b in page.get_text("blocks") if b[4].strip()]
         if split is None:
             ordered = sorted(blocks, key=lambda b: (round(b[1] / 3), b[0]))
@@ -51,6 +68,10 @@ def extract(pdf_path: Path, drop_line: Optional[Callable[[str], bool]] = None) -
             text = clean_block_text(b[4])
             if not text or drop(text):
                 continue
-            out.append({"text": text, "x0": round(b[0], 1),
-                        "y0": round(b[1], 1), "page": pno})
+            block = {"text": text, "x0": round(b[0], 1),
+                     "y0": round(b[1], 1), "page": pno}
+            links = _lead_links(fitz.Rect(b[:4]), page_links) if page_links else []
+            if links:
+                block["links"] = links
+            out.append(block)
     return out

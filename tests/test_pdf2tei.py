@@ -249,3 +249,56 @@ def test_join_text_to_spine_stamps_clean_confidence():
     turns = [{"matchKey": "muller", "index": 1, "sentences": [{"text": "Kurz."}]}]
     join_text_to_spine(merged, ["muller"], turns, creator="C", license="L")
     assert merged[0]["debug"]["confidence"] == 1.0
+
+
+# --------------------------------------------------------------------------- #
+# member id from the speaker label's link (DE-BY profile links)
+# --------------------------------------------------------------------------- #
+
+_PROFIL = "https://www.bayern.landtag.de/abgeordnete/abgeordnete-von-a-z/profil/{}"
+
+
+def test_lead_links_keep_only_links_starting_on_the_first_line():
+    import fitz
+    from optv.shared.pdf2tei.backends.pymupdf_backend import _lead_links
+    block = fitz.Rect(50, 100, 300, 140)                         # three lines
+    page_links = [(fitz.Rect(50, 101, 200, 111), _PROFIL.format(5171)),   # label, line 1
+                  (fitz.Rect(50, 113, 90, 123), _PROFIL.format(5171)),    # wrapped label
+                  (fitz.Rect(120, 125, 200, 135), _PROFIL.format(9999)),  # in the body
+                  (fitz.Rect(400, 101, 450, 111), _PROFIL.format(1))]     # other column
+    assert _lead_links(block, page_links) == [_PROFIL.format(5171)]
+
+
+def test_person_link_flows_from_label_block_to_merged_turn():
+    import importlib
+    from optv.shared.pdf2tei.pdf2tei import build_tei, build_registries
+    cfg = importlib.import_module("optv.parliaments.DE-BY.parsers.pdf_config").CONFIG
+    blocks = [
+        {"text": "Präsidentin Ilse Aigner: Das Wort hat Frau Post.", "page": 0,
+         "links": [_PROFIL.format(95209)]},
+        {"text": "Julia Post (GRÜNE): Sehr geehrte Damen und Herren.", "page": 0,
+         "links": ["https://www.bayern.landtag.de/drucksachen?dknr=1", _PROFIL.format(5354)]},
+        {"text": "Staatsminister Albert Füracker (Finanzen): Vielen Dank.", "page": 0},
+    ]
+    root, persons, factions, has_gov, *_ = build_tei("19054", cfg, blocks, agenda_mode="regex")
+    us = list(root.iter(f"{{{TEI_NS}}}u"))
+    assert [u.get("corresp") for u in us] == [_PROFIL.format(95209), _PROFIL.format(5354), None]
+    person_root, org_root = build_registries(persons, factions, has_gov)
+    turns = tei_to_turns(root, person_root, org_root, sentencize=regex_sentencize)
+    assert [t["personId"] for t in turns] == ["95209", "5354", ""]
+    redes = merge_turns(turns, chain=False)
+    # The chair's intro joins Post's rede; the rede's id is the main speaker's.
+    assert [(r["matchKey"], r["personId"]) for r in redes] == [("post", "5354"), ("furacker", "")]
+
+
+def test_join_prefers_person_id_over_surname():
+    turns = [{"matchKey": "muller", "personId": "2", "index": 1, "sentences": [{"text": "Eins."}]},
+             {"matchKey": "freiherr", "personId": "7", "index": 2, "sentences": [{"text": "Zwei."}]},
+             {"matchKey": "klein", "personId": "", "index": 3, "sentences": [{"text": "Drei."}]}]
+    merged = [_rec(1, "Anna Müller"), _rec(2, "Bert Müller"), _rec(3, "Felix von Zobel"),
+              _rec(4, "Staatsminister Klein")]
+    keys, ids = ["muller", "muller", "zobel", "klein"], ["1", "2", "7", ""]
+    assert join_text_to_spine(merged, keys, turns, creator="C", license="L",
+                              spine_person_ids=ids) == 3
+    # Namesakes stay apart, a label variant matches on the id, no id: surname.
+    assert [m["debug"].get("proceedingIndex") for m in merged] == [None, 1, 2, 3]

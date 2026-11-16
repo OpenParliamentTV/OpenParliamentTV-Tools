@@ -193,7 +193,11 @@ def build_tei(sid: str, cfg, blocks: list[dict],
                 label = text[: len(text) - len(rest)].rstrip().rstrip(":").strip()
             else:
                 label = text.rstrip(":").strip()
-            cur_turn = {"spk": spk, "id": pid, "label": label,
+            ref = None
+            if cfg.person_link is not None:
+                ref = next((uri for uri in b.get("links", ())
+                            if cfg.person_link.search(uri)), None)
+            cur_turn = {"spk": spk, "id": pid, "label": label, "ref": ref,
                         "ana": "#chair" if spk.is_chair else "#regular",
                         "segs": [], "incidents": [], "page": b.get("page", 0)}
             if cfg.speaker_inline and rest and rest.strip():
@@ -280,6 +284,8 @@ def build_tei(sid: str, cfg, blocks: list[dict],
             speech_n += 1
             u = _sub(div, "u", who=f"#{turn['id']}", ana=turn["ana"],
                      xmlid=f"u{sid}_{speech_n}")
+            if turn.get("ref"):
+                u.set("corresp", turn["ref"])
             inc_at = dict()
             for pos, txt in turn["incidents"]:
                 inc_at.setdefault(pos, []).append(txt)

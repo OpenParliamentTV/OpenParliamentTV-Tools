@@ -18,9 +18,12 @@ stays private in ``optv/parliaments/DE/merger/merge_session.py``.
 
 from __future__ import annotations
 
+from typing import Callable, Optional
 
-def align_equal_keys(a_keys: list[str], b_keys: list[str],
-                     *, match: int = 2, mismatch: int = -1, gap: int = -1
+
+def align_equal_keys(a_keys: list, b_keys: list,
+                     *, match: int = 2, mismatch: int = -1, gap: int = -1,
+                     equal: Optional[Callable[[object, object], bool]] = None
                      ) -> list[tuple[int, int]]:
     """Global alignment of two key sequences; return matched ``(i, j)`` pairs.
 
@@ -32,8 +35,10 @@ def align_equal_keys(a_keys: list[str], b_keys: list[str],
     simply omitted (they fall on gap steps).
 
     PT builds ``{i: j}`` from this; ES builds ``{i: [j, …]}`` and then absorbs
-    same-surname neighbours into each match.
+    same-surname neighbours into each match. ``equal`` replaces the key test
+    (non-empty and ``==``) for callers whose keys are composite.
     """
+    same = equal or (lambda a, b: bool(a) and a == b)
     m, n = len(a_keys), len(b_keys)
     if m == 0 or n == 0:
         return []
@@ -45,17 +50,16 @@ def align_equal_keys(a_keys: list[str], b_keys: list[str],
     for i in range(1, m + 1):
         ai = a_keys[i - 1]
         for j in range(1, n + 1):
-            equal = bool(ai) and ai == b_keys[j - 1]
-            diag = score[i - 1][j - 1] + (match if equal else mismatch)
+            eq = same(ai, b_keys[j - 1])
+            diag = score[i - 1][j - 1] + (match if eq else mismatch)
             score[i][j] = max(diag, score[i - 1][j] + gap, score[i][j - 1] + gap)
 
     matches: list[tuple[int, int]] = []
     i, j = m, n
     while i > 0 and j > 0:
-        ai = a_keys[i - 1]
-        equal = bool(ai) and ai == b_keys[j - 1]
-        if score[i][j] == score[i - 1][j - 1] + (match if equal else mismatch):
-            if equal:
+        eq = same(a_keys[i - 1], b_keys[j - 1])
+        if score[i][j] == score[i - 1][j - 1] + (match if eq else mismatch):
+            if eq:
                 matches.append((i - 1, j - 1))
             i, j = i - 1, j - 1
         elif score[i][j] == score[i - 1][j] + gap:

@@ -10,8 +10,11 @@ parliament's parser).
 
 Turn shape (mirrors ``optv/parliaments/PT/parsers/proceedings2json.py``)::
 
-    {"index", "speaker", "surname", "matchKey", "role", "party", "isChair",
-     "originTextID", "agendaTitle", "sentences": [{"text": …}, …]}
+    {"index", "speaker", "surname", "matchKey", "personId", "role", "party",
+     "isChair", "originTextID", "agendaTitle", "sentences": [{"text": …}, …]}
+
+``personId`` is the last path segment of the speaker label's link
+(``u/@corresp``, e.g. a member profile URL), or "" when the label has none.
 """
 from __future__ import annotations
 
@@ -131,11 +134,13 @@ def tei_to_turns(data_root, person_root=None, org_root=None, *,
                 slug = pinfo.get("faction_slug")
                 party = org_label.get(slug, slug or "")
                 bodies = _u_to_bodies(el, sentencize)
+                corresp = (el.get("corresp") or "").rstrip("/")
                 turns.append({
                     "index": idx,
                     "speaker": label,
                     "surname": (pinfo.get("surname") or "").strip(),
                     "matchKey": match_key_surname(name_for_key),
+                    "personId": corresp.rsplit("/", 1)[-1] if corresp else "",
                     "role": "" if not pinfo.get("is_gov") else "government",
                     "party": "" if is_chair else party,
                     "isChair": is_chair,

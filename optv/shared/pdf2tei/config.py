@@ -47,6 +47,11 @@ class ParliamentConfig:
     # bounded Zwischenfragen (DE-BW).
     merge_chain: bool = False
     merge_K: int = 2
+    # URI pattern of a speaker label's link to the member's page (DE-BY:
+    # ``…/profil/{ID}``). When set, the turn carries the link (TEI ``u/@corresp``)
+    # and its last path segment as ``personId``, which the spine join prefers
+    # over the surname. None: no person links.
+    person_link: re.Pattern | None = None
 
 
 def load_config(parliament_id: str) -> ParliamentConfig:

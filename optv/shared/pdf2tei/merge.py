@@ -20,7 +20,7 @@ from __future__ import annotations
 
 
 def _new(turn: dict) -> dict:
-    return {"main": None, "sentences": [], "bodies": [],
+    return {"main": None, "personId": "", "sentences": [], "bodies": [],
             "agendaTitle": turn.get("agendaTitle", ""),
             "originTextID": turn.get("originTextID", ""), "speaker": turn.get("speaker", "")}
 
@@ -48,6 +48,7 @@ def merge_turns(turns: list[dict], *, chain: bool, K: int = 2) -> list[dict]:
             if cur is None:
                 cur = _new(u)
             cur["main"] = spk
+            cur["personId"] = u.get("personId", "")
             _absorb(cur, u)
             cur["agendaTitle"] = cur["agendaTitle"] or u.get("agendaTitle", "")
             cur["originTextID"] = cur["originTextID"] or u.get("originTextID", "")
@@ -58,6 +59,7 @@ def merge_turns(turns: list[dict], *, chain: bool, K: int = 2) -> list[dict]:
             redes.append(cur)
             cur = _new(u)
             cur["main"] = spk
+            cur["personId"] = u.get("personId", "")
             _absorb(cur, u)
             cur["speaker"] = u.get("speaker", "")
         else:
@@ -79,6 +81,7 @@ def merge_turns(turns: list[dict], *, chain: bool, K: int = 2) -> list[dict]:
                 redes.append(cur)
                 cur = _new(u)
                 cur["main"] = spk
+                cur["personId"] = u.get("personId", "")
                 _absorb(cur, u)
                 cur["speaker"] = u.get("speaker", "")
     if cur and cur["main"]:
@@ -86,6 +89,7 @@ def merge_turns(turns: list[dict], *, chain: bool, K: int = 2) -> list[dict]:
     return [{
         "index": i + 1,
         "matchKey": r["main"],
+        "personId": r["personId"],
         "speaker": r["speaker"],
         "agendaTitle": r["agendaTitle"],
         "originTextID": r["originTextID"],

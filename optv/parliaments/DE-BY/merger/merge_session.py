@@ -217,9 +217,13 @@ def merge_session(session: str, config, options) -> Path:
     if turns:
         spine_keys = [_match_key(sp.get("redner") or sp.get("speaker_raw") or "")
                       for sp in speeches]
+        # Member ids from the overview's and the protocol's profile links decide
+        # where both sides have one; the surname covers the rest (ministers).
         matched = join_text_to_spine(merged, spine_keys, turns,
                                      creator=PROCEEDINGS_CREATOR,
-                                     license=PROCEEDINGS_LICENSE)
+                                     license=PROCEEDINGS_LICENSE,
+                                     spine_person_ids=[sp.get("profile_id") or ""
+                                                       for sp in speeches])
         logger.info(f"{session}: matched {matched}/{len(merged)} speeches to "
                     f"{len(turns)} proceedings turns")
 

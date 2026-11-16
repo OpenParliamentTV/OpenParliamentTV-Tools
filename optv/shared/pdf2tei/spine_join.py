@@ -95,16 +95,35 @@ def _text_body(turn: dict, speaker: str, sentences: list) -> list[dict]:
     return out
 
 
+def _same_speaker(a: tuple[str, str], b: tuple[str, str]) -> bool:
+    """``(matchKey, personId)`` pairs: the person ids decide when both sides
+    have one (namesakes stay apart, label variants still match); otherwise the
+    surname keys must be equal and non-empty."""
+    (a_key, a_id), (b_key, b_id) = a, b
+    if a_id and b_id:
+        return a_id == b_id
+    return bool(a_key) and a_key == b_key
+
+
 def join_text_to_spine(merged: list[dict], spine_keys: list[str], turns: list[dict],
-                       *, creator: str, license: str, language: str = "de") -> int:
+                       *, creator: str, license: str, language: str = "de",
+                       spine_person_ids: list[str] | None = None) -> int:
     """Surname NW join; fill ``textContents`` + ``debug.proceedingIndex`` on
     matched spine records. ``spine_keys[i]`` is the match key for ``merged[i]``.
+    With ``spine_person_ids`` (a parliament-native person id per spine record,
+    "" where there is none) a pair whose spine record and turn both carry a
+    ``personId`` matches on that id instead of the surname.
     Returns the number of matched speeches. The spine order/identity is untouched.
     """
     if not turns:
         return 0
-    text_keys = [t.get("matchKey") or "" for t in turns]
-    mapping = dict(align_equal_keys(spine_keys, text_keys))
+    if spine_person_ids is None:
+        text_keys = [t.get("matchKey") or "" for t in turns]
+        mapping = dict(align_equal_keys(spine_keys, text_keys))
+    else:
+        a = [(k or "", str(i or "")) for k, i in zip(spine_keys, spine_person_ids)]
+        b = [(t.get("matchKey") or "", t.get("personId") or "") for t in turns]
+        mapping = dict(align_equal_keys(a, b, equal=_same_speaker))
     for si, ti in mapping.items():
         turn = turns[ti]
         sentences = turn.get("sentences") or []

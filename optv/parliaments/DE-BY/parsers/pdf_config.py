@@ -37,6 +37,9 @@ CONFIG = ParliamentConfig(
         r"Ergebnis\b|Änderungsantr|Änderungsanträge|Entschließungsantr|Drucksache\b|"
         r"und\b|hierzu\b|dazu\b)\b", re.IGNORECASE),
     speaker_inline=True,
+    # Speaker labels link to the member's page (…/profil/{ID}), the same id the
+    # Plenum Online overview carries per speech.
+    person_link=re.compile(r"/abgeordnete-von-a-z/profil/\d+/?$"),
     toc_layout="indented",
     merge_chain=False,   # spine splits turns: one clip = chair + one speaker
 )
