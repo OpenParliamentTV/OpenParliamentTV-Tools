@@ -6,13 +6,14 @@ Sitzung's per-subject agenda + per-speech speaker timings, then parses, merges a
 NEL-links the per-Sitzung speeches through the shared pipeline. Stage
 orchestration lives in ``optv.shared.workflow``.
 
-Verbatim text comes from the broadcaster's time-aligned WebVTT subtitles per
-subject (``GET /vtt/{subject_id}``), parsed by ``parsers/vtt2json.py`` and
-attached onto the spine by ``speechIndex`` in the merger. Because the VTT cues
-are already time-aligned, ``align`` (aeneas) is NOT needed and stays unregistered;
-only ``ner`` is wired (it runs on the attached text). This VTT text path is
-**experimental and unvalidated** — no Whisper-QC / fidelity audit has cleared the
-per-subject VTT calibration, and it needs refinement before platform integration.
+Text comes from the Plenar-TV subtitles per agenda item (``GET
+/vtt/{subject_id}``): the plenary protocol text without interjections, with cue
+times counted from the item start. ``parsers/vtt2json.py`` places the cues in
+the stream and splits them by speech; the merger attaches them onto the spine by
+``speechIndex``. Because the cues carry times, ``align`` (aeneas) is NOT needed
+and stays unregistered; only ``ner`` is wired (it runs on the attached text).
+This VTT text path is **experimental and unvalidated** and needs refinement
+before platform integration.
 """
 
 import logging

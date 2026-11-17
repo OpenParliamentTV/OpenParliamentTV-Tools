@@ -204,7 +204,7 @@ def attach_text_by_index(merged: list[dict], turns: list[dict],
     """Attach text to spine records by ``speechIndex`` (1:1, no alignment needed).
 
     Used when the text source is already aligned to the spine — e.g. DE-NI, whose
-    broadcaster WebVTT is sliced onto each clip by time, so each turn already
+    Plenar-TV subtitles are split onto each clip by time, so each turn already
     carries the spine ``speechIndex`` it belongs to. Returns the match count.
     """
     by_index = {t.get("speechIndex"): t for t in turns if t.get("speechIndex") is not None}

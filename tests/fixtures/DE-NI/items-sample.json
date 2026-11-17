@@ -11,7 +11,10 @@
       "subject_id": "aaaa1111-0000-0000-0000-000000000001",
       "subject_number": 1,
       "item_number": 11.0,
-      "item_beginning": "09:00:00",
+      "item_beginning": "09:01:36",
+      "together_status": 0,
+      "item_start_secs": 380.0,
+      "item_stop_secs": 506.0,
       "title": "Mitteilungen der Präsidentin",
       "subject_art": "",
       "consultation_type": "",
@@ -21,18 +24,25 @@
       "stream_file_name": "session30_meeting80_85516",
       "video_start_time": "2025-12-16T07:55:16.638000",
       "video_offset": 0,
-      "vtt_offset": 0,
+      "vtt_file": "2025-12-16-TOP11-1.vtt",
+      "vtt_offset": 1.0,
       "speeches": [
         {"timing_id": "t-pres-1", "abg_id": 202835, "surname": "Otte-Kinast",
-         "name": "Barbara", "fraktion": "CDU", "speech_type": "Mitteilungen",
-         "start_secs": 382.0, "stop_secs": 505.0}
-      ]
+         "name": "Barbara", "fraktion": "CDU", "function": "Landtagspräsidentin",
+         "speech_type": "Mitteilungen", "start_secs": 382.0, "stop_secs": 505.0}
+      ],
+      "vtt_subject_id": "aaaa1111-0000-0000-0000-000000000001",
+      "vtt_source_offset": 1.0,
+      "segment_secs": 1.0
     },
     {
       "subject_id": "bbbb2222-0000-0000-0000-000000000002",
       "subject_number": 1,
       "item_number": 19.0,
-      "item_beginning": "09:10:00",
+      "item_beginning": "09:06:00",
+      "together_status": 1,
+      "item_start_secs": 650.0,
+      "item_stop_secs": 1310.0,
       "title": "Entwurf eines Gesetzes über die Feststellung des Haushaltsplans 2026 (Haushaltsgesetz 2026)",
       "subject_art": "Gesetzentwurf",
       "consultation_type": "Abschließende Beratung",
@@ -42,15 +52,79 @@
       "stream_file_name": "session30_meeting80_85516",
       "video_start_time": "2025-12-16T07:55:16.638000",
       "video_offset": 0,
+      "vtt_file": "",
       "vtt_offset": 0,
       "speeches": [
         {"timing_id": "t-mp-2", "abg_id": 200001, "surname": "Mustermann",
-         "name": "Erika", "fraktion": "SPD", "speech_type": "RZ",
-         "start_secs": 1000.0, "stop_secs": 1300.0},
+         "name": "Erika", "fraktion": "SPD", "function": "",
+         "speech_type": "RZ", "start_secs": 1000.0, "stop_secs": 1300.0},
         {"timing_id": "t-min-3", "abg_id": 200002, "surname": "Heere",
-         "name": "Gerald", "fraktion": "", "speech_type": "Antwort",
-         "start_secs": 700.0, "stop_secs": 999.0}
-      ]
+         "name": "Gerald", "fraktion": "", "function": "Finanzminister",
+         "speech_type": "Antwort", "start_secs": 700.0, "stop_secs": 999.0}
+      ],
+      "joint_subjects": [
+        {"subject_id": "cccc3333-0000-0000-0000-000000000003", "item_number": 20.0,
+         "subject_number": 1, "title": "Entwurf eines Haushaltsbegleitgesetzes 2026"}
+      ],
+      "vtt_subject_id": "cccc3333-0000-0000-0000-000000000003",
+      "vtt_source_offset": 3.0,
+      "segment_secs": 1.0
+    },
+    {
+      "subject_id": "cccc3333-0000-0000-0000-000000000003",
+      "subject_number": 1,
+      "item_number": 20.0,
+      "item_beginning": "09:06:00",
+      "together_status": 3,
+      "item_start_secs": 650.0,
+      "item_stop_secs": 1310.0,
+      "title": "Entwurf eines Haushaltsbegleitgesetzes 2026",
+      "subject_art": "Gesetzentwurf",
+      "consultation_type": "Abschließende Beratung",
+      "applicant": "Landesregierung",
+      "incoming_print": "",
+      "incoming_print_link": "",
+      "stream_file_name": "session30_meeting80_85516",
+      "video_start_time": "2025-12-16T07:55:16.638000",
+      "video_offset": 0,
+      "vtt_file": "2025-12-16-TOP20-1.vtt",
+      "vtt_offset": 3.0,
+      "speeches": [],
+      "joint_with": "bbbb2222-0000-0000-0000-000000000002",
+      "vtt_subject_id": "",
+      "vtt_source_offset": 0,
+      "segment_secs": 1.0
+    },
+    {
+      "subject_id": "dddd4444-0000-0000-0000-000000000004",
+      "subject_number": 1,
+      "item_number": 21.0,
+      "item_beginning": "12:16:02",
+      "together_status": 0,
+      "item_start_secs": 330.0,
+      "item_stop_secs": 900.0,
+      "title": "Haushaltsberatungen 2026 - Haushaltsschwerpunkt: Finanzen",
+      "subject_art": "",
+      "consultation_type": "",
+      "applicant": "",
+      "incoming_print": "",
+      "incoming_print_link": "",
+      "stream_file_name": "session30_meeting80_141032",
+      "video_start_time": "2025-12-16T11:10:32.000000",
+      "video_offset": 0,
+      "vtt_file": "",
+      "vtt_offset": 0,
+      "speeches": [
+        {"timing_id": "t-vp-4", "abg_id": 200003, "surname": "Tippelt",
+         "name": "Sabine", "fraktion": "SPD", "function": "Vizepräsidentin",
+         "speech_type": "Mitteilungen", "start_secs": 335.0, "stop_secs": 425.0},
+        {"timing_id": "t-mp-5", "abg_id": 200004, "surname": "Bock",
+         "name": "André", "fraktion": "CDU", "function": "",
+         "speech_type": "RZ", "start_secs": 437.0, "stop_secs": 800.0}
+      ],
+      "vtt_subject_id": "",
+      "vtt_source_offset": 0,
+      "segment_secs": 10.0
     }
   ]
 }

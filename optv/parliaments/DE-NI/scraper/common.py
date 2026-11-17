@@ -3,8 +3,7 @@
 Niedersachsen's Plenar-TV (``plenartv.de``) is a SvelteKit single-page app, but
 it is backed by a **public, unauthenticated** typed REST API at
 ``https://api.plenartv.de`` — so we ignore the HTML entirely and call the API
-directly (no headless browser, no scraping). The research doc's "no
-machine-readable access / no official API" is wrong.
+directly (no headless browser, no scraping).
 
 API surface we use (all GET, no auth for reads):
 
@@ -15,14 +14,22 @@ API surface we use (all GET, no auth for reads):
   Sitzung — but **without** ``speakerTimings``.
 - ``/subject/{subject_id}`` → one subject **with** ``speakerTimings[]`` (the
   per-speech spine: ``abg_id``, ``surname``, ``name``, ``fraktion``,
-  ``speechType``, ``startTimeInStreamSecs``, ``stopTimeInStreamSecs``).
-- ``/vtt/{subject_id}`` → ``text/vtt`` time-aligned subtitles (when present; not
-  used in v1).
+  ``function`` (role of chair and government speakers), ``speechType``,
+  ``startTimeInStreamSecs``, ``stopTimeInStreamSecs``), plus the item's
+  ``itemStartTimeInStreamSecs`` / ``itemStopTimeInStreamSecs``, ``vttFile`` /
+  ``vttOffset`` and ``item.togetherStatus`` (1/2/3 = first/middle/last item of
+  a joint debate, whose items list the same speaker timings).
+- ``/vtt/{subject_id}`` → ``text/vtt`` Plenar-TV subtitles of the agenda item:
+  the plenary protocol text without interjections, cue times counted from the
+  item start (parsed by ``parsers/vtt2json.py``).
 
-Per-speech video is a server-side-clipped HLS playlist (verified, no auth):
+Per-speech video is a server-side-clipped HLS playlist (no auth):
 ``{VOD}/stream/{streamFileName}/index.m3u8?start={sec}&end={sec}`` where the
-offsets are the speaker timing's stream seconds (+ the subject's ``video.offset``,
-usually 0). The clip URL *is* the speech — no media fragment needed.
+offsets are the speaker timing's stream seconds. The server returns whole HLS
+segments, ``ceil(start/d) - 1`` to ``ceil(end/d) - 1`` (0-based, ``d`` = the
+stream's segment length, 1 s or 10 s), so the clip starts up to one segment
+before the requested second (:func:`clip_start_secs`). The web app's player
+page for the same range (:func:`player_page_url`) is the per-speech source page.
 
 We use stdlib urllib with a polite User-Agent + a small retry/backoff loop.
 """
@@ -31,6 +38,8 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import re
 import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -133,15 +142,16 @@ def session_key(period: int, sitzung: int) -> str:
 
 
 def session_page_url(period: int, tagungsabschnitt: int, sitzung: int) -> str:
-    """The public Plenar-TV web page for a Sitzung (used as ``sourcePage`` base)."""
+    """The public Plenar-TV web page for a Sitzung (the session ``sourceURI``)."""
     return f"{WEB_BASE}/tagungsabschnitt/{period}-{tagungsabschnitt}?sitzung={sitzung}"
 
 
 def video_clip_uri(stream_file_name: str, start_sec, end_sec) -> str:
-    """Per-speech server-side-clipped HLS playlist URL (verified, no auth).
+    """Per-speech server-side-clipped HLS playlist URL (no auth).
 
     ``{VOD}/stream/{streamFileName}/index.m3u8?start={sec}&end={sec}`` — the clip
-    boundaries are integer stream seconds. Returns ``""`` if the stream file or
+    boundaries are integer stream seconds (the server rounds them out to whole
+    segments, see :func:`clip_start_secs`). Returns ``""`` if the stream file or
     bounds are missing.
     """
     if not stream_file_name or start_sec is None or end_sec is None:
@@ -151,5 +161,48 @@ def video_clip_uri(stream_file_name: str, start_sec, end_sec) -> str:
 
 
 def vtt_uri(subject_id: str) -> str:
-    """Per-subject WebVTT subtitle URL (time-aligned text; parsed by vtt2json)."""
+    """Per-subject WebVTT subtitle URL (parsed by vtt2json)."""
     return f"{API_BASE}/vtt/{subject_id}" if subject_id else ""
+
+
+def player_page_url(stream_file_name: str, start_sec, end_sec) -> str:
+    """The Plenar-TV player page that plays one speech's clip (its source page)."""
+    if not stream_file_name or start_sec is None or end_sec is None:
+        return ""
+    return (f"{WEB_BASE}/player?file={stream_file_name}"
+            f"&startPos={int(round(float(start_sec)))}&endPos={int(round(float(end_sec)))}")
+
+
+_TARGET_DURATION = re.compile(r"#EXT-X-TARGETDURATION:\s*(\d+(?:\.\d+)?)")
+
+
+def get_segment_secs(stream_file_name: str, *, retry_count: int = 10) -> float | None:
+    """HLS segment length of a stream (1 s or 10 s), from a one-segment clip.
+
+    ``None`` when the stream does not answer (unknown stream name).
+    """
+    if not stream_file_name:
+        return None
+    req = Request(f"{VOD_BASE}/stream/{stream_file_name}/index.m3u8?start=0&end=1",
+                  headers={"User-Agent": USER_AGENT})
+    body = _request(req, retry_count=retry_count, timeout=60.0, base_delay=1.0)
+    if body is None:
+        return None
+    m = _TARGET_DURATION.search(body.decode("utf-8", "replace"))
+    return float(m.group(1)) if m else None
+
+
+def clip_start_secs(start_sec, segment_secs) -> float | None:
+    """Stream second at which the clip ``?start={start_sec}`` actually begins.
+
+    The VOD server starts the clip with segment ``ceil(start/d) - 1``, i.e. up to
+    one segment before the requested second (``d`` = segment length). Without a
+    known segment length the requested second is returned unchanged.
+    """
+    if start_sec is None:
+        return None
+    start = int(round(float(start_sec)))
+    if not segment_secs:
+        return float(start)
+    d = float(segment_secs)
+    return max(0.0, d * (math.ceil(start / d) - 1))

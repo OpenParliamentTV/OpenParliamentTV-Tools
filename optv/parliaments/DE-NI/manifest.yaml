@@ -5,18 +5,18 @@ locale:
   spacy_model: de_core_news_md
   aeneas_language: deu
   entityfishing_language: de
-periods: [19]
+periods: [18, 19]
 # The Plenar-TV API (api.plenartv.de) provides a rich per-speech spine
-# (per-subject agenda + speaker timings into a per-Sitzung HLS stream + stable
-# abg_id speaker IDs). Unlike the PDF-locked state parliaments, DE-NI's source
-# exposes machine-readable text: time-aligned WebVTT subtitles per subject
-# (GET /vtt/{subject_id}), parsed by parsers/vtt2json.py and attached onto the
-# spine by speechIndex in the merger (attach_text_by_index). Because the VTT cues
-# are already time-aligned, sentence timings come straight from the subtitles —
-# `align` (aeneas) is NOT needed and deliberately stays unregistered; only `ner`
-# is added. NB this VTT text path is EXPERIMENTAL and UNVALIDATED — no Whisper-QC
-# / fidelity audit has cleared it (the per-subject VTT calibration is fragile) and
-# it needs substantial refinement before platform integration.
+# (per-subject agenda + speaker timings into the Sitzung's HLS streams + stable
+# abg_id speaker IDs) from WP 18. From WP 19 it also has subtitles per agenda
+# item (GET /vtt/{subject_id}): the plenary protocol text without interjections,
+# cue times counted from the item start. parsers/vtt2json.py places them in the
+# stream and splits them by speech; the merger attaches them onto the spine by
+# speechIndex (attach_text_by_index). Because the cues carry times, `align`
+# (aeneas) is NOT needed and deliberately stays unregistered; only `ner` is
+# added. NB this VTT text path is EXPERIMENTAL and UNVALIDATED and needs
+# refinement before platform integration. WP 18 has no subtitles (video +
+# speakers only).
 supported_stages: [download, parse, merge, nel, ner]
 entity_dump_url: ""
 default_retry_count: 20

@@ -9,8 +9,8 @@ Two sources, joined on German label:
    variants. The Plenar-TV API already names speakers ``name`` (given) +
    ``surname`` (family), and the parser joins them in natural ``Firstname
    Lastname`` order, so no reordering is needed for label matching.
-2. **Hand-curated party list** for the factions represented in WP 19 (since the
-   October 2022 election): SPD, CDU, Bündnis 90/Die Grünen, AfD. The faction
+2. **Hand-curated party list** for the factions represented in WP 18 and WP 19:
+   SPD, CDU, Bündnis 90/Die Grünen, AfD, and FDP (WP 18 only). The faction
    label as it appears in the API (``data`` field ``fraktion``) is included as a
    label/alias so the cleaned-label NEL lookup hits.
 
@@ -23,8 +23,8 @@ this is the canonical source; the workflow falls back to it via the local
 ``metadata/entities.json`` path picked up by ``optv.shared.nel.get_nel_data``.
 
 NEL coverage caveat (the DE-HH / DE-SH / DE-BY / DE-BW class): ``P39 wd:Q17521638``
-misses current WP-19 members whose items lack the statement, and government
-members (Ministerinnen/Minister) who are not sitting MdL. The API does expose a
+misses members whose items lack the statement, and government members
+(Ministerinnen/Minister) who are not sitting MdL. The API does expose a
 stable ``abg_id`` per speaker — a future precise abg_id→Wikidata bridge would
 close the residual gap; v1 stays name-based.
 """
@@ -67,9 +67,9 @@ SELECT DISTINCT ?person ?label_de ?label_en WHERE {
 }
 """
 
-# Factions represented in WP 19 (since the October 2022 election). The ``fraktion``
-# string in the API (e.g. "CDU", "Bündnis 90/Die Grünen") is matched against
-# label + aliases. Ministers and "fraktionslos" carry no party and stay unlinked.
+# Factions represented in WP 18 and WP 19. The ``fraktion`` string in the API
+# (e.g. "CDU", "Bündnis 90/Die Grünen") is matched against label + aliases.
+# "Fraktionslos" and government members without a party stay unlinked.
 DE_NI_PARTIES: list[dict] = [
     {"id": "Q49768", "label": "SPD", "aliases": [
         "Sozialdemokratische Partei Deutschlands",
@@ -86,6 +86,9 @@ DE_NI_PARTIES: list[dict] = [
     ]},
     {"id": "Q6721203", "label": "AfD", "aliases": [
         "Alternative für Deutschland",
+    ]},
+    {"id": "Q13124", "label": "FDP", "aliases": [
+        "Freie Demokratische Partei",
     ]},
 ]
 

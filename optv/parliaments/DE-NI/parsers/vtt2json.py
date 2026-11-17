@@ -1,12 +1,24 @@
 #! /usr/bin/env python3
 """DE-NI proceedings text from the Plenar-TV WebVTT subtitles.
 
-DE-NI has a PDF protocol, but the Plenar-TV API also exposes time-aligned WebVTT per
-subject (``GET /vtt/{subject_id}``). The per-speech media spine carries
-``subject_id`` + meeting-relative ``start_secs``/``stop_secs``; each subject VTT
-is calibrated onto that spine (see :func:`calibrate`) and its cues are assigned
-to the speech whose window contains them. The result is per-speech text already
-keyed by ``speechIndex`` — the merger attaches it 1:1, no NW join.
+Plenar-TV publishes one WebVTT file per agenda item (``GET /vtt/{subject_id}``).
+Its text is the plenary protocol nearly word for word, without interjections
+and without speaker labels. The web player plays the agenda item as the clip
+``?start={itemStartTimeInStreamSecs}``, which the VOD server starts at a segment
+boundary up to one segment early (``clip_start_secs``), and shows every cue
+shifted by the item's ``vttOffset``. ``vttOffset`` is set per item to make up
+for that early start (and, for some items, for a shifted subtitle file), so a
+cue's stream second is ``clip_start_secs(itemStart) + vttOffset + cue``
+(:func:`vtt_anchor`). Checked against Whisper on 47 agenda items of 2025 and
+2026 sittings: the per-item median deviation from the audio is under 0.5 s.
+
+Each cue goes to exactly one speech: the speech window ``[start, stop)`` that
+holds the cue's midpoint, the latest-starting one where windows overlap (an
+intervention inside a speech). Cues between speech windows (the chair handing
+over) are dropped. Sentence timings are relative to the start of the speech's
+clip, which the VOD server rounds down to a segment boundary
+(``clip_start_secs``). The result is per-speech text keyed by ``speechIndex``;
+the merger attaches it 1:1.
 
 Writes ``original/proceedings/{sid}-proceedings.json``.
 """
@@ -16,7 +28,6 @@ import argparse
 import json
 import logging
 import re
-import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -28,10 +39,14 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.DE-NI.parsers"
 
+from ..scraper.common import clip_start_secs, fetch, vtt_uri
+
 logger = logging.getLogger(__name__)
 
-API = "https://api.plenartv.de/vtt"
 _TS = re.compile(r"(\d\d):(\d\d):(\d\d)[.,](\d+)\s*-->\s*(\d\d):(\d\d):(\d\d)[.,](\d+)")
+
+# Warn when the VTT and the agenda item differ in length by more than this.
+LENGTH_MISMATCH_SECS = 30.0
 
 
 def _vtt_cache_dir(config) -> Path:
@@ -41,13 +56,15 @@ def _vtt_cache_dir(config) -> Path:
 
 
 def fetch_vtt(subject_id: str, cache_dir: Path) -> str:
-    """Cached ``GET /vtt/{subject_id}`` via curl (avoids system-python SSL issues)."""
+    """Cached ``GET /vtt/{subject_id}``; ``""`` when the item has no subtitles."""
     p = cache_dir / f"{subject_id}.vtt"
     if not p.exists():
-        r = subprocess.run(["curl", "-s", "-m", "40", f"{API}/{subject_id}"],
-                           capture_output=True, text=True)
-        p.write_text(r.stdout, encoding="utf-8")
-    return p.read_text(encoding="utf-8-sig")
+        body = fetch(vtt_uri(subject_id), retry_count=5)
+        if body is None:
+            return ""
+        p.write_bytes(body)
+    txt = p.read_text(encoding="utf-8-sig")
+    return txt if txt.lstrip().startswith("WEBVTT") else ""
 
 
 def parse_vtt(txt: str) -> list[tuple[float, float, str]]:
@@ -69,44 +86,39 @@ def parse_vtt(txt: str) -> list[tuple[float, float, str]]:
     return cues
 
 
-def _pearson(xs, ys):
-    n = len(xs)
-    if n < 3:
-        return 0.0
-    mx, my = sum(xs) / n, sum(ys) / n
-    num = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
-    dx = sum((x - mx) ** 2 for x in xs) ** 0.5
-    dy = sum((y - my) ** 2 for y in ys) ** 0.5
-    return num / (dx * dy) if dx and dy else 0.0
+def vtt_anchor(item_start_secs, vtt_offset, segment_secs=None) -> float:
+    """Stream second of cue time 0 of an agenda item's VTT.
+
+    The web player's item clip starts at ``clip_start_secs(item_start_secs)``
+    and adds ``vtt_offset`` to every cue.
+    """
+    return clip_start_secs(item_start_secs, segment_secs) + float(vtt_offset or 0)
 
 
-def calibrate(rs: list[dict], cues: list) -> float:
-    """Find each subject-VTT's offset into meeting time (``clip_start``).
+def assign_cues(recs: list[dict], cues: list, anchor: float) -> dict[int, list]:
+    """Partition cues onto speeches → ``{speech_index: [(stream_start, stream_end, text)]}``.
 
-    The cue timestamps are subject-relative (start ~0); meeting time = cue +
-    clip_start. Sweep the valid range ``[max_stop − vtt_len, min_start]`` and pick
-    the offset maximising the correlation between each speech's duration and the
-    amount of VTT text it receives — robust to VTT preamble/gaps/closing (a fixed
-    end-anchor was off by hundreds of seconds on 19079)."""
-    mn = min(r["start_secs"] for r in rs)
-    mx = max(r["stop_secs"] for r in rs)
-    lo = mx - max(c[1] for c in cues)
-    hi = mn
-    if len(rs) < 3 or hi - lo < 8:
-        return lo
-    durs = [r["stop_secs"] - r["start_secs"] for r in rs]
-    best = (-1.0, lo)
-    cs = lo
-    while cs <= hi + 1:
-        lens = []
-        for r in rs:
-            a, b = r["start_secs"] - cs, r["stop_secs"] - cs
-            lens.append(sum(len(t) for (st, en, t) in cues if a - 0.5 <= st < b))
-        c = _pearson(durs, lens)
-        if c > best[0]:
-            best = (c, cs)
-        cs += 5
-    return best[1]
+    A cue belongs to the speech window ``[start_secs, stop_secs)`` holding its
+    midpoint (stream time = ``anchor`` + cue time); where windows overlap, the
+    latest-starting window wins. Cues outside every window are dropped.
+    """
+    windows = sorted(
+        ((float(r["start_secs"]), float(r["stop_secs"]), r["speech_index"])
+         for r in recs if r.get("start_secs") is not None and r.get("stop_secs") is not None),
+        key=lambda w: (w[0], w[2]))
+    out: dict[int, list] = defaultdict(list)
+    for st, en, text in cues:
+        a, b = anchor + st, anchor + en
+        mid = (a + b) / 2
+        owner = None
+        for ws, we, idx in windows:
+            if ws > mid:
+                break
+            if mid < we:
+                owner = idx
+        if owner is not None:
+            out[owner].append((a, b, text))
+    return out
 
 
 def build(config, session: str) -> dict:
@@ -116,32 +128,43 @@ def build(config, session: str) -> dict:
         recs = recs.get("data", recs)
     cache_dir = _vtt_cache_dir(config)
 
-    by_subj: dict[str, list[dict]] = defaultdict(list)
+    by_vtt: dict[str, list[dict]] = defaultdict(list)
     for r in recs:
-        by_subj[r["subject_id"]].append(r)
+        if r.get("vtt_subject_id") and r.get("vtt_item_start_secs") is not None:
+            by_vtt[r["vtt_subject_id"]].append(r)
 
-    clip_start: dict[str, float] = {}
-    cues_of: dict[str, list] = {}
-    for sid, rs in by_subj.items():
-        cues = parse_vtt(fetch_vtt(sid, cache_dir))
-        cues_of[sid] = cues
-        clip_start[sid] = calibrate(rs, cues) if cues else 0.0
+    assigned: dict[int, list] = {}
+    anchors: dict[str, float] = {}
+    for vtt_id, rs in by_vtt.items():
+        cues = parse_vtt(fetch_vtt(vtt_id, cache_dir))
+        if not cues:
+            logger.info(f"[{session}] no subtitles for subject {vtt_id}")
+            continue
+        r0 = rs[0]
+        anchor = vtt_anchor(r0["vtt_item_start_secs"], r0.get("vtt_offset"),
+                            r0.get("segment_secs"))
+        anchors[vtt_id] = anchor
+        if r0.get("item_stop_secs") and r0.get("item_start_secs") is not None:
+            item_len = float(r0["item_stop_secs"]) - float(r0["item_start_secs"])
+            vtt_len = max(c[1] for c in cues)
+            if abs(vtt_len - item_len) > LENGTH_MISMATCH_SECS:
+                logger.warning(f"[{session}] subject {vtt_id}: VTT runs {vtt_len:.0f} s, "
+                               f"agenda item {item_len:.0f} s")
+        assigned.update(assign_cues(rs, cues, anchor))
 
     turns = []
     for r in sorted(recs, key=lambda r: r["speech_index"]):
-        sid = r["subject_id"]
-        cs = clip_start[sid]
-        a, b = r["start_secs"] - cs, r["stop_secs"] - cs
-        seg = [(st, en, t) for (st, en, t) in cues_of[sid] if a - 0.5 <= st < b]
-        # Clip-relative timings as numericStrings (schema convention; the speech
-        # starts at start_secs in meeting time, cue meeting-time is st + cs).
+        seg = assigned.get(r["speech_index"])
+        if not seg:
+            continue
+        clip0 = r.get("clip_start_secs")
+        if clip0 is None:
+            clip0 = r["start_secs"]
         sentences = [{
             "text": t,
-            "timeStart": f"{max(0.0, st + cs - r['start_secs']):.3f}",
-            "timeEnd": f"{max(0.0, en + cs - r['start_secs']):.3f}",
-        } for (st, en, t) in seg]
-        if not sentences:
-            continue
+            "timeStart": f"{max(0.0, a - clip0):.3f}",
+            "timeEnd": f"{max(0.0, b - clip0):.3f}",
+        } for (a, b, t) in seg]
         turns.append({
             "speechIndex": r["speech_index"],
             "speaker": r.get("label", ""),
@@ -151,6 +174,7 @@ def build(config, session: str) -> dict:
         "meta": {
             "session": session,
             "parliament": "DE-NI",
+            "vttAnchors": anchors,
             "processing": {"parse_proceedings": datetime.utcnow().isoformat(timespec="seconds")},
         },
         "data": turns,

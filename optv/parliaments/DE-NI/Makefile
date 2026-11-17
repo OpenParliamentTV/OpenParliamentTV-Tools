@@ -5,10 +5,10 @@ DATADIR := $(BASEDIR)../../../../OpenParliamentTV-Data-DE-NI
 MEDIADIR := $(DATADIR)/original/media
 MERGEDDIR := $(DATADIR)/cache/merged
 
-# Media is one intermediate JSON per Sitzung (19NNN-media.json), built from the
-# Plenar-TV REST API (api.plenartv.de). There is no proceedings stream merged for
-# DE-NI v1 (VTT subtitles / PDF Plenarprotokoll available but not yet wired).
-MEDIA_DEST := $(wildcard $(MEDIADIR)/19*-media.json)
+# Media is one intermediate JSON per Sitzung ({WP}NNN-media.json, WP 18 and 19),
+# built from the Plenar-TV REST API (api.plenartv.de); the merger attaches the
+# Plenar-TV subtitle text (WP 19).
+MEDIA_DEST := $(wildcard $(MEDIADIR)/1[89]*-media.json)
 MERGE_DEST := $(patsubst $(MEDIADIR)/%-media.json,$(MERGEDDIR)/%-merged.json,$(MEDIA_DEST))
 
 all: download $(MERGE_DEST)
@@ -24,5 +24,5 @@ debug:
 	-echo "MERGE_DEST: $(MERGE_DEST)"
 
 clean:
-	$(RM) $(MEDIADIR)/19*-media.json
-	$(RM) $(MERGEDDIR)/19*-merged.json
+	$(RM) $(MEDIADIR)/1[89]*-media.json
+	$(RM) $(MERGEDDIR)/1[89]*-merged.json

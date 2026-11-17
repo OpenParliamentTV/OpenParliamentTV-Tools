@@ -3,20 +3,27 @@
 
 The Plenar-TV REST API delivers the agenda (subjects) and the per-speech spine
 (speaker timings) together, so the "merge" here is a single-source translation
-pass (no Needleman-Wunsch). Verbatim text comes from the broadcaster's
-time-aligned WebVTT subtitles: ``parsers/vtt2json.py`` parses and calibrates each
-subject VTT onto the spine, and ``attach_text_by_index`` attaches the cue-timed
-sentences onto each speech here (speeches with no VTT match keep
-``textContents: []``). Because the cues are already time-aligned, no aeneas step
-is needed. This VTT text path is **experimental and unvalidated** — see manifest.
+pass (no Needleman-Wunsch). Text comes from the Plenar-TV subtitles (the
+plenary protocol text without interjections, timed per agenda item):
+``parsers/vtt2json.py`` places each item's cues in the stream and splits them
+by speech, and ``attach_text_by_index`` attaches the cue-timed sentences onto
+each speech here (speeches with no subtitle text keep ``textContents: []``).
+Because the cues carry times, no aeneas step is needed. This VTT text path is
+**experimental and unvalidated** — see manifest.
 
 Per-speech video is a **server-side-clipped HLS playlist** addressed directly:
-``{VOD}/stream/{streamFileName}/index.m3u8?start={sec}&end={sec}`` (the clip URL
-*is* the speech, so no ``#t=start,end`` media fragment is needed, unlike DE-HH).
-``sourcePage`` is made unique per speech (``…#rede-{timingId}``) so the platform's
-sourcePage-keyed speech identity does not collapse. Per-speech
-``dateStart``/``dateEnd`` are **real wall-clock** UTC (stream ``startTime`` +
-offset), so ``debug.timesAreVideoRelative`` is ``false``.
+``{VOD}/stream/{streamFileName}/index.m3u8?start={sec}&end={sec}``, so no
+``#t=start,end`` media fragment is needed. The server rounds the clip out to
+whole HLS segments; ``media.additionalInformation.clipStartInStreamSecs`` is the
+stream second where it actually begins, and sentence timings count from there.
+``sourcePage`` is the Plenar-TV player page of the same range (unique per
+speech; the platform keys speech identity on it). A jointly debated agenda item
+shares its speeches with the other items of the debate: each speech is emitted
+once, under the first item, and the others are listed in
+``debug.jointAgendaItems``. Per-speech ``dateStart``/``dateEnd`` are **real
+wall-clock** UTC (stream ``startTime`` + offset; estimated to the minute for WP
+18, ``debug.streamStartEstimated``), so ``debug.timesAreVideoRelative`` is
+``false``.
 """
 
 from __future__ import annotations
@@ -38,7 +45,7 @@ if __package__ is None or __package__ == "":
 from optv.shared.agenda_types import classify_de_ni
 
 from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
-from ..scraper.common import video_clip_uri, vtt_uri
+from ..scraper.common import player_page_url, video_clip_uri, vtt_uri
 from optv.parliaments import get_rights as _get_rights
 from optv.shared.pdf2tei.spine_join import load_turns, attach_text_by_index
 from optv.shared.meta import build_meta, now_iso
@@ -47,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 PARLIAMENT_ID = "DE-NI"
 SOURCE_URI = _get_rights("DE-NI", stream="media")["sourceURI"]
-# Broadcaster WebVTT subtitles, time-aligned to the clips by Plenar-TV.
+# Plenar-TV subtitles (protocol text, timed per agenda item).
 PROCEEDINGS_CREATOR = _get_rights("DE-NI", stream="proceedings")["creator"]
 PROCEEDINGS_LICENSE = _get_rights("DE-NI", stream="proceedings")["license"]
 
@@ -116,13 +123,16 @@ def _build_media(speech: dict) -> dict:
     stream = speech.get("stream_file_name") or ""
     start = speech.get("start_secs")
     stop = speech.get("stop_secs")
-    page = speech.get("session_page_url") or SOURCE_URI
     timing_id = speech.get("timing_id") or ""
+    # sourcePage must be unique per speech (the platform keys speech identity
+    # on it): the player page of the speech's own clip range.
+    page = player_page_url(stream, start, stop)
+    if not page:
+        session_page = speech.get("session_page_url") or SOURCE_URI
+        page = f"{session_page}#rede-{timing_id}" if timing_id else session_page
     media: dict = {
         "videoFileURI": video_clip_uri(stream, start, stop),
-        # sourcePage must be unique per speech (the platform keys speech
-        # identity on it); anchor each speech by its speakerTiming UUID.
-        "sourcePage": f"{page}#rede-{timing_id}" if timing_id else page,
+        "sourcePage": page,
         "creator": MEDIA_CREATOR,
         "license": MEDIA_LICENSE,
         "originMediaID": speech.get("speech_id") or timing_id,
@@ -132,14 +142,23 @@ def _build_media(speech: dict) -> dict:
         extras["startInStreamSecs"] = float(start)
     if stop is not None:
         extras["stopInStreamSecs"] = float(stop)
+    if speech.get("clip_start_secs") is not None:
+        extras["clipStartInStreamSecs"] = float(speech["clip_start_secs"])
     extras["streamFileName"] = stream
-    subject_id = speech.get("subject_id") or ""
-    if subject_id:
-        # Time-aligned WebVTT subtitles for this subject (parsed by vtt2json and
-        # attached as textContents; the URI is also exposed for downstream use).
-        extras["subtitleVttURI"] = vtt_uri(subject_id)
+    vtt_subject = speech.get("vtt_subject_id") or ""
+    if vtt_subject:
+        # The subtitles the text was taken from (this item's or, in a joint
+        # debate, another item's of the same debate).
+        extras["subtitleVttURI"] = vtt_uri(vtt_subject)
     media["additionalInformation"] = extras
     return media
+
+
+def _joint_agenda_items(speech: dict) -> list[dict]:
+    return [{
+        "id": _agenda_id(j.get("item_number"), j.get("subject_number"), j.get("title") or ""),
+        "title": (j.get("title") or "").strip(),
+    } for j in speech.get("joint_subjects") or []]
 
 
 def merge_session(session: str, config, options=None) -> Path:
@@ -202,13 +221,20 @@ def merge_session(session: str, config, options=None) -> Path:
                 "startInStreamSecs": sp.get("start_secs"),
                 "stopInStreamSecs": sp.get("stop_secs"),
                 # Per-speech dateStart/dateEnd are real wall-clock (stream
-                # startTime + offset, treated as UTC), not video-relative.
+                # startTime (UTC) + offset), not video-relative.
                 "timesAreVideoRelative": False,
             },
         }
+        if sp.get("stream_start_estimated"):
+            record["debug"]["streamStartEstimated"] = True
+        if sp.get("vtt_subject_id"):
+            record["debug"]["vttOffset"] = sp.get("vtt_offset") or 0
+        joint = _joint_agenda_items(sp)
+        if joint:
+            record["debug"]["jointAgendaItems"] = joint
         merged.append(record)
 
-    # Attach Plenar-TV WebVTT text (if parsed) onto the fixed spine by speechIndex.
+    # Attach the Plenar-TV subtitle text (if parsed) onto the spine by speechIndex.
     turns = load_turns(config, session)
     if turns:
         matched = attach_text_by_index(merged, turns, creator=PROCEEDINGS_CREATOR,

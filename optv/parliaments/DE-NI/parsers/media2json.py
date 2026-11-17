@@ -3,25 +3,34 @@
 
 Input per Sitzung (written by the scraper): ``original/media/{sid}-items.json``
 — the subjects (agenda items / TOPs) of one Sitzung, each with its title, the
-structured ``subjectArt`` / ``consultationType`` agenda metadata, the per-Sitzung
-HLS ``streamFileName`` + wall-clock stream ``startTime``, and, per speech, the
-``speakerTiming`` spine (``abg_id``, ``surname``, ``name``, ``fraktion``,
+structured ``subjectArt`` / ``consultationType`` agenda metadata, the HLS
+``streamFileName`` (+ segment length) and wall-clock stream ``startTime``, the
+item's stream range and subtitle source, and, per speech, the ``speakerTiming``
+spine (``abg_id``, ``surname``, ``name``, ``fraktion``, ``function``,
 ``speechType``, ``startTimeInStreamSecs`` / ``stopTimeInStreamSecs``).
 
 This pass flattens subjects × speeches into one record per speech and:
 
 - joins ``name`` (given) + ``surname`` (family) into a natural ``Firstname
   Lastname`` label (honorifics stripped) → ``firstname`` / ``lastname``;
-- keeps ``fraktion`` as the ``faction`` label (it is **always** the speaker's
-  party in DE-NI — even the presiding chair retains their party — unlike DE-HH's
-  overloaded function field);
-- derives a speaker ``context`` from ``speechType`` (``Mitteilungen`` → chair,
-  ``KI`` / ``Zwischenfrage`` / ``pers. Bemerkung`` → secondary, else main);
+- keeps ``fraktion`` as the ``faction`` label (the speaker's party: the chair
+  keeps theirs, government members carry theirs or none);
+- keeps ``function`` (e.g. ``Landtagspräsidentin``, ``Minister für …``) as the
+  speaker ``role``;
+- derives a speaker ``context`` from ``function`` for the chair
+  (Landtagspräsident(in) → president, (Landtags)vizepräsident(in) →
+  vice-president, Alterspräsident(in) → interim-president), else from ``speechType``
+  (``Mitteilungen`` → president, ``KI`` / ``Zwischenfrage`` / ``pers.
+  Bemerkung`` → speaker, else main-speaker);
 - keeps the stream-second offsets (``start_secs`` / ``stop_secs``) for the
-  merger's per-speech HLS clip URL;
+  merger's per-speech HLS clip URL, plus ``clip_start_secs``, the stream second
+  at which that clip actually begins;
 - derives **real wall-clock** ``start_datetime`` / ``end_datetime`` (UTC, ``Z``)
-  from the stream ``startTime`` + the offsets;
-- assigns a deterministic global ``speech_index`` ordered by stream start.
+  from the stream ``startTime`` + the offsets. WP 18 streams have no
+  ``startTime``; their start is estimated from the agenda items' local
+  ``itemBeginning`` (to the minute) and flagged ``stream_start_estimated``;
+- assigns a deterministic global ``speech_index`` in wall-clock order (a
+  Sitzung can have several streams, each counting seconds from its own start).
 
 One record per speech is written to ``original/media/{sid}-media.json``.
 """
@@ -31,10 +40,12 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import re
+import statistics
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
 from optv.parliaments import get_rights as _get_rights
 
 if __package__ is None or __package__ == "":
@@ -43,7 +54,11 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.DE-NI.parsers"
 
+from ..scraper.common import clip_start_secs
+
 logger = logging.getLogger(__name__)
+
+BERLIN = ZoneInfo("Europe/Berlin")
 
 MEDIA_CREATOR = _get_rights("DE-NI", stream="media")["creator"]
 MEDIA_LICENSE = _get_rights("DE-NI", stream="media")["license"]
@@ -81,7 +96,17 @@ def _build_label(name: str, surname: str) -> tuple[str, str, str]:
     return label, first, last
 
 
-def _context(speech_type: str) -> str:
+def _context(speech_type: str, function: str = "") -> str:
+    # The function is the role of this turn: a vice-president who speaks as a
+    # member carries no function on that speech. "Ministerpräsident" is not
+    # the chair.
+    f = (function or "").strip().lower()
+    if "vizepräsident" in f:            # Vizepräsident(in), Landtagsvizepräsidentin
+        return "vice-president"
+    if "alterspräsident" in f:
+        return "interim-president"
+    if f.startswith("landtagspräsident") or f.startswith("präsident"):
+        return "president"
     return _CONTEXT_BY_SPEECH_TYPE.get((speech_type or "").strip().lower(), "main-speaker")
 
 
@@ -96,6 +121,35 @@ def _parse_stream_start(value: str) -> datetime | None:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def _estimate_stream_starts(subjects: list[dict], iso_date: str) -> dict[str, datetime]:
+    """Stream start (UTC) per stream that has no ``startTime`` (WP 18).
+
+    ``itemBeginning`` is the local (Europe/Berlin) start of the agenda item to the
+    minute, and ``item_start_secs`` its stream second, so ``itemBeginning −
+    item_start_secs`` is the stream start. Only the first subject of an item
+    counts (the later subjects of a multi-topic item repeat the item's
+    ``itemBeginning``); the median over the stream's items absorbs the rounding.
+    """
+    if not iso_date:
+        return {}
+    cands: dict[str, list[float]] = {}
+    for subj in subjects:
+        name = subj.get("stream_file_name") or ""
+        begin = subj.get("item_beginning") or ""
+        start = subj.get("item_start_secs")
+        if not name or subj.get("video_start_time") or not begin or start is None:
+            continue
+        if str(subj.get("subject_number")) not in ("1", "1.0"):
+            continue
+        try:
+            local = datetime.fromisoformat(f"{iso_date}T{begin}").replace(tzinfo=BERLIN)
+        except ValueError:
+            continue
+        cands.setdefault(name, []).append(local.timestamp() - float(start))
+    return {name: datetime.fromtimestamp(statistics.median(ts), tz=timezone.utc)
+            for name, ts in cands.items()}
 
 
 def _iso_utc(start: datetime | None, offset_secs) -> str | None:
@@ -116,12 +170,28 @@ def parse_session(items_path: Path) -> dict | None:
     tagungsabschnitt = manifest.get("tagungsabschnitt")
     page_url = manifest.get("session_page_url", "")
 
+    subjects = manifest.get("subjects", [])
+    if subjects and any("item_start_secs" not in subj for subj in subjects):
+        logger.warning(f"{session_id}: {items_path.name} lacks the agenda items' stream "
+                       "range and subtitle source, so no subtitle text can be placed; "
+                       "re-fetch it with --download-original --force")
+    titles = {subj.get("subject_id"): subj for subj in subjects}
+    estimated_starts = _estimate_stream_starts(subjects, iso_date)
+
     speeches: list[dict] = []
-    for subject in manifest.get("subjects", []):
+    for subject in subjects:
+        stream_name = subject.get("stream_file_name", "")
         stream_start = _parse_stream_start(subject.get("video_start_time", ""))
+        estimated = False
+        if stream_start is None and stream_name in estimated_starts:
+            stream_start = estimated_starts[stream_name]
+            estimated = True
+        segment = subject.get("segment_secs")
+        joint = subject.get("joint_subjects") or []
         for sp in subject.get("speeches", []):
             label, first, last = _build_label(sp.get("name", ""), sp.get("surname", ""))
             faction = (sp.get("fraktion") or "").strip()
+            function = (sp.get("function") or "").strip()
             start = sp.get("start_secs")
             stop = sp.get("stop_secs")
             speeches.append({
@@ -140,11 +210,25 @@ def parse_session(items_path: Path) -> dict | None:
                 "applicant": subject.get("applicant", ""),
                 "incoming_print": subject.get("incoming_print", ""),
                 "incoming_print_link": subject.get("incoming_print_link", ""),
+                "joint_subjects": [
+                    {**j, "title": (j.get("title") or (titles.get(j.get("subject_id")) or {}).get("title") or "").strip()}
+                    for j in joint
+                ],
                 # media / video
-                "stream_file_name": subject.get("stream_file_name", ""),
+                "stream_file_name": stream_name,
                 "video_start_time": subject.get("video_start_time", ""),
+                "stream_start_estimated": estimated,
+                "segment_secs": segment,
                 "start_secs": start,
                 "stop_secs": stop,
+                "clip_start_secs": clip_start_secs(start, segment),
+                # subtitles of the agenda item (or of its joint debate)
+                "item_start_secs": subject.get("item_start_secs"),
+                "item_stop_secs": subject.get("item_stop_secs"),
+                "vtt_subject_id": subject.get("vtt_subject_id", ""),
+                "vtt_offset": subject.get("vtt_source_offset", 0),
+                "vtt_item_start_secs": subject.get("vtt_item_start_secs",
+                                                   subject.get("item_start_secs")),
                 # speaker
                 "timing_id": sp.get("timing_id", ""),
                 "abg_id": sp.get("abg_id"),
@@ -154,9 +238,9 @@ def parse_session(items_path: Path) -> dict | None:
                 "label": label,
                 "firstname": first,
                 "lastname": last,
-                "role": "",
+                "role": function,
                 "faction": faction,
-                "context": _context(sp.get("speech_type", "")),
+                "context": _context(sp.get("speech_type", ""), function),
                 "start_datetime": _iso_utc(stream_start, start),
                 "end_datetime": _iso_utc(stream_start, stop),
             })
@@ -165,8 +249,10 @@ def parse_session(items_path: Path) -> dict | None:
         logger.info(f"{session_id} ({iso_date}): no speeches with video — skipping")
         return None
 
-    # Global order: stream start second across the whole Sitzung.
-    speeches.sort(key=lambda s: (s["start_secs"] if s["start_secs"] is not None else 0,
+    # Global order: wall-clock start across the whole Sitzung (stream seconds
+    # restart with every stream, so they only order speeches within one stream).
+    speeches.sort(key=lambda s: (s["start_datetime"] or "",
+                                 s["start_secs"] if s["start_secs"] is not None else 0,
                                  s["timing_id"]))
     fallback = f"{iso_date}T00:00:00Z" if iso_date else None
     for idx, s in enumerate(speeches, start=1):
