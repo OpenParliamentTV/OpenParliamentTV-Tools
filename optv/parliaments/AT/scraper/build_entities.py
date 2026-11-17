@@ -105,20 +105,25 @@ def fetch_members(position: str, term: str) -> list[dict]:
     PREFIX pq: <http://www.wikidata.org/prop/qualifier/>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-    SELECT ?person ?label (GROUP_CONCAT(DISTINCT ?alt; SEPARATOR="|") AS ?alts) WHERE {{
+    SELECT ?person ?label_de ?label_mul (GROUP_CONCAT(DISTINCT ?alt; SEPARATOR="|") AS ?alts) WHERE {{
       ?person p:P39 ?st . ?st ps:P39 wd:{position} . ?st pq:P2937 wd:{term} .
-      ?person rdfs:label ?label . FILTER(LANG(?label) = "de")
-      OPTIONAL {{ ?person skos:altLabel ?alt . FILTER(LANG(?alt) = "de") }}
-    }} GROUP BY ?person ?label
+      OPTIONAL {{ ?person rdfs:label ?label_de . FILTER(LANG(?label_de) = "de") }}
+      OPTIONAL {{ ?person rdfs:label ?label_mul . FILTER(LANG(?label_mul) = "mul") }}
+      OPTIONAL {{ ?person skos:altLabel ?alt . FILTER(LANG(?alt) IN ("de", "mul")) }}
+    }} GROUP BY ?person ?label_de ?label_mul
     """
     rows = _sparql(query)["results"]["bindings"]
     members = []
     for r in rows:
         qid = r["person"]["value"].rsplit("/", 1)[-1]
-        label = r.get("label", {}).get("value", "")
+        # ``mul`` is the language-independent default label; some items have
+        # no ``de`` label at all.
+        mul = r.get("label_mul", {}).get("value", "")
+        label = r.get("label_de", {}).get("value", "") or mul
         if not label or label == qid:
             continue
-        alts = [a for a in (r.get("alts", {}).get("value", "") or "").split("|") if a and a != label]
+        alts = [a for a in [mul, *(r.get("alts", {}).get("value", "") or "").split("|")]
+                if a and a != label]
         members.append({
             "id": qid,
             "type": "person",

@@ -101,7 +101,7 @@ SELECT ?item ?epId ?itemLabel ?birthName ?nativeName WHERE {
   OPTIONAL { ?item wdt:P1477 ?birthName }
   OPTIONAL { ?item wdt:P1559 ?nativeName }
   SERVICE wikibase:label {
-    bd:serviceParam wikibase:language "en,fr,de,es,it,pl,sv,nl,da,fi,cs,hu,ro,el,bg,sk,sl,hr,et,lt,lv,pt,ga,mt".
+    bd:serviceParam wikibase:language "en,fr,de,es,it,pl,sv,nl,da,fi,cs,hu,ro,el,bg,sk,sl,hr,et,lt,lv,pt,ga,mt,mul".
     ?item rdfs:label ?itemLabel .
   }
 }

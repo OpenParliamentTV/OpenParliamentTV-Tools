@@ -53,11 +53,12 @@ logger = logging.getLogger(__name__)
 # Q18130496 = "member of the Landtag of Schleswig-Holstein"
 # (Mitglied des Schleswig-Holsteinischen Landtags).
 SPARQL_DE_SH_MPS = """
-SELECT DISTINCT ?person ?label_de ?label_en WHERE {
+SELECT DISTINCT ?person ?label_de ?label_en ?label_mul WHERE {
   ?person p:P39 ?stmt .
   ?stmt ps:P39 wd:Q18130496 .
   OPTIONAL { ?person rdfs:label ?label_de  FILTER(LANG(?label_de)="de") }
   OPTIONAL { ?person rdfs:label ?label_en  FILTER(LANG(?label_en)="en") }
+  OPTIONAL { ?person rdfs:label ?label_mul FILTER(LANG(?label_mul)="mul") }
 }
 """
 
@@ -105,8 +106,10 @@ def fetch_wikidata_de_sh_mps() -> list[dict]:
         qid = iri.rsplit("/", 1)[-1]
         de = (_bind(b, "label_de") or "").strip()
         en = (_bind(b, "label_en") or "").strip()
-        label = de or en or qid
-        alts = [s for s in {en} - {label, ""} if s]
+        # Language-independent default label; some items have no de/en label.
+        mul = (_bind(b, "label_mul") or "").strip()
+        label = de or en or mul or qid
+        alts = sorted({en, mul} - {label, ""})
         members[qid] = {
             "id": qid,
             "label": label,

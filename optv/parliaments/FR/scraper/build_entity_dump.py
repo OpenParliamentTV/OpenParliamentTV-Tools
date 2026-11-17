@@ -54,11 +54,12 @@ SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 # deprecated-rank (former) memberships are followed too — once a deputy,
 # always a former deputy.
 SPARQL_FR_MEMBERS = """
-SELECT DISTINCT ?person ?label_fr ?label_en ?anid WHERE {
+SELECT DISTINCT ?person ?label_fr ?label_en ?label_mul ?anid WHERE {
   ?person p:P39 ?stmt .
   ?stmt ps:P39 wd:Q3044918 .
   OPTIONAL { ?person rdfs:label ?label_fr FILTER(LANG(?label_fr)="fr") }
   OPTIONAL { ?person rdfs:label ?label_en FILTER(LANG(?label_en)="en") }
+  OPTIONAL { ?person rdfs:label ?label_mul FILTER(LANG(?label_mul)="mul") }
   OPTIONAL { ?person wdt:P4123 ?anid }
 }
 """
@@ -238,7 +239,9 @@ def fetch_wikidata_members() -> tuple[dict[str, str], dict[str, str]]:
         if not iri:
             continue
         qid = iri.rsplit("/", 1)[-1]
-        for k in ("label_fr", "label_en"):
+        # ``label_mul``: language-independent default label; some items have
+        # no fr/en label.
+        for k in ("label_fr", "label_en", "label_mul"):
             label = _bind(b, k)
             if label:
                 by_name.setdefault(_clean(label), qid)

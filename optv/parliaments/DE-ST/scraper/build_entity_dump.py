@@ -51,11 +51,12 @@ logger = logging.getLogger(__name__)
 # (Mitglied des Landtages Sachsen-Anhalt). Using p:P39/ps:P39 to follow
 # deprecated-rank statements too — once an MP, always an alumnus.
 SPARQL_DE_ST_MPS = """
-SELECT DISTINCT ?person ?label_de ?label_en WHERE {
+SELECT DISTINCT ?person ?label_de ?label_en ?label_mul WHERE {
   ?person p:P39 ?stmt .
   ?stmt ps:P39 wd:Q18559580 .
   OPTIONAL { ?person rdfs:label ?label_de  FILTER(LANG(?label_de)="de") }
   OPTIONAL { ?person rdfs:label ?label_en  FILTER(LANG(?label_en)="en") }
+  OPTIONAL { ?person rdfs:label ?label_mul FILTER(LANG(?label_mul)="mul") }
 }
 """
 
@@ -102,8 +103,10 @@ def fetch_wikidata_de_st_mps() -> list[dict]:
         qid = iri.rsplit("/", 1)[-1]
         de = (_bind(b, "label_de") or "").strip()
         en = (_bind(b, "label_en") or "").strip()
-        label = de or en or qid
-        alts = [s for s in {en} - {label, ""} if s]
+        # Language-independent default label; some items have no de/en label.
+        mul = (_bind(b, "label_mul") or "").strip()
+        label = de or en or mul or qid
+        alts = sorted({en, mul} - {label, ""})
         members[qid] = {
             "id": qid,
             "label": label,

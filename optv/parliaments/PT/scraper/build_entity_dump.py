@@ -51,11 +51,12 @@ SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 # P39 wd:Q19953703 = "member of the Assembly of the Republic" (Portugal). p:/ps:
 # so former memberships are followed too — once an MP, always a former MP.
 SPARQL_PT_MEMBERS = """
-SELECT DISTINCT ?person ?label_pt ?label_en WHERE {
+SELECT DISTINCT ?person ?label_pt ?label_en ?label_mul WHERE {
   ?person p:P39 ?stmt .
   ?stmt ps:P39 wd:Q19953703 .
   OPTIONAL { ?person rdfs:label ?label_pt FILTER(LANG(?label_pt)="pt") }
   OPTIONAL { ?person rdfs:label ?label_en FILTER(LANG(?label_en)="en") }
+  OPTIONAL { ?person rdfs:label ?label_mul FILTER(LANG(?label_mul)="mul") }
 }
 """
 
@@ -127,7 +128,10 @@ def fetch_members() -> "OrderedDict[str, dict]":
         if not iri:
             continue
         qid = iri.rsplit("/", 1)[-1]
-        label = _bind(b, "label_pt") or _bind(b, "label_en") or ""
+        # ``label_mul``: language-independent default label; some items have
+        # no pt/en label.
+        label = (_bind(b, "label_pt") or _bind(b, "label_en")
+                 or _bind(b, "label_mul") or "")
         if not label:
             continue
         key = _clean(label)
@@ -136,9 +140,10 @@ def fetch_members() -> "OrderedDict[str, dict]":
         entry = persons.get(key)
         if entry is None:
             aliases = []
-            en = _bind(b, "label_en")
-            if en and en != label:
-                aliases.append(en)
+            for k in ("label_en", "label_mul"):
+                alt = _bind(b, k)
+                if alt and alt != label and alt not in aliases:
+                    aliases.append(alt)
             persons[key] = {"id": qid, "label": label, "aliases": aliases}
     logger.info(f"Wikidata: {len(persons)} distinct Assembly members")
     return persons
