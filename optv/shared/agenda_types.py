@@ -679,8 +679,10 @@ def classify_eu_native(official_title: Optional[str]) -> tuple[Optional[str], st
 # matched case-insensitively; first match wins.
 _NO_PATTERNS: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r'\btrontaledebatt(?:en)?\b', re.I), "NO-trontaledebatt", CORE_REGULAR),
-    (re.compile(r'\bspørretime\b|\bspørretimespørsmål\b', re.I), "NO-sporretime", CORE_QA),
-    (re.compile(r'\bmuntlig spørretime\b', re.I), "NO-muntlig_sporretime", CORE_QA),
+    # "muntlig" before the generic form (first match wins); "muntleg" and
+    # "spørjetime" are the Nynorsk spellings.
+    (re.compile(r'\bmunt(?:lig|leg)\s+spør(?:re|je)time\b', re.I), "NO-muntlig_sporretime", CORE_QA),
+    (re.compile(r'\bspør(?:re|je)time\b|\bspørretimespørsmål\b', re.I), "NO-sporretime", CORE_QA),
     (re.compile(r'\binterpellasjon\b', re.I), "NO-interpellasjon", CORE_GOVERNMENT_QUESTIONING),
     (re.compile(r'\bstatsbudsjett(?:et)?\b|\bnasjonalbudsjett(?:et)?\b', re.I), "NO-budsjett", CORE_BUDGET),
     (re.compile(r'\bvotering\b', re.I), "NO-votering", CORE_VOTING),

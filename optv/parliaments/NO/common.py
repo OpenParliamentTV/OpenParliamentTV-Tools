@@ -24,19 +24,24 @@ logger = logging.getLogger(__name__)
 
 # Stortingsperiode (4-year term) → OPTV-internal integer period.
 # We can't use the API's string period ("2025-2029") because the shared
-# argparser requires ``--period`` to be an integer. 22 is the ordinal of
-# the current Storting (the 22nd since 1814 numbering would be too messy);
-# in practice the integer is opaque -- the session string and the manifest
-# anchor the value, not the number itself.
+# argparser requires ``--period`` to be an integer. The integer is opaque
+# (consecutive terms get consecutive numbers); the session string and the
+# manifest anchor the value, not the number itself. Referats follow the
+# current ``forhandlinger.dtd`` schema from session 2016-2017 on, so the
+# terms from 2017-2021 are wired.
 TERM_TO_PERIOD = {
+    "2017-2021": 20,
+    "2021-2025": 21,
     "2025-2029": 22,
 }
 PERIOD_TO_TERM = {v: k for k, v in TERM_TO_PERIOD.items()}
 
-# Norwegian Bokmål parliamentary sessions run a single year inside a term
-# (Oct→Sept). We list each term's session-years explicitly so the download
-# stage knows which `sesjonid` values to query for a given period.
+# Parliamentary sessions (sesjoner) run October → September inside a term.
+# We list each term's session-years explicitly so the download stage knows
+# which `sesjonid` values to query for a given period.
 TERM_TO_SESJONIDER = {
+    "2017-2021": ["2017-2018", "2018-2019", "2019-2020", "2020-2021"],
+    "2021-2025": ["2021-2022", "2022-2023", "2023-2024", "2024-2025"],
     "2025-2029": ["2025-2026", "2026-2027", "2027-2028", "2028-2029"],
 }
 

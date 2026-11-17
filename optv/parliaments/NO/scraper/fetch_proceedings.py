@@ -6,6 +6,12 @@ Looks up the meeting's ``referat_id`` from the cached
 ``eksport/publikasjon`` XML. Despite the API accepting ``format=json`` it
 always returns XML for ``refs-...`` ids; the parser consumes that directly.
 
+A Referat passes through the editorial states ``Arbeid`` → ``Kvalitetssikret``
+→ ``Komplett`` (root ``Forhandlinger/@Status``). Only a ``Komplett`` file is
+served from the cache; any other state is refetched on every run and rewritten
+only when its bytes changed, so an unchanged Referat does not re-trigger the
+mtime-driven parse.
+
 Writes ``original/proceedings/{moteid}.xml``.
 """
 
@@ -14,11 +20,9 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sys
-import time
 from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
@@ -27,46 +31,24 @@ if __package__ is None or __package__ == "":
     __package__ = "optv.parliaments.NO.scraper"
 
 from optv.parliaments.NO.common import Config
+from optv.parliaments.NO.scraper.http_get import fetch_bytes, strip_bom
 
 logger = logging.getLogger(__name__)
 
 API_ROOT = "https://data.stortinget.no/eksport"
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
+FINAL_STATUS = "Komplett"
+_STATUS_RE = re.compile(rb"<Forhandlinger\b[^>]*\bStatus=\"([^\"]*)\"")
 
 
-def _fetch_bytes(url: str, *, retry_count: int, retry_delay_max: float) -> bytes:
-    delay = 1.0
-    last_exc: Exception | None = None
-    for attempt in range(1, retry_count + 1):
-        try:
-            req = Request(url, headers={
-                "User-Agent": USER_AGENT,
-                "Accept": "application/xml,application/json;q=0.5,*/*;q=0.1",
-            })
-            with urlopen(req, timeout=120) as resp:
-                return resp.read()
-        except HTTPError as e:
-            if 500 <= e.code < 600 and attempt < retry_count:
-                logger.warning(f"HTTP {e.code} on {url}, retry {attempt}/{retry_count}")
-                time.sleep(min(delay, retry_delay_max))
-                delay = min(delay * 2, retry_delay_max)
-                last_exc = e
-                continue
-            raise
-        except (URLError, TimeoutError, ConnectionError) as e:
-            if attempt < retry_count:
-                logger.warning(f"{type(e).__name__} on {url}, retry {attempt}/{retry_count}")
-                time.sleep(min(delay, retry_delay_max))
-                delay = min(delay * 2, retry_delay_max)
-                last_exc = e
-                continue
-            raise
-    raise RuntimeError(f"Exhausted {retry_count} attempts for {url}: {last_exc}")
+def referat_status(head: bytes) -> str | None:
+    """``Forhandlinger/@Status`` read from the first bytes of a Referat XML."""
+    m = _STATUS_RE.search(head)
+    return m.group(1).decode("utf-8", errors="replace") if m else None
 
 
-def _strip_bom(b: bytes) -> bytes:
-    return b[3:] if b.startswith(b"\xef\xbb\xbf") else b
+def _cached_status(path: Path) -> str | None:
+    with open(path, "rb") as f:
+        return referat_status(f.read(2048))
 
 
 def _find_meeting(config: Config, moteid: int) -> dict | None:
@@ -85,8 +67,11 @@ def fetch_proceedings_for_meeting(config: Config, moteid: int, *,
                                   retry_delay_max: float = 10.0) -> Path | None:
     target = config.dir("proceedings", create=True) / f"{moteid}.xml"
     if target.exists() and not force:
-        logger.info(f"[{moteid}] proceedings cache hit: {target.name}")
-        return target
+        status = _cached_status(target)
+        if status == FINAL_STATUS:
+            logger.info(f"[{moteid}] proceedings cache hit: {target.name}")
+            return target
+        logger.info(f"[{moteid}] cached Referat has status {status!r} — refetching")
     meeting = _find_meeting(config, moteid)
     if not meeting:
         logger.error(f"[{moteid}] no meetings overview entry — run fetch_meetings first")
@@ -97,10 +82,15 @@ def fetch_proceedings_for_meeting(config: Config, moteid: int, *,
         return None
     url = f"{API_ROOT}/publikasjon?publikasjonid={referat_id}"
     logger.info(f"[{moteid}] GET {url}")
-    body = _strip_bom(_fetch_bytes(url, retry_count=retry_count,
-                                   retry_delay_max=retry_delay_max))
+    body = strip_bom(fetch_bytes(url, accept="application/xml,application/json;q=0.5,*/*;q=0.1",
+                                 timeout=120, retry_count=retry_count,
+                                 retry_delay_max=retry_delay_max))
+    if target.exists() and target.read_bytes() == body:
+        logger.info(f"[{moteid}] {target.name} unchanged (status {referat_status(body[:2048])!r})")
+        return target
     target.write_bytes(body)
-    logger.info(f"[{moteid}] wrote {target.name} ({len(body)} bytes)")
+    logger.info(f"[{moteid}] wrote {target.name} ({len(body)} bytes, "
+                f"status {referat_status(body[:2048])!r})")
     return target
 
 

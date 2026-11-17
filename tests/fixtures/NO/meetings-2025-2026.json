@@ -1,0 +1,19 @@
+{
+  "sesjon_id": "2025-2026",
+  "moter_liste": [
+    {
+      "id": 11518,
+      "mote_dato_tid": "/Date(1760428800000+0200)/",
+      "referat_id": "refs-202526-10-14",
+      "mote_ting": 1,
+      "mote_rekkefolge": 1
+    },
+    {
+      "id": 11525,
+      "mote_dato_tid": "/Date(1762333200000+0100)/",
+      "referat_id": "refs-202526-11-05",
+      "mote_ting": 1,
+      "mote_rekkefolge": 1
+    }
+  ]
+}

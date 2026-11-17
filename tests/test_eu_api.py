@@ -273,7 +273,7 @@ def test_parse_filters_non_debate_activities():
 def test_link_entities_prefers_epid_over_label():
     """A speaker carrying an epId should get linked even when the label
     fuzzy-match would fail (e.g. nickname vs. canonical name)."""
-    from optv.shared.nel import link_entities, _build_ep_id_index
+    from optv.shared.nel import link_entities, _build_person_id_index
 
     persons = {
         "real name": {
@@ -286,8 +286,8 @@ def test_link_entities_prefers_epid_over_label():
     }
     # The same entity should be indexable by its epId regardless of how many
     # alias keys it appears under.
-    idx = _build_ep_id_index(persons)
-    assert idx == {"28150": persons["real name"]}
+    idx = _build_person_id_index(persons)
+    assert idx == {("epId", "28150"): persons["real name"]}
 
     speeches = [{
         "people": [{

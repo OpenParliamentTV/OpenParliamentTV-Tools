@@ -3,8 +3,9 @@
 
 Downloads `eksport/moter` per session-year, then per meeting fetches the
 `publikasjon` XML (proceedings) and the Qbrick media metadata. Parses both
-into intermediate JSON, joins on `sak_nummer` + speech order in the
-merger, and slices the per-meeting MP4 into per-speech MP3s at align time.
+into intermediate JSON, places each speech on its video part by its Referat
+clock time in the merger, and slices the per-part MP4 into per-speech MP3s
+at align time.
 
 Period semantics: ``--period`` is the OPTV-internal Stortingsperiode index
 (see ``common.TERM_TO_PERIOD``). Session strings are ``{period}_{moteid}``
@@ -12,7 +13,9 @@ e.g. ``22_11518``. ``--limit-to-period`` filters by the ``22_`` prefix.
 
 NEL needs ``metadata/entities.json`` built locally by
 ``scraper/build_entity_dump.py`` (no ``no.openparliament.tv`` host yet).
-NER needs an Entity-Fishing endpoint with the Norwegian KB loaded.
+NER needs an Entity-Fishing endpoint; it disambiguates against the Swedish
+KB (``manifest.locale.entityfishing_language``), as entity-fishing has no
+Norwegian one.
 """
 
 import datetime as _dt

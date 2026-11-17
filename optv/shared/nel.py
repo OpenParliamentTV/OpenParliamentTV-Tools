@@ -35,33 +35,56 @@ def cleanup(name):
         name = re.sub(r'\s+', ' ', name)
         return name.strip()
 
-def _build_ep_id_index(persons: dict) -> dict:
-    """Build {epId: entity} from the persons map.
+# Parliament-supplied person identifiers that link a speaker to the entity
+# dump directly: ``(key on people[] or people[].additionalInformation,
+# key in entity.additionalInformation)``. The EU pipeline carries the EP id as
+# ``additionalInformation.epId``; parliaments emitting a native person id as
+# ``people[].originPersonID`` (NO's Stortinget personID) match entities whose
+# dump records it as ``additionalInformation.originPersonID``.
+_PERSON_ID_KEYS = ("epId", "originPersonID")
+
+
+def _build_person_id_index(persons: dict) -> dict:
+    """Build ``{(key, id): entity}`` from the persons map.
 
     ``persons`` is keyed by cleaned-name strings, with duplicate values for
     each entity (one per alternative label). We dedupe by ``id(ent)``.
     """
-    by_ep_id: dict = {}
+    by_id: dict = {}
     seen: set = set()
     for ent in persons.values():
         if id(ent) in seen:
             continue
         seen.add(id(ent))
-        ep_id = (ent.get('additionalInformation') or {}).get('epId')
-        if ep_id:
-            by_ep_id[str(ep_id)] = ent
-    return by_ep_id
+        info = ent.get('additionalInformation') or {}
+        for key in _PERSON_ID_KEYS:
+            values = info.get(key)
+            # One id, or a list when the source knows several spellings.
+            for value in (values if isinstance(values, list) else [values]):
+                if value:
+                    by_id[(key, str(value))] = ent
+    return by_id
+
+
+def _speaker_ids(p: dict):
+    """``(key, id)`` pairs a speaker carries, in ``_PERSON_ID_KEYS`` order."""
+    info = p.get('additionalInformation') or {}
+    for key in _PERSON_ID_KEYS:
+        value = info.get(key) or p.get(key)
+        if value:
+            yield key, str(value)
 
 
 def link_entities(source: list, persons: dict, factions: dict,
                   clear_existing: bool = False) -> list:
     """Link entities from source file.
 
-    Speakers carrying a parliament-supplied person identifier in
-    ``additionalInformation.epId`` are matched directly against the entity
-    dump (the EU pipeline populates this from the EP Open Data API's person
-    refs). If no epId match is found, fall back to the historic
-    cleaned-label lookup.
+    Speakers carrying a parliament-supplied person identifier are matched
+    directly against the entity dump: ``additionalInformation.epId`` (the EU
+    pipeline populates this from the EP Open Data API's person refs) or
+    ``originPersonID`` (matched against an entity's
+    ``additionalInformation.originPersonID``). If no id match is found, fall
+    back to the historic cleaned-label lookup.
 
     Linking is normally *fill-only* (an existing ``wid`` is preserved, never
     overwritten), so it can add newly-matchable people but cannot correct or
@@ -70,7 +93,7 @@ def link_entities(source: list, persons: dict, factions: dict,
     re-derived from the current entity dump -- a label that no longer matches
     loses its id, a label that now matches a different entity is re-linked.
     """
-    persons_by_ep_id = _build_ep_id_index(persons)
+    persons_by_id = _build_person_id_index(persons)
     for speech in source:
         for p in speech.get('people', []):
             if clear_existing:
@@ -81,11 +104,12 @@ def link_entities(source: list, persons: dict, factions: dict,
                     faction.pop('wid', None)
                     faction.pop('wtype', None)
             if not p.get('wid'):
-                ep_id = (p.get('additionalInformation') or {}).get('epId')
-                ent = persons_by_ep_id.get(str(ep_id)) if ep_id else None
-                if ent and ent.get('id'):
-                    p['wid'] = ent['id']
-                    p['wtype'] = 'PERSON'
+                for key in _speaker_ids(p):
+                    ent = persons_by_id.get(key)
+                    if ent and ent.get('id'):
+                        p['wid'] = ent['id']
+                        p['wtype'] = 'PERSON'
+                        break
             label = cleanup(p['label'])
             if persons.get(label) and not p.get('wid'):
                 # Found exact match - only fill in if no upstream wid (e.g. ParlaMint Q-IDs)

@@ -1,20 +1,20 @@
 #! /usr/bin/env python3
 """Build ``metadata/entities.json`` for the NO NEL stage.
 
-Two sources, joined on Norwegian Bokmål label:
-
-1. **Wikidata SPARQL** — everyone who has held the position
-   ``P39 wd:Q11975003`` ("member of the Storting"). Provides the QID plus
-   label variants (no, nb, nn, en).
-2. **data.stortinget.no/eksport/representanter?stortingsperiodeid=…** and
-   ``/dagensrepresentanter`` — current and historical Storting members,
-   matched by name. Provides the `personid` short code as
-   ``additionalInformation.epId``-style hint (we use ``originPersonID`` in
-   the parser, but the dump only needs labels).
+Persons come from one Wikidata SPARQL query: everyone who has held
+``P39 wd:Q9045502`` ("member of the Parliament of Norway") or carries a
+Stortinget person ID (``P3072``). Each entity keeps the QID, the label
+variants (nb, no, nn, en) and, when present, the person ID as
+``additionalInformation.originPersonID`` (a list when Wikidata records
+several spellings of it). The parser emits the Referat's
+``<Navn personID>`` as ``people[].originPersonID``, so the shared NEL stage
+links speakers by that ID first and falls back to the cleaned label.
+Members get subType ``memberOfParliament``; P3072 holders who never sat in
+the Storting (e.g. ministers from outside it) get ``person``.
 
 Parties are added from a fixed list of Norwegian parliamentary parties
-keyed on the short code that appears in ``<Navn>`` brackets (Ap, H, Sp,
-FrP, SV, V, KrF, R, MDG, INP).
+keyed on the short code that appears in ``<Navn>`` brackets (A/Ap, H, Sp,
+FrP, SV, V, KrF, R, MDG, INP, Pf).
 
 Run:
 
@@ -48,7 +48,8 @@ SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
               "(+https://github.com/OpenParliamentTV)")
 
-# Q9045502 = "member of the Parliament of Norway" (Stortingsrepresentant).
+# Q9045502 = "member of the Parliament of Norway" (Stortingsrepresentant);
+# P3072 = Storting person ID (the ``personID`` of the Referat's ``<Navn>``).
 #
 # Use ``p:P39/ps:P39`` rather than ``wdt:P39`` because Wikidata occasionally
 # downranks a person's Storting membership statement (e.g. when they take
@@ -56,10 +57,11 @@ USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
 # ``wdt:`` only follows non-deprecated rank truthy statements; ``p:/ps:``
 # follows every statement regardless of rank, which is what we want — once
 # elected to the Storting, always a former member.
-SPARQL_STORTING_MEMBERS = """
-SELECT DISTINCT ?person ?label_no ?label_nb ?label_nn ?label_en WHERE {
-  ?person p:P39 ?stmt .
-  ?stmt ps:P39 wd:Q9045502 .
+SPARQL_STORTING_PERSONS = """
+SELECT DISTINCT ?person ?sid ?isMember ?label_no ?label_nb ?label_nn ?label_en WHERE {
+  { ?person p:P39/ps:P39 wd:Q9045502 . } UNION { ?person wdt:P3072 [] . }
+  OPTIONAL { ?person wdt:P3072 ?sid }
+  BIND(EXISTS { ?person p:P39/ps:P39 wd:Q9045502 } AS ?isMember)
   OPTIONAL { ?person rdfs:label ?label_no  FILTER(LANG(?label_no)="no") }
   OPTIONAL { ?person rdfs:label ?label_nb  FILTER(LANG(?label_nb)="nb") }
   OPTIONAL { ?person rdfs:label ?label_nn  FILTER(LANG(?label_nn)="nn") }
@@ -110,11 +112,11 @@ def _bind(binding: dict, key: str) -> str | None:
     return v.get("value") if isinstance(v, dict) else None
 
 
-def fetch_wikidata_storting_members() -> list[dict]:
-    logger.info("Querying Wikidata for Storting members…")
-    payload = _sparql_get(SPARQL_STORTING_MEMBERS)
+def fetch_wikidata_storting_persons() -> list[dict]:
+    logger.info("Querying Wikidata for Storting members and person IDs…")
+    payload = _sparql_get(SPARQL_STORTING_PERSONS)
     bindings = (payload.get("results") or {}).get("bindings") or []
-    members: dict[str, dict] = OrderedDict()
+    persons: dict[str, dict] = OrderedDict()
     for b in bindings:
         iri = _bind(b, "person") or ""
         if not iri:
@@ -122,40 +124,45 @@ def fetch_wikidata_storting_members() -> list[dict]:
         qid = iri.rsplit("/", 1)[-1]
         primary = (_bind(b, "label_nb") or _bind(b, "label_no")
                    or _bind(b, "label_nn") or _bind(b, "label_en"))
-        if not primary:
-            continue
-        if qid not in members:
-            alts: list[str] = []
-            for k in ("label_nb", "label_no", "label_nn", "label_en"):
-                v = _bind(b, k)
-                if v and v != primary and v not in alts:
-                    alts.append(v)
-            members[qid] = {"qid": qid, "label": primary, "aliases": alts}
-        else:
-            ent = members[qid]
-            for k in ("label_nb", "label_no", "label_nn", "label_en"):
-                v = _bind(b, k)
-                if v and v != ent["label"] and v not in ent["aliases"]:
-                    ent["aliases"].append(v)
-    logger.info(f"Wikidata returned {len(members)} distinct Storting members.")
-    return list(members.values())
+        ent = persons.get(qid)
+        if ent is None:
+            if not primary:
+                continue
+            ent = persons[qid] = {"qid": qid, "label": primary, "aliases": [],
+                                  "member": False, "person_ids": set()}
+        if _bind(b, "isMember") == "true":
+            ent["member"] = True
+        if _bind(b, "sid"):
+            ent["person_ids"].add(_bind(b, "sid").strip())
+        for k in ("label_nb", "label_no", "label_nn", "label_en"):
+            v = _bind(b, k)
+            if v and v != ent["label"] and v not in ent["aliases"]:
+                ent["aliases"].append(v)
+    multi = [p for p in persons.values() if len(p["person_ids"]) > 1]
+    if multi:
+        logger.info(f"{len(multi)} Wikidata item(s) carry several Storting person IDs "
+                    f"(e.g. {multi[0]['qid']}: {sorted(multi[0]['person_ids'])}); all are kept")
+    logger.info(f"Wikidata returned {len(persons)} distinct persons "
+                f"({sum(1 for p in persons.values() if p['member'])} Storting members, "
+                f"{sum(1 for p in persons.values() if p['person_ids'])} with a person ID).")
+    return list(persons.values())
 
 
 def build_entities() -> dict:
-    members = fetch_wikidata_storting_members()
+    persons = fetch_wikidata_storting_persons()
     data: list[dict] = []
-    seen_qids: set[str] = set()
-    for m in members:
-        if m["qid"] in seen_qids:
-            continue
-        seen_qids.add(m["qid"])
-        data.append({
+    for m in persons:
+        ent: dict = {
             "id": m["qid"],
             "label": m["label"],
             "labelAlternative": m["aliases"],
             "type": "person",
-            "subType": "memberOfParliament",
-        })
+            "subType": "memberOfParliament" if m["member"] else "person",
+        }
+        ids = sorted(m["person_ids"])
+        if ids:
+            ent["additionalInformation"] = {"originPersonID": ids[0] if len(ids) == 1 else ids}
+        data.append(ent)
     for party in NO_PARTIES:
         data.append({
             "id": party["id"],
@@ -165,7 +172,7 @@ def build_entities() -> dict:
             "subType": "faction",
         })
     return {
-        "meta": {"source": "Wikidata SPARQL (Q11975003) + manual party list"},
+        "meta": {"source": "Wikidata SPARQL (P39 Q9045502, P3072) + manual party list"},
         "data": data,
     }
 
@@ -192,8 +199,7 @@ def main():
     if args.period in PERIOD_TO_TERM:
         logger.info(f"Building entities for Storting term {PERIOD_TO_TERM[args.period]} "
                     f"(period {args.period}). The Wikidata query is term-agnostic — "
-                    "all known members are emitted; the merger filters by membership "
-                    "in practice via the personID match.")
+                    "all known members and person-ID holders are emitted.")
     config = Config(args.data_dir)
     write_entity_dump(config)
 

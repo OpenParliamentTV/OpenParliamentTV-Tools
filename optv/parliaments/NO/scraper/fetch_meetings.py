@@ -15,13 +15,12 @@ Writes ``original/meetings/{sesjonid}.json`` containing the full
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import logging
+import re
 import sys
-import time
 from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
@@ -30,64 +29,84 @@ if __package__ is None or __package__ == "":
     __package__ = "optv.parliaments.NO.scraper"
 
 from optv.parliaments.NO.common import Config
+from optv.parliaments.NO.scraper.http_get import fetch_bytes, strip_bom
 
 logger = logging.getLogger(__name__)
 
 API_ROOT = "https://data.stortinget.no/eksport"
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 
-def _fetch_bytes(url: str, *, retry_count: int, retry_delay_max: float,
-                 accept: str = "application/json") -> bytes:
-    delay = 1.0
-    last_exc: Exception | None = None
-    for attempt in range(1, retry_count + 1):
-        try:
-            req = Request(url, headers={
-                "User-Agent": USER_AGENT,
-                "Accept": accept,
-            })
-            with urlopen(req, timeout=60) as resp:
-                return resp.read()
-        except HTTPError as e:
-            if 500 <= e.code < 600 and attempt < retry_count:
-                logger.warning(f"HTTP {e.code} on {url}, retry {attempt}/{retry_count}")
-                time.sleep(min(delay, retry_delay_max))
-                delay = min(delay * 2, retry_delay_max)
-                last_exc = e
-                continue
-            raise
-        except (URLError, TimeoutError, ConnectionError) as e:
-            if attempt < retry_count:
-                logger.warning(f"{type(e).__name__} on {url}: {e}, retry {attempt}/{retry_count}")
-                time.sleep(min(delay, retry_delay_max))
-                delay = min(delay * 2, retry_delay_max)
-                last_exc = e
-                continue
-            raise
-    raise RuntimeError(f"Exhausted {retry_count} attempts for {url}: {last_exc}")
+def sesjon_end(sesjonid: str) -> datetime.date | None:
+    """First day after a sesjon-year (``YYYY-YYYY``): 1 October of the end year.
+
+    A sesjon runs from October to the end of September; the next one opens on
+    1 October of the end year.
+    """
+    try:
+        return datetime.date(int(sesjonid.split("-")[1]), 10, 1)
+    except (IndexError, ValueError):
+        return None
 
 
-def _strip_bom(b: bytes) -> bytes:
-    return b[3:] if b.startswith(b"\xef\xbb\xbf") else b
+def sesjon_ended(sesjonid: str, today: datetime.date | None = None) -> bool:
+    end = sesjon_end(sesjonid)
+    return end is not None and (today or datetime.date.today()) >= end
+
+
+def response_date(doc: dict) -> datetime.date | None:
+    """Date of the API response that produced a cached overview
+    (``respons_dato_tid``, ``/Date(epoch_ms+TZ)/``)."""
+    m = re.match(r"/Date\((-?\d+)", doc.get("respons_dato_tid") or "")
+    if not m:
+        return None
+    return datetime.datetime.fromtimestamp(int(m.group(1)) / 1000,
+                                           tz=datetime.timezone.utc).date()
+
+
+def overview_is_final(doc: dict, sesjonid: str) -> bool:
+    """True when the cached overview was fetched after its sesjon ended.
+
+    Until then it keeps gaining meetings and Referat ids, so it is refetched.
+    Decided from the response date stored in the file, not the file's mtime,
+    so a fresh checkout of the data repository behaves the same.
+    """
+    end, fetched = sesjon_end(sesjonid), response_date(doc)
+    return end is not None and fetched is not None and fetched >= end
+
+
+def _read_cached(target: Path) -> dict | None:
+    if not target.exists():
+        return None
+    try:
+        return json.loads(target.read_text())
+    except json.JSONDecodeError:
+        return None
 
 
 def fetch_meetings(config: Config, sesjonid: str, *, force: bool = False,
                    retry_count: int = 10, retry_delay_max: float = 10.0) -> Path:
     target = config.dir("meetings", create=True) / f"{sesjonid}.json"
-    if target.exists() and not force:
+    cached = _read_cached(target)
+    if cached is not None and not force and overview_is_final(cached, sesjonid):
         logger.info(f"Meetings cache hit: {target.name} (use --force to refetch)")
         return target
     url = f"{API_ROOT}/moter?sesjonid={sesjonid}&format=json"
     logger.info(f"GET {url}")
-    body = _strip_bom(_fetch_bytes(url, retry_count=retry_count,
-                                   retry_delay_max=retry_delay_max))
+    body = strip_bom(fetch_bytes(url, accept="application/json",
+                                 retry_count=retry_count,
+                                 retry_delay_max=retry_delay_max))
     doc = json.loads(body)
     moter_liste = doc.get("moter_liste") or []
     # Drop entries with id < 0 (PACE travels etc. that the API mixes in).
     cleaned = [m for m in moter_liste if (m.get("id") or 0) > 0]
     doc["moter_liste"] = cleaned
+    # The response timestamp changes on every call: rewrite only when the
+    # meeting list changed, or to record the first fetch after the sesjon
+    # ended (which makes the overview final).
+    if (cached is not None and cached.get("moter_liste") == cleaned
+            and overview_is_final(cached, sesjonid) == overview_is_final(doc, sesjonid)):
+        logger.info(f"  {target.name} unchanged ({len(cleaned)} meeting(s))")
+        return target
     target.write_text(json.dumps(doc, indent=2, ensure_ascii=False))
     logger.info(f"  wrote {target.name} ({len(cleaned)} meeting(s))")
     return target

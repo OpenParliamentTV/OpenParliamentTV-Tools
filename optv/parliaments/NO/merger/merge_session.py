@@ -2,18 +2,26 @@
 """Merge a parsed NO proceedings file with the Qbrick parts metadata.
 
 Each speech in the proceedings carries ``dateStart`` (the meeting date +
-``[HH:MM:SS]`` from the ``<Navn>`` element, naive Europe/Oslo). For every
-speech we:
+``[HH:MM:SS]`` from the ``<Navn>`` element, Europe/Oslo with offset). For
+every speech we:
 
-  1. Find the containing video part by interpreting ``dateStart`` as
-     Europe/Oslo and matching against ``[tc_in_utc, tc_in_utc + duration]``.
+  1. Convert ``dateStart`` to UTC and find the video part whose
+     ``[tc_in_utc, tc_in_utc + duration]`` window contains it.
   2. Compute ``startOffset = dateStart_utc - tc_in_utc`` (seconds, float).
-  3. Estimate per-speech duration from the next speech's start (or the
-     remainder of the part for the last speech). This is approximate; the
-     aligner refines the end timestamp from the audio.
+  3. Take the end from the part's Qbrick chapter that starts at this offset
+     (±1 s) when the part has one; otherwise from the next speech's start, or
+     the end of the part for the last speech. Chapters end where the next one
+     begins, so they differ from the next-speech estimate only for the last
+     speech of a part. ``debug.merge.durationSource`` records which was used.
+     The aligner refines the end from the audio.
   4. Build the Stage-2 ``media`` block with a Media Fragment URI
-     ``mp4_url#t=start,end`` (SE pattern), plus the raw ``mp4_url`` under
-     ``additionalInformation`` for ``align_prep.py``.
+     ``mp4_url#t=start,end`` (SE pattern), a ``sourcePage`` that opens the
+     archive player at the speech (``msid={start}``), plus the raw ``mp4_url``
+     under ``additionalInformation`` for ``align_prep.py``.
+
+``dateEnd`` and ``meta.dateStart``/``meta.dateEnd`` are Europe/Oslo with
+offset; the meta range runs from the first speech's start to the last
+speech's end.
 
 Output: ``cache/merged/{session}-merged.json`` in the Stage 2 ``{meta, data}``
 shape.
@@ -29,6 +37,7 @@ import os
 import sys
 from copy import deepcopy
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
@@ -46,21 +55,30 @@ logger = logging.getLogger(__name__ if __name__ != "__main__" else os.path.basen
 MEDIA_CREATOR = _get_rights("NO", stream="media")["creator"]
 MEDIA_LICENSE = _get_rights("NO", stream="media")["license"]
 
-# Europe/Oslo is CET/CEST: UTC+1 winter, UTC+2 summer. Norway observes DST
-# (last Sunday March → last Sunday October). For dates after 2007 we can use
-# the zoneinfo module reliably.
-TZ_OSLO = datetime.timezone(datetime.timedelta(hours=1))  # fallback
+TZ_OSLO = ZoneInfo("Europe/Oslo")
+# A chapter matches a speech when its start is this close to the speech offset.
+CHAPTER_TOLERANCE = 1.0
+ARCHIVE_PAGE = "https://www.stortinget.no/no/Hva-skjer-pa-Stortinget/videoarkiv/Arkiv-TV-sendinger/"
 
 
-def _to_utc(naive_oslo: str) -> datetime.datetime:
-    """Interpret an ISO ``YYYY-MM-DDTHH:MM:SS`` as Europe/Oslo and convert to UTC."""
-    try:
-        from zoneinfo import ZoneInfo
-        tz = ZoneInfo("Europe/Oslo")
-    except Exception:
-        tz = TZ_OSLO  # fallback, not DST-aware
-    local = datetime.datetime.fromisoformat(naive_oslo).replace(tzinfo=tz)
-    return local.astimezone(datetime.timezone.utc)
+def _to_utc(iso: str) -> datetime.datetime:
+    """Parse an ISO timestamp and convert it to UTC; a naive value is Europe/Oslo."""
+    d = datetime.datetime.fromisoformat(iso)
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=TZ_OSLO)
+    return d.astimezone(datetime.timezone.utc)
+
+
+def _oslo_iso(d: datetime.datetime) -> str:
+    return d.astimezone(TZ_OSLO).isoformat(timespec="seconds")
+
+
+def _chapter_at(part: dict, start_offset: float) -> dict | None:
+    """The part's chapter starting at ``start_offset`` (±``CHAPTER_TOLERANCE``)."""
+    for ch in part.get("chapters") or []:
+        if abs(float(ch["start"]) - start_offset) <= CHAPTER_TOLERANCE:
+            return ch
+    return None
 
 
 def _from_iso(iso_with_tz: str) -> datetime.datetime:
@@ -90,6 +108,16 @@ def _assign_part(speech_utc: datetime.datetime, parts: list[dict]) -> dict | Non
     return None
 
 
+def _session_range(merged: list[dict], meta_proc: dict) -> tuple[str | None, str | None]:
+    """First speech start and last speech end (Europe/Oslo), else the
+    proceedings meta range."""
+    starts = [_to_utc(s["dateStart"]) for s in merged if s.get("dateStart")]
+    ends = [_to_utc(s["dateEnd"]) for s in merged if s.get("dateEnd")] or starts
+    if not starts:
+        return meta_proc.get("dateStart"), meta_proc.get("dateEnd")
+    return _oslo_iso(min(starts)), _oslo_iso(max(ends))
+
+
 def merge_session(config: Config, session: str) -> dict:
     proc_path = config.file(session, "proceedings")
     media_path = config.file(session, "media")
@@ -117,8 +145,8 @@ def merge_session(config: Config, session: str) -> dict:
     timed = [s for s in speeches if s["_utc"] is not None]
     timed.sort(key=lambda x: x["_utc"])
 
-    # Sort speeches list itself to keep document order — we'll write the
-    # merged output in clock-order (this matches platform expectations).
+    # The merged output is in clock order (platform expectation); records
+    # without a clock time (only when a Referat has none at all) go last.
     speeches_sorted = list(speeches)
     speeches_sorted.sort(key=lambda x: x["_utc"] or datetime.datetime.max.replace(tzinfo=datetime.timezone.utc))
 
@@ -140,25 +168,31 @@ def merge_session(config: Config, session: str) -> dict:
         if utc and part:
             tc_in = _from_iso(part["tc_in_utc"])
             start_offset = (utc - tc_in).total_seconds()
-            # Per-speech duration: next speech start, else end of part, capped.
-            nxt = next_start.get(id(s))
             part_end_offset = part.get("duration_seconds") or 0
-            if nxt:
+            tail = part_end_offset - start_offset
+            chapter = _chapter_at(part, start_offset)
+            nxt = next_start.get(id(s))
+            if chapter is not None and float(chapter["end"]) > start_offset:
+                duration = float(chapter["end"]) - start_offset
+                source = "chapter"
+            elif nxt:
                 duration = (nxt - utc).total_seconds()
-                # Clamp into the part's window.
-                duration = max(1.0, min(duration, part_end_offset - start_offset))
+                source = "next-speech"
             else:
-                duration = max(1.0, part_end_offset - start_offset)
+                duration = tail
+                source = "part-end"
+            # Clamp into the part's window.
+            duration = max(1.0, min(duration, tail) if tail > 0 else duration)
+            debug.setdefault("merge", {})["durationSource"] = source
             mp4 = part.get("mp4_url") or ""
             mfi = (f"{mp4}#t={start_offset:.3f},{start_offset + duration:.3f}"
                    if mp4 else "")
-            # One video per møte-part serves many speeches, so append the
-            # per-speech start offset: the platform keys speech identity on
-            # sourcePage and a per-part URL would collapse every speech in the
-            # part into one at import. (Also the player's seek position.)
-            source_page = (f"https://www.stortinget.no/no/Hva-skjer-pa-Stortinget/"
-                           f"videoarkiv/Arkiv-TV-sendinger/?meid={moteid}&del={part['delnr']}"
-                           f"&t={int(start_offset)}")
+            # One video per møte-part serves many speeches, so the per-speech
+            # start goes into the URL: the platform keys speech identity on
+            # sourcePage, and ``msid`` makes the archive player start there
+            # (it ignores ``t``).
+            source_page = (f"{ARCHIVE_PAGE}?meid={moteid}&del={part['delnr']}"
+                           f"&msid={int(start_offset)}")
             media: dict = {
                 "videoFileURI": mfi,
                 "sourcePage": source_page,
@@ -185,15 +219,7 @@ def merge_session(config: Config, session: str) -> dict:
                 media["thumbnailCreator"] = MEDIA_CREATOR
                 media["thumbnailLicense"] = media["license"]
             speech["media"] = media
-            # Keep dateEnd naive-Oslo to mirror the dateStart format from
-            # the proceedings parser. (Schema accepts either.)
-            try:
-                from zoneinfo import ZoneInfo
-                tz = ZoneInfo("Europe/Oslo")
-            except Exception:
-                tz = TZ_OSLO
-            end_local = (utc + datetime.timedelta(seconds=duration)).astimezone(tz).replace(tzinfo=None)
-            speech["dateEnd"] = end_local.isoformat(timespec="seconds")
+            speech["dateEnd"] = _oslo_iso(utc + datetime.timedelta(seconds=duration))
             matched_media += 1
         else:
             debug["merge"] = {"media-missing": True}
@@ -201,8 +227,7 @@ def merge_session(config: Config, session: str) -> dict:
             # the platform can still display the text.
             speech["media"] = {
                 "videoFileURI": "",
-                "sourcePage": (f"https://www.stortinget.no/no/Hva-skjer-pa-Stortinget/"
-                               f"videoarkiv/Arkiv-TV-sendinger/?meid={moteid}"),
+                "sourcePage": f"{ARCHIVE_PAGE}?meid={moteid}",
                 "creator": MEDIA_CREATOR,
                 "license": MEDIA_LICENSE,
                 "aligned": False,
@@ -217,13 +242,14 @@ def merge_session(config: Config, session: str) -> dict:
     for _s in merged:
         normalize_speech_originid(_s)
     fill_original_language(merged, "NO")
+    date_start, date_end = _session_range(merged, meta_proc)
     return {
         "meta": build_meta(
             "NO",
             session=session,
             electoral_period=(merged[0].get("electoralPeriod") if merged else None),
-            date_start=meta_proc.get("dateStart"),
-            date_end=meta_proc.get("dateEnd"),
+            date_start=date_start,
+            date_end=date_end,
             processing={
                 **(meta_proc.get("processing") or {}),
                 **(meta_media.get("processing") or {}),

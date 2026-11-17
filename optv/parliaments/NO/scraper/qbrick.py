@@ -10,30 +10,51 @@ per part:
    the meeting via ``meid={meid}&del=N`` links in its navigation block.
 2. ``https://video.qbrick.com/api/v1/public/accounts/{ACCOUNT_ID}/medias/{qbvid}``
    returns asset metadata: MP4 renditions, HLS playlist, custom.TC_in /
-   TC_out (UTC), custom.Del, custom.Dato, custom.Sesjon.
+   TC_out (UTC), custom.Del, custom.Dato, custom.Sesjon, and for most parts
+   from session 2022-2023 on a chapter track (``tracks[id=cptr]``) with the
+   start and end offset of each speech.
 
-The Qbrick account id ``AccrjW9C7ikYk2xPM5xJ4Frag`` was identical for every
-sampled meeting; we keep it as a constant with HTML rediscovery as fallback.
+``TC_in`` is taken as given, except that a ``TC_in`` on an earlier day than
+the part's own date (``custom.Dato``) is moved to that date together with
+``TC_out``: a part cannot start before its meeting day, and such records carry
+a one-day typo in the date.
+
+The account id is read from the archive HTML (``"qbrickAccountId":"…"``,
+next to ``qbrickVideoId``); the constant ``QBRICK_ACCOUNT_ID`` is the fallback
+when the page does not carry one.
+
+Chapters are kept as an optional refinement for the merger: they are missing
+or cover only part of the speeches for some parts, the list is not always in
+time order, and single entries can lack ``start``/``end``. Cleaned chapters
+are sorted by start. Each ends where the next begins, and the first one covers
+the video before the first speech.
 """
 
 from __future__ import annotations
 
+import datetime
 import json
 import logging
 import re
-import time
-from dataclasses import asdict, dataclass
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+import sys
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+if __package__ is None or __package__ == "":
+    module_dir = Path(__file__).resolve().parent
+    sys.path.insert(0, str(module_dir.parent))
+    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
+    __package__ = "optv.parliaments.NO.scraper"
+
+from optv.parliaments.NO.scraper.http_get import fetch_bytes
 
 logger = logging.getLogger(__name__)
 
 QBRICK_ACCOUNT_ID = "AccrjW9C7ikYk2xPM5xJ4Frag"
+TZ_OSLO = ZoneInfo("Europe/Oslo")
 ARCHIVE_BASE = "https://www.stortinget.no/no/Hva-skjer-pa-Stortinget/videoarkiv/Arkiv-TV-sendinger/"
 QBRICK_API = "https://video.qbrick.com/api/v1/public/accounts/{account}/medias/{qbvid}"
-
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 
 @dataclass
@@ -50,6 +71,7 @@ class VideoPart:
     duration_seconds: float | None # tc_out - tc_in (None if either missing)
     thumbnail_url: str | None
     raw: dict                      # full Qbrick payload for debugging
+    chapters: list[dict] = field(default_factory=list)  # [{start, end, name}], sorted
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -59,34 +81,8 @@ class VideoPart:
 
 def _fetch(url: str, *, retry_count: int, retry_delay_max: float,
            accept: str = "*/*") -> bytes:
-    delay = 1.0
-    last_exc: Exception | None = None
-    for attempt in range(1, retry_count + 1):
-        try:
-            req = Request(url, headers={
-                "User-Agent": USER_AGENT,
-                "Accept": accept,
-                "Accept-Language": "en,nb;q=0.9",
-            })
-            with urlopen(req, timeout=30) as resp:
-                return resp.read()
-        except HTTPError as e:
-            if 500 <= e.code < 600 and attempt < retry_count:
-                logger.warning(f"HTTP {e.code} on {url}, retry {attempt}/{retry_count} after {delay:.1f}s")
-                time.sleep(min(delay, retry_delay_max))
-                delay = min(delay * 2, retry_delay_max)
-                last_exc = e
-                continue
-            raise
-        except (URLError, TimeoutError, ConnectionError) as e:
-            if attempt < retry_count:
-                logger.warning(f"{type(e).__name__} on {url}: {e}, retry {attempt}/{retry_count}")
-                time.sleep(min(delay, retry_delay_max))
-                delay = min(delay * 2, retry_delay_max)
-                last_exc = e
-                continue
-            raise
-    raise RuntimeError(f"Exhausted {retry_count} attempts for {url}: {last_exc}")
+    return fetch_bytes(url, accept=accept, timeout=30,
+                       retry_count=retry_count, retry_delay_max=retry_delay_max)
 
 
 def _archive_url(moteid: int, delnr: int) -> str:
@@ -109,6 +105,33 @@ def _list_parts_in_html(html: str, moteid: int) -> list[int]:
 def _qbid_from_html(html: str) -> str | None:
     m = re.search(r'"qbrickVideoId":"([^"]+)"', html)
     return m.group(1) if m else None
+
+
+def account_id_from_html(html: str) -> str | None:
+    m = re.search(r'"qbrickAccountId":"([^"]+)"', html)
+    return m.group(1) if m else None
+
+
+def chapters_from_payload(payload: dict) -> list[dict]:
+    """Cleaned Qbrick chapters: ``[{start, end, name}]`` sorted by start.
+
+    Drops entries without a numeric ``start``/``end`` or with ``end <= start``.
+    Returns ``[]`` when the part has no (or an empty) chapter track.
+    """
+    out: list[dict] = []
+    for track in payload.get("tracks") or []:
+        if track.get("id") != "cptr":
+            continue
+        for seq in track.get("sequences") or []:
+            start, end = seq.get("start"), seq.get("end")
+            if not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
+                continue
+            if end <= start:
+                continue
+            out.append({"start": float(start), "end": float(end),
+                        "name": seq.get("name") or ""})
+    out.sort(key=lambda c: c["start"])
+    return out
 
 
 def _qbrick_payload(qbvid: str, *, retry_count: int, retry_delay_max: float,
@@ -198,6 +221,30 @@ def _parse_tc(s: str | None) -> tuple[str | None, float | None]:
         return None, None
 
 
+def tc_date_shift(tc_in_utc: str | None, dato: str | None) -> datetime.timedelta | None:
+    """Days to add to ``TC_in``/``TC_out`` when ``TC_in`` falls on an earlier
+    Europe/Oslo day than the part's own date (``custom.Dato``).
+
+    A part cannot start before its meeting day, so an earlier date is a typo
+    in the record (seen with the date one day off and the time right).
+    Returns ``None`` when no correction is needed.
+    """
+    if not tc_in_utc or not dato:
+        return None
+    try:
+        day = datetime.date.fromisoformat(dato)
+        local = datetime.datetime.fromisoformat(tc_in_utc).astimezone(TZ_OSLO).date()
+    except ValueError:
+        return None
+    return datetime.timedelta(days=(day - local).days) if local < day else None
+
+
+def _shift_iso(iso: str | None, delta: datetime.timedelta) -> str | None:
+    if not iso:
+        return iso
+    return (datetime.datetime.fromisoformat(iso) + delta).isoformat(timespec="seconds")
+
+
 def resolve_meeting_video(moteid: int, *,
                           retry_count: int = 10,
                           retry_delay_max: float = 10.0) -> list[VideoPart]:
@@ -224,14 +271,23 @@ def resolve_meeting_video(moteid: int, *,
         if not qbvid:
             logger.warning(f"  meid={moteid} del={delnr}: no qbrickVideoId in HTML — skipping part")
             continue
+        account = account_id_from_html(part_html) or QBRICK_ACCOUNT_ID
+        if account != QBRICK_ACCOUNT_ID:
+            logger.info(f"  meid={moteid} del={delnr}: Qbrick account {account} "
+                        f"(differs from the default {QBRICK_ACCOUNT_ID})")
         payload = _qbrick_payload(qbvid, retry_count=retry_count,
-                                  retry_delay_max=retry_delay_max)
+                                  retry_delay_max=retry_delay_max, account=account)
         custom = payload.get("custom") or {}
         mp4_url, hls_url = _pick_best_mp4(payload)
         audio_mp4_url = pick_lowest_mp4(payload) or mp4_url
         tc_in, tc_in_epoch = _parse_tc(custom.get("TC_in"))
         tc_out, tc_out_epoch = _parse_tc(custom.get("TC_out"))
         duration = (tc_out_epoch - tc_in_epoch) if (tc_in_epoch and tc_out_epoch) else None
+        shift = tc_date_shift(tc_in, custom.get("Dato"))
+        if shift:
+            logger.warning(f"  meid={moteid} del={delnr} qbvid={qbvid}: TC_in {tc_in} lies before "
+                           f"the part's date {custom.get('Dato')}; moving TC_in/TC_out by {shift.days} day(s)")
+            tc_in, tc_out = _shift_iso(tc_in, shift), _shift_iso(tc_out, shift)
         if not mp4_url:
             logger.warning(f"  meid={moteid} del={delnr} qbvid={qbvid}: no MP4 rendition found")
         if not tc_in:
@@ -248,6 +304,7 @@ def resolve_meeting_video(moteid: int, *,
             duration_seconds=duration,
             thumbnail_url=_pick_thumbnail(payload),
             raw=payload,
+            chapters=chapters_from_payload(payload),
         ))
     return out
 

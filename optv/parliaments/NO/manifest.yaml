@@ -5,7 +5,7 @@ locale:
   spacy_model: nb_core_news_md
   aeneas_language: nor
   entityfishing_language: sv      # entity-fishing has no Norwegian KB; Swedish is the closest cognate, returns correct Wikidata QIDs for Norwegian proper nouns
-periods: [22]
+periods: [20, 21, 22]
 supported_stages: [download, parse, merge, nel, align, ner]
 entity_dump_url: ""                  # built locally; see scraper/build_entity_dump.py
 default_retry_count: 10

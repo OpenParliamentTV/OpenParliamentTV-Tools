@@ -36,6 +36,31 @@ def test_link_entities_fills_wid_for_known_person():
     assert person["faction"] == {"label": "SPD", "wid": "Q49768", "wtype": "ORG"}
 
 
+def test_link_entities_matches_origin_person_id_before_label():
+    """A parliament-native person id links even when the label differs."""
+    ent = {"id": "Q100", "label": "Kari Nordmann", "labelAlternative": [],
+           "subType": "memberOfParliament",
+           "additionalInformation": {"originPersonID": "KNOR"}}
+    persons = {"kari nordmann": ent}
+    speeches = [{"people": [
+        {"label": "Kari H. Nordmann", "originPersonID": "KNOR"},
+        {"label": "Unknown Person", "originPersonID": "NOPE"},
+    ]}]
+    out = link_entities(speeches, persons, {})
+    assert out[0]["people"][0]["wid"] == "Q100"
+    assert out[0]["people"][0]["wtype"] == "PERSON"
+    assert "wid" not in out[0]["people"][1]
+
+
+def test_link_entities_matches_any_of_several_origin_person_ids():
+    ent = {"id": "Q101", "label": "Hans Haugen", "labelAlternative": [],
+           "subType": "memberOfParliament",
+           "additionalInformation": {"originPersonID": ["K_NOR", "KÅNOR"]}}
+    speeches = [{"people": [{"label": "H. Haugen", "originPersonID": "KÅNOR"}]}]
+    out = link_entities(speeches, {"hans haugen": ent}, {})
+    assert out[0]["people"][0]["wid"] == "Q101"
+
+
 def test_link_entities_preserves_upstream_wid():
     """ParlaMint parser already sets wid; NEL must not overwrite it."""
     persons = {"max beispiel": {"id": "Q42"}}

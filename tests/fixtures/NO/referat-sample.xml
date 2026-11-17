@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Synthetic Referat modelled on the Stortinget publikasjon XML
+     (forhandlinger.dtd): one element of every <Saker> child type, timed and
+     untimed remarks, a Sak without saksKartNr, quotations, a table and the
+     [00:00:00] placeholder. Names and ids are invented. -->
+<Forhandlinger Id="refs-202526-10-14-2" Status="Komplett">
+  <Mote Id="refsi1" moteID="11518">
+    <Startseksjon Id="s1">
+      <Motestart Id="s2">
+        <Tittel>Møte tirsdag den 14. oktober 2025 kl. 10</Tittel>
+        <Presinnlegg>
+          <A><Navn>Presidenten:</Navn> Representanten Ola Nordmann har igjen tatt sete.</A>
+        </Presinnlegg>
+        <Presinnlegg>
+          <A><Navn>Presidenten [10:00:05]:</Navn> Møtet er satt.</A>
+        </Presinnlegg>
+        <Hovedinnlegg Id="i100">
+          <A><Navn personID="ONOR">Ola Nordmann (H) [10:00:20]:</Navn> Jeg vil fremme et forslag.</A>
+        </Hovedinnlegg>
+      </Motestart>
+    </Startseksjon>
+    <Hovedseksjon>
+      <Saker>
+        <Sak saksKartNr="1">
+          <Sakshode>
+            <Saknr><Uth Type="Sperret">Sak nr. 1 [10:01:00]</Uth></Saknr>
+            <Saktittel Id="t1"><A>Trontaledebatten (trontaledebatt)</A></Saktittel>
+          </Sakshode>
+          <Hovedinnlegg Id="i101">
+            <A><Navn personID="KNOR">Kari Nordmann (A) [10:01:05]:</Navn> Første avsnitt.</A>
+            <A>Andre avsnitt.</A>
+            <Sitat Type="Minnrykk"><A>«Sitert tekst.»</A></Sitat>
+            <Sitat><Tbl><table><tgroup><tbody><row><entry><A>Tabellcelle</A></entry></row></tbody></tgroup></table></Tbl></Sitat>
+            <Liste Type="Fri"><Pkt><A>Punkt en.</A></Pkt></Liste>
+          </Hovedinnlegg>
+          <Presinnlegg>
+            <A><Navn>Presidenten:</Navn> Takk.</A>
+          </Presinnlegg>
+          <Replikk Id="i102">
+            <A><Navn personID="PHAN">Per Hansen (FrP) [10:05:00]:</Navn> Et spørsmål.</A>
+          </Replikk>
+        </Sak>
+        <Sak>
+          <Sakshode>
+            <Saknr><Uth Type="Sperret">Sak nr. 2 [10:10:00]</Uth></Saknr>
+            <Saktittel><A>Innstilling fra finanskomiteen om lovforslag</A></Saktittel>
+          </Sakshode>
+          <Hovedinnlegg Id="i103">
+            <A><Navn personID="KNOR">Statsminister Kari Nordmann [10:10:05]:</Navn> Tekst om saken.</A>
+          </Hovedinnlegg>
+        </Sak>
+        <Sporretime saksKartNr="3">
+          <Sakshode>
+            <Saknr><Uth Type="Sperret">Sak nr. 3 [10:20:00]</Uth></Saknr>
+            <Saktittel Id="t3"><A>Muntlig spørretime</A></Saktittel>
+          </Sakshode>
+          <Hovedinnlegg Id="i104">
+            <A><Navn personID="PHAN">Per Hansen (FrP) [10:20:05]:</Navn> Spørsmål til statsministeren.</A>
+          </Hovedinnlegg>
+          <Replikk Id="i105">
+            <A><Navn personID="KNOR">Statsminister Kari Nordmann [10:21:00]:</Navn> Svar til representanten.</A>
+          </Replikk>
+        </Sporretime>
+        <Interpellasjon Id="x4" saksKartNr="4" sakID="1">
+          <Sakshode>
+            <Saknr><Uth Type="Sperret">Sak nr. 4 [10:30:00]</Uth></Saknr>
+            <Saktittel><A>Interpellasjon fra representanten Ola Nordmann til finansministeren</A></Saktittel>
+          </Sakshode>
+          <Hovedinnlegg Id="i106">
+            <A><Navn personID="ONOR">Ola Nordmann (H) [10:30:05]:</Navn> Interpellasjonen gjelder skatt.</A>
+          </Hovedinnlegg>
+        </Interpellasjon>
+        <VoteringerStart>
+          <Tittel>Votering</Tittel>
+          <Presinnlegg>
+            <A><Navn>Presidenten [10:40:00]:</Navn> Stortinget går da til votering.</A>
+          </Presinnlegg>
+          <Voteringer Id="v1" saksKartNr="2" sakID="2">
+            <Sakdel>
+              <Presinnlegg>
+                <A><Navn>Presidenten:</Navn> Det voteres over forslag nr. 1.</A>
+                <Sitat><A>«Stortinget ber regjeringen.»</A></Sitat>
+              </Presinnlegg>
+            </Sakdel>
+            <VedtakS>
+              <Hovedinnlegg Id="i107">
+                <A><Navn personID="PHAN">Per Hansen (FrP):</Navn> Stemmeforklaring.</A>
+              </Hovedinnlegg>
+            </VedtakS>
+          </Voteringer>
+        </VoteringerStart>
+        <Sakreferat Id="r1">
+          <Sakshode>
+            <Saknr><Uth Type="Sperret">Sak nr. 5 [10:45:00]</Uth></Saknr>
+            <Saktittel><A>Referat</A></Saktittel>
+          </Sakshode>
+          <Presinnlegg>
+            <A><Navn>Presidenten [00:00:00]:</Navn> Ingen merknader.</A>
+          </Presinnlegg>
+        </Sakreferat>
+      </Saker>
+    </Hovedseksjon>
+  </Mote>
+</Forhandlinger>

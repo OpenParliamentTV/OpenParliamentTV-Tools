@@ -22,6 +22,7 @@ from optv.shared.agenda_types import (
     classify_de_native,
     classify_de_rp,
     classify_de_sh,
+    classify_no,
     classify_parlamint_de,
     classify_pt,
     classify_se,
@@ -314,3 +315,17 @@ def test_annotate_agenda_item_handles_none_native():
     annotate_agenda_item(ag, None, CORE_REGULAR)
     assert ag["type"] == CORE_REGULAR
     assert "nativeType" not in ag
+
+
+@pytest.mark.parametrize("title,expected_native,expected_core", [
+    ("Muntlig spørretime", "NO-muntlig_sporretime", CORE_QA),
+    ("Muntleg spørjetime", "NO-muntlig_sporretime", CORE_QA),
+    ("Ordinær spørretime", "NO-sporretime", CORE_QA),
+    ("Ordinær spørjetime", "NO-sporretime", CORE_QA),
+    ("Interpellasjon fra representanten Kari Nordmann til helse- og omsorgsministeren",
+     "NO-interpellasjon", CORE_GOVERNMENT_QUESTIONING),
+    ("Votering", "NO-votering", CORE_VOTING),
+    ("Referat", "NO-referat", CORE_PROCEDURAL),
+])
+def test_classify_no(title, expected_native, expected_core):
+    assert classify_no(title) == (expected_native, expected_core)
