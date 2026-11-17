@@ -78,6 +78,18 @@ def load_turns(config, session: str) -> list[dict]:
         return []
 
 
+def load_proceedings_meta(config, session: str) -> dict:
+    """Return the parsed proceedings document's ``meta`` for a session, or {}."""
+    pf = config.file(session, "proceedings")
+    if not pf.exists():
+        return {}
+    try:
+        return json.loads(pf.read_text()).get("meta") or {}
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning(f"[{session}] could not read proceedings meta: {e}")
+        return {}
+
+
 def _text_body(turn: dict, speaker: str, sentences: list,
                status: str = "main-speaker") -> list[dict]:
     """Ordered textBody for a matched turn: the proceedings turn's typed

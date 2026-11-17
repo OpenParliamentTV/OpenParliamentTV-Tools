@@ -2,7 +2,10 @@
 """Parse DE-BW Plenarprotokoll PDFs into proceedings text turns.
 
 Thin wrapper over :mod:`optv.shared.pdf2tei.proceedings_parser`, binding the
-DE-BW detection config.
+DE-BW detection config. Each document's ``meta.sittingTimes`` carries the
+sitting's start, end and breaks from the protocol
+(:func:`optv.shared.pdf2tei.sitting_times.extract_sitting_times`); the merger
+anchors the video parts to them for wall-clock speech times.
 """
 from __future__ import annotations
 
@@ -18,15 +21,23 @@ if __package__ is None or __package__ == "":
     __package__ = "optv.parliaments.DE-BW.parsers"
 
 from optv.shared.pdf2tei import proceedings_parser as _pp
+from optv.shared.pdf2tei.sitting_times import extract_sitting_times
 from .pdf_config import CONFIG
 
 
+def _sitting_times_meta(pdf: Path) -> dict:
+    times = extract_sitting_times(pdf)
+    return {"sittingTimes": times} if times else {}
+
+
 def parse_proceedings_for_session(config, session: str):
-    return _pp.parse_proceedings_for_session(config, CONFIG, session)
+    return _pp.parse_proceedings_for_session(config, CONFIG, session,
+                                             extra_meta=_sitting_times_meta)
 
 
 def parse_proceedings_directory(config, args=None):
-    return _pp.parse_proceedings_directory(config, CONFIG, args)
+    return _pp.parse_proceedings_directory(config, CONFIG, args,
+                                           extra_meta=_sitting_times_meta)
 
 
 if __name__ == "__main__":

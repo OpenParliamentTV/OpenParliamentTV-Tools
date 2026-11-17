@@ -11,8 +11,9 @@ with no anti-bot. Two endpoints matter:
   carries, in *static* HTML, the session MP4 URL plus a ``e-chapterList``: one
   ``e-accordion`` per Tagesordnungspunkt, each with one ``<li>`` per speech
   holding ``changeTimestamp(seconds)`` (start offset into the session MP4), the
-  speaker (in ``Lastname Firstname`` order), a ``| Role | Faction`` meta string
-  and a ``HH:MM:SS`` display time.
+  speaker (surname first: ``Lastname, Firstname`` from WP 18, ``Lastname
+  Firstname`` before), a ``| Role | Faction`` meta string and a ``HH:MM:SS``
+  display time. The page's player starts at ``?t={seconds}``.
 
 There is no per-speech MP4 — DE-BW is the SE/DE-SH per-speech-offset model (one
 session recording, per-speech windows addressed by ``#t=start,end``). We use
@@ -105,16 +106,42 @@ def parse_filterlist(html: str) -> list[str]:
 
 
 _RESULTS_TOTAL_RE = re.compile(r'"numberOfResults"\s*:\s*(\d+)')
+# Any video card (session or not) — a page without one is past the list's end.
+_ANY_VIDEO_LINK_RE = re.compile(r'/de/mediathek/videos/[a-z0-9]')
 
 
-def fetch_session_urls(*, retry_count: int = 20, max_results: int | None = None) -> list[str]:
-    """Walk the whole video archive via ``?offset=`` pagination.
+def _page_is_done(links: list[str], known: set[str] | None,
+                  period_start: str | None) -> bool:
+    """True once a newest-first filterlist page shows nothing further to find.
 
-    Returns all session-video page URLs (deduplicated, newest first). The first
-    page reports ``numberOfResults``; we then step ``offset`` by ``PAGE_SIZE``
-    until that total is covered (or ``max_results`` is hit). ~88 requests cover
-    the full ~1054-item BW archive; the result is cached by fetch_archive so
-    this only runs on a fresh/forced build.
+    That is the case when the page holds a known session URL and no new one
+    (an incremental refresh has caught up with the cache), or when every dated
+    session on it is older than ``period_start`` (the walk has left the
+    period). A page without session links (hearings, events) never ends the walk.
+    """
+    if not links:
+        return False
+    if known is not None and all(u in known for u in links):
+        return True
+    if period_start:
+        dates = [slug_date(u) for u in links]
+        if all(d is not None and d < period_start for d in dates):
+            return True
+    return False
+
+
+def fetch_session_urls(*, retry_count: int = 20, max_results: int | None = None,
+                       known: set[str] | None = None,
+                       period_start: str | None = None) -> list[str]:
+    """Walk the video archive (newest first) via ``?offset=`` pagination.
+
+    Returns the session-video page URLs seen (deduplicated, newest first). The
+    first page reports ``numberOfResults``; ``offset`` then steps by
+    ``PAGE_SIZE`` until that total (or ``max_results``) is covered, or until a
+    page shows nothing further to find (see :func:`_page_is_done`): with
+    ``known`` (the cached URLs) the walk stops once it reaches them, and with
+    ``period_start`` once it is past the period's first sitting. Without either,
+    ~88 requests cover the whole ~1054-item BW archive.
     """
     seen: dict[str, None] = {}
 
@@ -123,7 +150,8 @@ def fetch_session_urls(*, retry_count: int = 20, max_results: int | None = None)
                           retry_count=retry_count)
 
     first = page(0)
-    for u in parse_filterlist(first):
+    links = parse_filterlist(first)
+    for u in links:
         seen.setdefault(u, None)
     m = _RESULTS_TOTAL_RE.search(first)
     total = int(m.group(1)) if m else len(seen)
@@ -132,15 +160,20 @@ def fetch_session_urls(*, retry_count: int = 20, max_results: int | None = None)
     logger.info(f"Filterlist reports {total} result(s); paginating by {PAGE_SIZE}…")
 
     offset = PAGE_SIZE
-    while offset < total:
-        links = parse_filterlist(page(offset))
-        if not links:
+    requests = 1
+    done = _page_is_done(links, known, period_start)
+    while not done and offset < total:
+        html = page(offset)
+        requests += 1
+        links = parse_filterlist(html)
+        if not _ANY_VIDEO_LINK_RE.search(html):
             logger.warning(f"Empty page at offset={offset}; stopping early")
             break
         for u in links:
             seen.setdefault(u, None)
+        done = _page_is_done(links, known, period_start)
         offset += PAGE_SIZE
-    logger.info(f"Discovered {len(seen)} distinct session URL(s)")
+    logger.info(f"Discovered {len(seen)} distinct session URL(s) in {requests} request(s)")
     return list(seen)
 
 

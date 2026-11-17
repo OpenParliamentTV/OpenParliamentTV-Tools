@@ -15,8 +15,8 @@ party (or to a government role for "Staatsregierung"); derives the speaker
 ``start_datetime`` from the item's date + time (German local time, emitted with
 its Europe/Berlin UTC offset) and an ``end_datetime`` from the offset span; and
 assigns a deterministic ``speech_index`` ordered by
-(date, start_offset). Unlike DE-BW (video-relative), the source carries a real
-per-speech wall-clock, so ``timesAreVideoRelative`` is False downstream. One
+(date, start_offset). The source carries a real per-speech wall-clock, so
+``timesAreVideoRelative`` is False downstream. One
 record per speech is emitted to ``original/media/{session_id}-media.json``.
 """
 

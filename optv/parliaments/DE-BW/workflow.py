@@ -104,8 +104,9 @@ def _add_arguments(parser):
                              "(repeatable). Manual override for anything the "
                              "filterlist pagination misses.")
     parser.add_argument("--max-results", type=int, default=None,
-                        help="Only paginate the newest N archive items when "
-                             "(re)building the session index (default: all).")
+                        help="Paginate at most the newest N archive items when "
+                             "building or refreshing the session index "
+                             "(default: no cap).")
 
 
 def main():

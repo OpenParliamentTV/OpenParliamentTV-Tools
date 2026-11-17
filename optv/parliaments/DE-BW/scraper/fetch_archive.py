@@ -12,11 +12,12 @@ Produces ``metadata/archive-wp{N}.json`` — the candidate list that
 
 Two sources are merged (deduplicated by URL):
 
-1. the **filterlist** widget, walked end-to-end via ``?offset=`` pagination
-   (``fetch_session_urls``) — the full ~1054-item archive across all WPs, then
-   scoped to ``period`` by the slug date (so a period-17 build doesn't pull
-   WP-18 pages). With ``--max-results`` only the newest N items are fetched
-   (incremental updates).
+1. the **filterlist** widget, walked newest first via ``?offset=`` pagination
+   (``fetch_session_urls``) and scoped to ``period`` by the slug date (so a
+   period-17 build doesn't keep WP-18 pages). A fresh build walks back until
+   the period's first sitting; a cached archive is refreshed on every run,
+   walking only until the newest pages reach already-known sessions.
+   ``--max-results`` caps the walk at the newest N items.
 2. **operator-supplied URLs** — ``--session-url`` (repeatable) and/or a
    ``metadata/seed-urls.txt`` file (one URL per line, ``#`` comments allowed) —
    a manual override for anything pagination misses.
@@ -86,10 +87,12 @@ def fetch_archive(*, period: int, media_dir: Path, metadata_dir: Path,
                   force: bool = False, retry_count: int = 20) -> dict:
     """Build (and cache) the candidate session index for ``period``.
 
-    Cached at ``metadata/archive-wp{period}.json``; rebuilt when missing or
-    when ``force`` is set. On a fresh build the whole archive is paginated and
-    scoped to ``period`` by slug date. Operator-supplied URLs (``seed_urls`` +
-    ``seed-urls.txt``) are always merged in.
+    Cached at ``metadata/archive-wp{period}.json``. A missing cache (or
+    ``force``) is rebuilt by paginating back to the period's start; an existing
+    one is refreshed from the newest pages until they reach known sessions, so
+    new sittings are picked up on every run. Results are scoped to ``period``
+    by slug date. Operator-supplied URLs (``seed_urls`` + ``seed-urls.txt``)
+    are always merged in.
     """
     metadata_dir.mkdir(parents=True, exist_ok=True)
     media_dir.mkdir(parents=True, exist_ok=True)
@@ -103,14 +106,18 @@ def fetch_archive(*, period: int, media_dir: Path, metadata_dir: Path,
             urls.setdefault(s["video_page_url"], None)
         logger.info(f"Loaded {len(urls)} cached session URL(s) from {out_path.name}")
 
-    if force or not urls:
-        try:
-            for u in fetch_session_urls(retry_count=retry_count, max_results=max_results):
-                if _in_period(slug_date(u), period):
-                    urls.setdefault(u, None)
-            logger.info(f"WP{period}: {len(urls)} session URL(s) after date-scoping")
-        except RuntimeError as e:
-            logger.warning(f"Filterlist pagination failed ({e}); relying on seed URLs")
+    known = set(urls) if urls and not force else None
+    period_start = (WP_DATE_RANGE.get(period) or (None, None))[0]
+    try:
+        before = len(urls)
+        for u in fetch_session_urls(retry_count=retry_count, max_results=max_results,
+                                    known=known, period_start=period_start):
+            if _in_period(slug_date(u), period):
+                urls.setdefault(u, None)
+        logger.info(f"WP{period}: {len(urls)} session URL(s) after date-scoping "
+                    f"({len(urls) - before} new)")
+    except RuntimeError as e:
+        logger.warning(f"Filterlist pagination failed ({e}); relying on cached/seed URLs")
 
     for u in (seed_urls or []):
         urls.setdefault(u.strip(), None)
@@ -143,11 +150,11 @@ def fetch_archive(*, period: int, media_dir: Path, metadata_dir: Path,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("data_dir", type=Path)
-    parser.add_argument("--period", type=int, default=17)
+    parser.add_argument("--period", type=int, default=18)
     parser.add_argument("--session-url", action="append", default=[],
                         help="Session video-page URL to include (repeatable)")
     parser.add_argument("--max-results", type=int, default=None,
-                        help="Only paginate the newest N archive items (default: all)")
+                        help="Paginate at most the newest N archive items (default: no cap)")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--retry-count", type=int, default=20)
     parser.add_argument("--debug", action="store_true")

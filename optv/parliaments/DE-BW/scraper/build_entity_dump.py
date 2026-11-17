@@ -7,8 +7,8 @@ Two sources, joined on German label:
    ``P39 wd:Q17481175`` ("member of the Landtag of Baden-Württemberg" /
    Mitglied des Landtags von Baden-Württemberg). Provides the QID plus German
    and English label variants.
-2. **Hand-curated party list** for the factions represented in WP 17 (since the
-   March 2021 election): GRÜNE, CDU, SPD, FDP/DVP, AfD.
+2. **Hand-curated party list** for the factions represented in WP 17
+   (GRÜNE, CDU, SPD, FDP/DVP, AfD) and WP 18 (GRÜNE, CDU, AfD, SPD).
 
 Run::
 
@@ -19,10 +19,11 @@ this is the canonical source; the workflow falls back to it via the local
 ``metadata/entities.json`` path picked up by ``optv.shared.nel.get_nel_data``.
 
 NEL coverage caveat (the DE-SH / DE-BY class): Wikidata's ``P39 wd:Q17481175``
-misses current WP-17 members whose items exist without that statement. Person-
-NEL will therefore be partial; it is fixable downstream by enriching the SPARQL
-or scraping the Landtag member roster (abgeordnetenwatch parliament id 12, CC0).
-The source names speakers ``Lastname Firstname`` — the parser reorders them to
+misses current members whose items exist without that statement. Person-NEL
+will therefore be partial; it is fixable downstream by enriching the SPARQL or
+scraping the Landtag member roster (abgeordnetenwatch parliament id 6, CC0).
+The source names speakers surname first (``Lastname, Firstname`` from WP 18,
+``Lastname Firstname`` before) — the parser reorders them to
 ``Firstname Lastname`` for matching against Wikidata labels.
 """
 
@@ -64,10 +65,10 @@ SELECT DISTINCT ?person ?label_de ?label_en WHERE {
 }
 """
 
-# Factions represented in WP 17 (since March 2021). The party shortcode in the
-# chapter-list meta string (e.g. "| FDP/DVP", "| GRÜNE") is matched against
-# label + aliases. Government speakers and presiding officers may carry no
-# party and stay unlinked at the faction level.
+# Factions represented in WP 17 and WP 18 (FDP/DVP only in WP 17). The party
+# shortcode in the chapter-list meta string (e.g. "| FDP/DVP", "| GRÜNE") is
+# matched against label + aliases. Government speakers and presiding officers
+# may carry no party and stay unlinked at the faction level.
 DE_BW_PARTIES: list[dict] = [
     {"id": "Q49766", "label": "GRÜNE", "aliases": [
         "BÜNDNIS 90/DIE GRÜNEN",

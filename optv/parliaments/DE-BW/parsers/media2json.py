@@ -6,19 +6,20 @@ Input per session (written by the scraper):
 - ``original/media/{session_id}-tops.json`` — one or more ``parts`` (sequential
   video files for the same calendar-day Sitzung), each with its MP4 URL, page
   URL and ``e-chapterList`` structure: per-TOP title/description and, per
-  speech, the raw speaker name (``Lastname Firstname``), a ``| Role | Faction``
-  meta string and a ``changeTimestamp`` start offset (seconds into *that part's*
-  MP4).
+  speech, the raw speaker name (surname first: ``Lastname, Firstname`` from
+  WP 18, ``Lastname Firstname`` before), a ``| Role | Faction`` meta string and
+  a ``changeTimestamp`` start offset (seconds into *that part's* MP4).
 
-This pass: splits the name into ``Firstname Lastname`` (for NEL matching) +
+This pass: reorders the name to ``Firstname Lastname`` (for NEL matching) +
 first/last; splits the meta string into role + faction; computes per-speech
 ``end_offset`` from the next speech's start **within the same part** (the source
 has no per-speech end; offsets reset per part); carries each speech's part MP4 /
 page URL; and assigns a deterministic global ``speech_index`` ordered by
 (part, offset). Synthetic ``start_datetime`` uses a per-part cumulative base so
 the times stay globally monotonic across parts (the offsets themselves remain
-part-relative, for the media fragment). One record per speech is emitted to
-``original/media/{session_id}-media.json``.
+part-relative, for the media fragment); the merger replaces them with wall-clock
+times once the protocol's sitting times are parsed. One record per speech is
+emitted to ``original/media/{session_id}-media.json``.
 """
 
 from __future__ import annotations
@@ -49,6 +50,10 @@ _FACTIONS = {"grüne", "gruene", "cdu", "spd", "fdp/dvp", "fdp", "afd", "fraktio
 
 _HONORIFICS = ("Dr. ", "Prof. ", "Prof. Dr. ", "Dr. Dr. ", "Dr. h. c. ")
 
+# Lowercase surname particles; trailing ones in the given-name part belong to
+# the surname ("Loga, Cornelia von" → "von Loga").
+_PARTICLES = {"von", "vom", "zu", "zum", "zur", "van", "de", "der", "den", "du"}
+
 
 def _strip_honorifics(name: str) -> str:
     s = name.strip()
@@ -63,22 +68,66 @@ def _strip_honorifics(name: str) -> str:
     return s
 
 
-def _reorder_name(name_raw: str) -> tuple[str, str, str]:
-    """``"Aras Muhterem"`` (Lastname Firstname) → ``("Muhterem Aras", "Muhterem", "Aras")``.
+def _move_particles(firstname: str, lastname: str) -> tuple[str, str]:
+    """Move trailing name particles from the given names to the surname.
 
-    Returns ``(label, firstname, lastname)``. The source lists the surname
-    first; we assume the first token is the surname and the remainder the given
-    name(s).
+    ``("Cornelia von", "Loga")`` → ``("Cornelia", "von Loga")``. The label
+    (``"{firstname} {lastname}"``) is the same either way.
     """
-    name = _strip_honorifics(name_raw)
-    parts = name.split()
-    if not parts:
-        return "", "", ""
-    if len(parts) == 1:
-        return parts[0], "", parts[0]
-    lastname = parts[0]
-    firstname = " ".join(parts[1:])
+    given = firstname.split()
+    moved: list[str] = []
+    while len(given) > 1 and given[-1] in _PARTICLES:
+        moved.insert(0, given.pop())
+    if not moved:
+        return firstname, lastname
+    return " ".join(given), " ".join(moved + [lastname])
+
+
+def _reorder_name(name_raw: str) -> tuple[str, str, str]:
+    """Reorder a surname-first chapter-list name to ``Firstname Lastname``.
+
+    Returns ``(label, firstname, lastname)``. Two source forms:
+
+    - ``"Strobl, Thomas"`` (WP 18): split at the comma, so multi-word surnames
+      survive (``"Lede Abal, Daniel"`` → ``"Daniel Lede Abal"``).
+    - ``"Aras Muhterem"`` (WP 15–17): no separator; the first token is taken as
+      the surname and the remainder as the given name(s).
+
+    Trailing particles of the given names move to the surname
+    (``"Loga, Cornelia von"`` → first ``"Cornelia"``, last ``"von Loga"``).
+    """
+    raw = (name_raw or "").strip()
+    if "," in raw:
+        last_raw, first_raw = raw.split(",", 1)
+        lastname = " ".join(_strip_honorifics(last_raw).split())
+        firstname = " ".join(_strip_honorifics(first_raw).split())
+        if not firstname:
+            return lastname, "", lastname
+        if not lastname:
+            return firstname, firstname, ""
+    else:
+        parts = _strip_honorifics(raw).split()
+        if not parts:
+            return "", "", ""
+        if len(parts) == 1:
+            return parts[0], "", parts[0]
+        lastname = parts[0]
+        firstname = " ".join(parts[1:])
+    firstname, lastname = _move_particles(firstname, lastname)
     return f"{firstname} {lastname}", firstname, lastname
+
+
+def _split_name_role(name_raw: str, meta_raw: str) -> tuple[str, str]:
+    """Move a role written into the name span over to the meta string.
+
+    Speakers without a faction sometimes carry their office in the name span
+    (``"Böhlen, Beate | Bürgerbeauftragte"`` with an empty meta span); that
+    becomes name ``"Böhlen, Beate"`` and meta ``"| Bürgerbeauftragte"``.
+    """
+    name, sep, role = (name_raw or "").partition("|")
+    if not sep:
+        return name_raw or "", meta_raw or ""
+    return name.strip(), f"| {role.strip()} {meta_raw or ''}".strip()
 
 
 def _split_meta(meta_raw: str) -> tuple[str, str]:
@@ -133,8 +182,9 @@ def parse_session(tops_path: Path) -> dict | None:
         part_speeches: list[dict] = []
         for top in part.get("tops", []):
             for sp in top.get("speeches", []):
-                label, firstname, lastname = _reorder_name(sp.get("name_raw", ""))
-                role, faction = _split_meta(sp.get("meta_raw", ""))
+                name, meta = _split_name_role(sp.get("name_raw", ""), sp.get("meta_raw", ""))
+                label, firstname, lastname = _reorder_name(name)
+                role, faction = _split_meta(meta)
                 part_speeches.append({
                     "date": iso_date,
                     "wp": wp,

@@ -9,28 +9,37 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Callable, Optional
 
 from .pipeline import pdf_to_proceedings_doc
 
 logger = logging.getLogger(__name__)
 
+# Optional per-parliament hook: PDF path → extra keys for the document ``meta``
+# (e.g. DE-BW's ``sittingTimes``).
+ExtraMeta = Optional[Callable[[Path], dict]]
 
-def parse_proceedings_for_session(config, cfg, session: str) -> Path | None:
+
+def parse_proceedings_for_session(config, cfg, session: str,
+                                  extra_meta: ExtraMeta = None) -> Path | None:
     pdf = config.dir('proceedings') / f"{session}.pdf"
     if not pdf.exists():
         logger.info(f"[{session}] no PDF at {pdf} — skipping proceedings parse")
         return None
     doc = pdf_to_proceedings_doc(pdf, session, cfg, session=session)
+    if extra_meta is not None:
+        doc["meta"].update(extra_meta(pdf) or {})
     out = config.save_data(doc, session, 'proceedings')
     logger.info(f"[{session}] wrote {out.name} ({len(doc['data'])} turns)")
     return out
 
 
-def parse_proceedings_directory(config, cfg, args=None) -> None:
+def parse_proceedings_directory(config, cfg, args=None,
+                                extra_meta: ExtraMeta = None) -> None:
     proc_dir = config.dir('proceedings')
     pdfs = sorted(proc_dir.glob("*.pdf")) if proc_dir.is_dir() else []
     if not pdfs:
         logger.info("No Plenarprotokoll PDFs to parse.")
         return
     for pdf in pdfs:
-        parse_proceedings_for_session(config, cfg, pdf.stem)
+        parse_proceedings_for_session(config, cfg, pdf.stem, extra_meta=extra_meta)

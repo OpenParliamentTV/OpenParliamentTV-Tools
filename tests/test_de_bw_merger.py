@@ -18,7 +18,10 @@ _scraper = importlib.import_module("optv.parliaments.DE-BW.scraper.common")
 _parser = importlib.import_module("optv.parliaments.DE-BW.parsers.media2json")
 _merger = importlib.import_module("optv.parliaments.DE-BW.merger.merge_session")
 _archive = importlib.import_module("optv.parliaments.DE-BW.scraper.fetch_archive")
+_fetch_media = importlib.import_module("optv.parliaments.DE-BW.scraper.fetch_media")
 Config = importlib.import_module("optv.parliaments.DE-BW.common").Config
+
+from optv.shared.pdf2tei.sitting_times import parse_sitting_times
 
 FIXTURES = Path(__file__).parent / "fixtures" / "DE-BW"
 
@@ -84,10 +87,60 @@ def test_parse_video_page():
 # --------------------------------------------------------------------------- #
 
 def test_reorder_name():
+    # WP 15–17 form: "Lastname Firstname", first token = surname
     assert _parser._reorder_name("Aras Muhterem") == ("Muhterem Aras", "Muhterem", "Aras")
     assert _parser._reorder_name("Rülke Hans-Ulrich") == ("Hans-Ulrich Rülke", "Hans-Ulrich", "Rülke")
     assert _parser._reorder_name("Dr. Schmidt Hans") == ("Hans Schmidt", "Hans", "Schmidt")
+    assert _parser._reorder_name("Eyb Arnulf Freiherr von") == (
+        "Arnulf Freiherr von Eyb", "Arnulf Freiherr", "von Eyb")
     assert _parser._reorder_name("") == ("", "", "")
+
+
+def test_reorder_name_comma_form():
+    # WP 18 form: "Lastname, Firstname" — split at the comma
+    assert _parser._reorder_name("Strobl, Thomas") == ("Thomas Strobl", "Thomas", "Strobl")
+    assert _parser._reorder_name("Lede Abal, Daniel") == (
+        "Daniel Lede Abal", "Daniel", "Lede Abal")
+    assert _parser._reorder_name("Kliche-Behnke, Dorothea") == (
+        "Dorothea Kliche-Behnke", "Dorothea", "Kliche-Behnke")
+    # trailing particle moves to the surname
+    assert _parser._reorder_name("Loga, Cornelia von") == (
+        "Cornelia von Loga", "Cornelia", "von Loga")
+    # honorific on either side of the comma
+    assert _parser._reorder_name("Rülke, Dr. Hans-Ulrich") == (
+        "Hans-Ulrich Rülke", "Hans-Ulrich", "Rülke")
+    assert _parser._reorder_name("Dr. Rülke, Hans-Ulrich") == (
+        "Hans-Ulrich Rülke", "Hans-Ulrich", "Rülke")
+    assert _parser._reorder_name("Strobl,") == ("Strobl", "", "Strobl")
+
+
+def test_split_name_role():
+    # an office written into the name span (non-member, empty meta span)
+    assert _parser._split_name_role("Böhlen, Beate | Bürgerbeauftragte", "") == (
+        "Böhlen, Beate", "| Bürgerbeauftragte")
+    assert _parser._split_name_role("Strobl, Thomas", "| Präsident | CDU") == (
+        "Strobl, Thomas", "| Präsident | CDU")
+
+
+def test_parse_p18_chapter_list(tmp_path):
+    html = (FIXTURES / "chapterlist-p18-sample.html").read_text()
+    page = _scraper.parse_video_page(html)
+    assert page["wp"] == 18 and page["sitzung"] == 14 and page["date"] == "2026-10-21"
+    assert page["tops"][0]["speeches"][0]["name_raw"] == "Strobl, Thomas"
+    tops_path = tmp_path / "18014-tops.json"
+    tops_path.write_text(json.dumps({
+        "session_id": "18014", "wp": 18, "sitzung": 14, "date": "2026-10-21",
+        "parts": [{"part": 1, "mp4_url": page["mp4_url"],
+                   "video_page_url": "https://www.landtag-bw.de/de/mediathek/videos/14-x-659748",
+                   "tops": page["tops"]}],
+    }))
+    data = _parser.parse_session(tops_path)["data"]
+    assert [(s["label"], s["firstname"], s["lastname"]) for s in data] == [
+        ("Thomas Strobl", "Thomas", "Strobl"),
+        ("Daniel Lede Abal", "Daniel", "Lede Abal"),
+        ("Cornelia von Loga", "Cornelia", "von Loga"),
+    ]
+    assert data[0]["role"] == "Präsident" and data[0]["gruppe"] == "CDU"
 
 
 def test_split_meta():
@@ -199,9 +252,14 @@ def test_merge_session_end_to_end(tmp_path):
     for sp in data:
         assert not (required - set(sp))
 
-    # sourcePage unique per speech, monotonic dates
+    # sourcePage: the session page + the ?t= start the page's player reads
+    assert pres["media"]["sourcePage"].endswith("-563198?t=1")
+    assert rulke["media"]["sourcePage"].endswith("-563198?t=483")
     assert len({sp["media"]["sourcePage"] for sp in data}) == len(data)
+    # no protocol → synthetic video-relative times, flagged
     assert data[0]["dateStart"] < data[1]["dateStart"]
+    assert pres["debug"]["timesAreVideoRelative"] is True
+    assert pres["debug"]["timeSource"] == "video"
 
     # full Stage 2 semantic validation: no errors
     findings = validate_stage2(doc, schema="full", semantic=True)
@@ -281,3 +339,167 @@ def test_multipart_parse_and_merge(tmp_path):
     findings = validate_stage2({"meta": json.loads(out.read_text())["meta"], "data": data},
                                schema="full", semantic=True)
     assert [f for f in findings if f["severity"] == "error"] == []
+
+
+# --------------------------------------------------------------------------- #
+# Wall-clock times from the protocol's sitting times
+# --------------------------------------------------------------------------- #
+
+def test_parse_sitting_times():
+    # 17118 shape: cover summary + body lines; a short vote-count break in the
+    # afternoon besides the lunch break; two-column text interleaves lines.
+    text = ("Beginn: 9:33 Uhr  Mittagspause: 12:45 bis 14:00 Uhr  Schluss: 16:12 Uhr "
+            "… Beginn: 9:33 Uhr … (Unterbrechung der Sitzung: 12:45 Uhr) Text der "
+            "anderen Spalte (Wiederaufnahme der Sitzung: 14:00 Uhr) … "
+            "(Unterbrechung der Sitzung: 16:06 Uhr) … (Wiederauf- nahme der "
+            "Sitzung: 16:11 Uhr) … Schluss: 16:12 Uhr")
+    assert parse_sitting_times(text) == {
+        "begin": "09:33", "end": "16:12",
+        "breaks": [["12:45", "14:00"], ["16:06", "16:11"]],
+    }
+    assert parse_sitting_times("Beginn: 9.03 Uhr … Schluss: 12.39 Uhr") == {
+        "begin": "09:03", "end": "12:39", "breaks": []}
+    assert parse_sitting_times("Beginn: 9:03 Uhr") is None
+    assert parse_sitting_times("") is None
+
+
+_SITTING_TIMES = {
+    "begin": "10:03", "end": "18:21",
+    # a short break inside part 1 (recording continues) + the lunch break
+    "breaks": [["10:10", "10:12"], ["10:30", "14:46"]],
+}
+
+
+def _write_proceedings(config, session, times):
+    config.dir("proceedings", create=True)
+    config.file(session, "proceedings", create=True).write_text(
+        json.dumps({"meta": {"session": session, "sittingTimes": times}, "data": []}))
+
+
+def test_multipart_wall_clock_from_protocol(tmp_path):
+    config = Config(tmp_path)
+    media_dir = config.dir("media", create=True)
+    (media_dir / "17140-tops.json").write_text(json.dumps(_multipart_tops()))
+    _parser.parse_media_directory(media_dir)
+    _write_proceedings(config, "17140", _SITTING_TIMES)
+
+    doc = json.loads(_merger.merge_session("17140", config, None).read_text())
+    data = doc["data"]
+    # part 1 (offsets 100, 300, 900) starts at Beginn 10:03; the 10:10 break
+    # starts before part 1's last entry (10:18), so it does not split the video
+    # and part 2 (offsets 50, 400) starts at the 14:46 resumption
+    assert [(s["dateStart"], s["dateEnd"]) for s in data] == [
+        ("2026-02-04T10:04:40+01:00", "2026-02-04T10:08:00+01:00"),
+        ("2026-02-04T10:08:00+01:00", "2026-02-04T10:18:00+01:00"),
+        ("2026-02-04T10:18:00+01:00", "2026-02-04T10:30:00+01:00"),  # → lunch break
+        ("2026-02-04T14:46:50+01:00", "2026-02-04T14:52:40+01:00"),
+        ("2026-02-04T14:52:40+01:00", "2026-02-04T18:21:00+01:00"),  # → Schluss
+    ]
+    assert data[0]["session"]["dateStart"] == "2026-02-04T10:03:00+01:00"
+    assert data[0]["session"]["dateEnd"] == "2026-02-04T18:21:00+01:00"
+    assert doc["meta"]["dateStart"] == "2026-02-04T10:03:00+01:00"
+    assert all(s["debug"]["timesAreVideoRelative"] is False for s in data)
+    assert all(s["debug"]["timeSource"] == "protocol" for s in data)
+    assert data[3]["debug"]["partStart"] == "2026-02-04T14:46:00+01:00"
+    findings = validate_stage2(doc, schema="full", semantic=True)
+    assert [f for f in findings if f["severity"] == "error"] == []
+
+
+def test_wall_clock_summer_offset():
+    speeches = [{"part": 1, "start_offset": 1, "end_offset": None}]
+    clock = _merger._wall_clock(speeches, {"begin": "09:33", "end": "16:44",
+                                           "breaks": []}, "2026-10-08")
+    per_speech, start, end, _ = clock
+    assert per_speech == [("2026-10-08T09:33:01+02:00", "2026-10-08T16:44:00+02:00")]
+    assert (start, end) == ("2026-10-08T09:33:00+02:00", "2026-10-08T16:44:00+02:00")
+
+
+def test_wall_clock_falls_back_when_times_do_not_fit(tmp_path):
+    config = Config(tmp_path)
+    media_dir = config.dir("media", create=True)
+    (media_dir / "17140-tops.json").write_text(json.dumps(_multipart_tops()))
+    _parser.parse_media_directory(media_dir)
+    # no break after part 1's last entry → part 2 cannot be anchored
+    _write_proceedings(config, "17140", {"begin": "10:03", "end": "18:21",
+                                         "breaks": [["10:10", "10:12"]]})
+    data = json.loads(_merger.merge_session("17140", config, None).read_text())["data"]
+    assert all(s["debug"]["timesAreVideoRelative"] is True for s in data)
+    assert data[0]["dateStart"] == "2026-02-04T00:01:40"   # synthetic, naive
+    # parts not numbered 1..n, or a last part overrunning Schluss
+    sp = [{"part": 2, "start_offset": 5, "end_offset": None}]
+    assert _merger._part_anchors(sp, _SITTING_TIMES, "2026-02-04") is None
+    sp = [{"part": 1, "start_offset": 9 * 3600, "end_offset": None}]
+    assert _merger._part_anchors(sp, _SITTING_TIMES, "2026-02-04") is None
+
+
+# --------------------------------------------------------------------------- #
+# Session discovery: incremental archive refresh + late part cards
+# --------------------------------------------------------------------------- #
+
+_V = "/de/mediathek/videos/"
+
+
+def _card(slug):
+    return f'<a href="{_V}{slug}">x</a>'
+
+
+def _fake_filterlist(monkeypatch, pages):
+    requested = []
+
+    def fake(url, **kw):
+        off = int(url.split("offset=")[1].split("&")[0])
+        requested.append(off)
+        return pages.get(off, "")
+    monkeypatch.setattr(_scraper, "fetch_text", fake)
+    return requested
+
+
+def test_fetch_session_urls_stops_at_known(monkeypatch):
+    known_url = f"{_scraper.BASE}{_V}12-sitzung-vom-1-oktober-2026-3"
+    pages = {
+        0: '"numberOfResults": 100 ' + _card("14-sitzung-vom-21-oktober-2026-5"),
+        12: _card("oea-anhoerung-vom-15-oktober-2026-9"),          # no sitting: go on
+        24: _card("13-sitzung-vom-8-oktober-2026-4") + _card(
+            "12-sitzung-vom-1-oktober-2026-3"),                        # new + known: go on
+        36: _card("12-sitzung-vom-1-oktober-2026-3"),                 # known only: stop
+        48: _card("11-sitzung-vom-24-september-2026-2"),
+    }
+    requested = _fake_filterlist(monkeypatch, pages)
+    urls = _scraper.fetch_session_urls(known={known_url}, period_start="2026-05-12")
+    assert requested == [0, 12, 24, 36]
+    assert [u.rsplit("/", 1)[1] for u in urls] == [
+        "14-sitzung-vom-21-oktober-2026-5", "13-sitzung-vom-8-oktober-2026-4",
+        "12-sitzung-vom-1-oktober-2026-3"]
+
+
+def test_fetch_session_urls_stops_before_period(monkeypatch):
+    pages = {
+        0: '"numberOfResults": 100 ' + _card("1-sitzung-vom-12-mai-2026-1"),
+        12: _card("150-sitzung-vom-29-april-2026-7"),                  # all older: stop
+        24: _card("149-sitzung-vom-28-april-2026-6"),
+    }
+    requested = _fake_filterlist(monkeypatch, pages)
+    _scraper.fetch_session_urls(period_start="2026-05-12")
+    assert requested == [0, 12]
+
+
+def test_fetch_media_refetches_when_a_part_is_new(tmp_path, monkeypatch):
+    page1 = "https://www.landtag-bw.de/de/mediathek/videos/140-sitzung-vom-4-februar-2026-615632"
+    page2 = "https://www.landtag-bw.de/de/mediathek/videos/140-sitzung-vom-4-februar-2026-615636"
+    (tmp_path / "17140-tops.json").write_text(json.dumps({
+        "session_id": "17140", "video_page_url": page1,
+        "parts": [{"part": 1, "video_page_url": page1, "tops": []}]}))
+    fetched = []
+
+    def fake(url, **kw):
+        fetched.append(url)
+        return (FIXTURES / "chapterlist-sample.html").read_text()
+    monkeypatch.setattr(_fetch_media, "fetch_text", fake)
+
+    entry = {"sitzung": 140, "date": "2026-02-04", "session_id": "17140"}
+    archive = {"sessions": [dict(entry, video_page_url=page1)]}
+    _fetch_media.fetch_media_for_archive(archive=archive, media_dir=tmp_path)
+    assert fetched == []                                   # all parts covered
+    archive["sessions"].append(dict(entry, video_page_url=page2))
+    _fetch_media.fetch_media_for_archive(archive=archive, media_dir=tmp_path)
+    assert fetched == [page1, page2]                       # late part 2 → refetch

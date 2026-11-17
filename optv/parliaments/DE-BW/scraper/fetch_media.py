@@ -64,6 +64,19 @@ def _group_by_session(sessions: list[dict]) -> dict[tuple[int, str], list[dict]]
     return groups
 
 
+def _covers_parts(tops_path: Path, entries: list[dict]) -> bool:
+    """True if ``tops_path`` exists and already holds every entry's page."""
+    if not tops_path.exists():
+        return False
+    try:
+        manifest = json.loads(tops_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return False
+    have = {p.get("video_page_url") for p in manifest.get("parts", [])}
+    have.add(manifest.get("video_page_url"))
+    return all(e["video_page_url"] in have for e in entries)
+
+
 def fetch_media_for_archive(*, archive: dict, media_dir: Path,
                             force: bool = False, retry_count: int = 20,
                             session_filter: str | None = None) -> None:
@@ -75,10 +88,12 @@ def fetch_media_for_archive(*, archive: dict, media_dir: Path,
         prov_id = entries[0].get("session_id", "")
         if session_filter and not re.match(session_filter, prov_id):
             continue
-        # Cheap mtime skip on the provisional id's output (== authoritative for
-        # in-period sessions).
-        if (media_dir / f"{prov_id}-tops.json").exists() and not force:
-            logger.info(f"{prov_id}: tops.json exists — skipping (use --force to refetch)")
+        # Skip a session whose manifest (keyed by the provisional id ==
+        # authoritative for in-period sessions) already covers every part card
+        # in the archive; a part published after the first fetch triggers a
+        # refetch of the whole session.
+        if not force and _covers_parts(media_dir / f"{prov_id}-tops.json", entries):
+            logger.info(f"{prov_id}: tops.json covers all parts — skipping (use --force to refetch)")
             continue
 
         parts: list[dict] = []
@@ -129,7 +144,7 @@ def fetch_media_for_archive(*, archive: dict, media_dir: Path,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("data_dir", type=Path)
-    parser.add_argument("--period", type=int, default=17)
+    parser.add_argument("--period", type=int, default=18)
     parser.add_argument("--limit-session", default=None)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--retry-count", type=int, default=20)
