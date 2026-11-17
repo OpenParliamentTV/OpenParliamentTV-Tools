@@ -6,20 +6,26 @@ Input per session (written by the scraper): ``original/media/{sid}-items.json``
 server-side HLS clip URL (clean + sign-language) and, per speech, the raw
 speaker name, the ``data-speakerFunction`` string (faction or government role),
 the clip-relative start offset + duration, and the per-speech ``video-download``
-wall-clock unix timestamps.
+wall-clock unix timestamps. Optionally ``original/subtitles/{sid}/{speechPk}.vtt``
+per speech (``scraper/fetch_subtitles.py``).
 
 This pass, per speech:
 
 - splits the speaker name into an optional chair role prefix
   (``Präsident(in)`` / ``Vizepräsident(in)`` / …) + a clean ``Firstname
-  Lastname`` (already in natural order, unlike DE-BW) → ``firstname``/``lastname``;
+  Lastname`` (already in natural order) → ``firstname``/``lastname``;
 - maps ``data-speakerFunction`` to a ``faction`` when it is a known party, else
   treats it as a government ``role`` (``Senator(in)`` / ``Bürgermeister(in)`` / …);
-- keeps the clip-relative ``start_offset`` + ``end_offset`` (= start + duration)
-  for the merger's ``#t=start,end`` media fragment;
+- builds the speech's own server-cut HLS clip (``video_uri``, and
+  ``sign_video_uri`` for the sign-language stream) from the TOP clip and the
+  speech's offsets (``scraper.common.speech_clip_url``); the TOP-relative
+  ``start_offset``/``end_offset`` are kept for debugging;
 - derives **real wall-clock** ``start_datetime`` / ``end_datetime`` (UTC, ``Z``)
   from the ``video-download`` timestamps (absolute per-speech times in the
   source);
+- when the speech's subtitle file exists, re-segments its cues into sentences
+  timed against the speech clip (``subtitle_sentences``, via
+  ``optv.shared.vtt.cues_to_sentences`` and the German spaCy sentencizer);
 - assigns a deterministic global ``speech_index`` ordered by (agenda order,
   start offset).
 
@@ -42,6 +48,11 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent))
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.DE-HH.parsers"
+
+from optv.shared.lang.de import spacy_sentencize
+from optv.shared.vtt import cues_to_sentences, parse_vtt
+
+from ..scraper.common import speech_clip_url
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +128,15 @@ def _iso_utc(unix_ts: int | None) -> str | None:
             .strftime("%Y-%m-%dT%H:%M:%SZ"))
 
 
-def parse_session(items_path: Path) -> dict | None:
+def _subtitle_sentences(vtt_path: Path, duration: float) -> list[dict] | None:
+    """Timed sentences from a speech's subtitle file; ``None`` without a file."""
+    if not vtt_path.exists():
+        return None
+    cues = parse_vtt(vtt_path.read_text())
+    return cues_to_sentences(cues, spacy_sentencize, duration=duration or None)
+
+
+def parse_session(items_path: Path, subtitles_dir: Path | None = None) -> dict | None:
     with items_path.open() as f:
         manifest = json.load(f)
 
@@ -127,6 +146,9 @@ def parse_session(items_path: Path) -> dict | None:
     sitzung_no = int(manifest["sitzung"])
     session_uuid = manifest.get("session_uuid", "")
     page_url = manifest.get("video_page_url", "")
+    if subtitles_dir is None:
+        subtitles_dir = items_path.parent.parent / "subtitles"
+    session_subs = Path(subtitles_dir) / session_id
 
     speeches: list[dict] = []
     for item in manifest.get("items", []):
@@ -142,11 +164,14 @@ def parse_session(items_path: Path) -> dict | None:
             role = role_prefix or gov_role
             start = float(sp.get("start_offset") or 0)
             duration = float(sp.get("duration") or 0)
-            speeches.append({
+            end = start + duration
+            pk = sp.get("speech_pk", "")
+            record = {
                 "date": iso_date,
                 "wp": wp,
                 "sitzung_no": sitzung_no,
-                "speech_pk": sp.get("speech_pk", ""),
+                "speech_pk": pk,
+                "legacy_id": sp.get("legacy_id"),
                 "top_index": top_index,
                 "top_number": top_number,
                 "top_title": top_title,
@@ -158,17 +183,23 @@ def parse_session(items_path: Path) -> dict | None:
                 "role": role,
                 "faction": faction,
                 "start_offset": start,
-                "end_offset": start + duration,
+                "end_offset": end,
                 "duration": duration,
                 "clean_hls": clean_hls,
                 "sign_hls": sign_hls,
+                "video_uri": speech_clip_url(clean_hls, start, end),
+                "sign_video_uri": speech_clip_url(sign_hls, start, end),
                 "video_page_url": page_url,
                 "session_uuid": session_uuid,
                 "download_start": sp.get("download_start"),
                 "download_stop": sp.get("download_stop"),
                 "start_datetime": _iso_utc(sp.get("download_start")),
                 "end_datetime": _iso_utc(sp.get("download_stop")),
-            })
+            }
+            subs = _subtitle_sentences(session_subs / f"{pk}.vtt", duration) if pk else None
+            if subs is not None:
+                record["subtitle_sentences"] = subs
+            speeches.append(record)
 
     if not speeches:
         logger.info(f"{session_id} ({iso_date}): no speeches with video — skipping")
@@ -202,20 +233,23 @@ def parse_session(items_path: Path) -> dict | None:
     }
 
 
-def parse_media_directory(media_dir: Path) -> None:
+def parse_media_directory(media_dir: Path, subtitles_dir: Path | None = None) -> None:
     media_dir = Path(media_dir)
     items_files = sorted(media_dir.glob("*-items.json"))
     if not items_files:
         logger.warning(f"No *-items.json manifests under {media_dir} — nothing to parse.")
         return
     for items_path in items_files:
-        doc = parse_session(items_path)
+        doc = parse_session(items_path, subtitles_dir)
         if doc is None:
             continue
         session_id = doc["meta"]["session"]
         out_path = media_dir / f"{session_id}-media.json"
         out_path.write_text(json.dumps(doc, indent=2, ensure_ascii=False))
-        logger.info(f"Wrote {out_path.name} ({len(doc['data'])} speeches, {doc['meta']['date']})")
+        n_subs = sum(1 for s in doc["data"] if "subtitle_sentences" in s)
+        subs_note = f", {n_subs} with subtitles" if n_subs else ""
+        logger.info(f"Wrote {out_path.name} ({len(doc['data'])} speeches{subs_note}, "
+                    f"{doc['meta']['date']})")
 
 
 if __name__ == "__main__":

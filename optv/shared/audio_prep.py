@@ -513,14 +513,14 @@ def prepare_per_speech_audio(
 # Media-fragment adapter (the `<stream>#t=start,end` DE state parliaments)
 # --------------------------------------------------------------------------- #
 
-# ``<base-stream>#t=start[,end]`` (start may be negative, e.g. DE-HH "#t=-5,391").
+# ``<base-stream>#t=start[,end]`` (start may be negative, e.g. "#t=-5,391").
 _FRAGMENT_RE = re.compile(r"(?P<base>.*?)#t=(?P<start>-?[\d.]+)(?:,(?P<end>-?[\d.]+))?\s*$")
 
 
 def fragment_speech_audio(speech: dict, *, require_text: bool = True) -> Optional[SpeechAudio]:
     """Build a :class:`SpeechAudio` from a ``<stream>#t=start,end`` videoFileURI.
 
-    The session-sliced DE state parliaments (DE-BW, DE-HH, DE-NW, DE-SH, DE-SN)
+    The session-sliced DE state parliaments (DE-BW, DE-NW, DE-SH, DE-SN)
     all address a speech as an HTML5 media fragment on ``media.videoFileURI``:
     the part before ``#t=`` is the shared session/clip stream (the slice source,
     used as ``session_key``) and ``start,end`` are the per-speech offsets into it.
@@ -555,7 +555,7 @@ def make_fragment_prepare(*, hls: bool, reconnect: bool = False, timeout: int = 
     """Build a ``prepare_per_speech_audio(merged_data, cachedir, *, force)``.
 
     For the ``#t=start,end``-fragment, session-sliced DE state parliaments: the
-    shared stream (HLS master for DE-HH/NW/SN, base mp4 for DE-BW/SH) is
+    shared stream (HLS master for DE-NW/SN, base mp4 for DE-BW/SH) is
     downloaded once per session and re-encode-sliced per speech. ``timeout`` is
     generous because some sources are one long per-session stream (DE-NW serves
     a ~10 h HLS master).

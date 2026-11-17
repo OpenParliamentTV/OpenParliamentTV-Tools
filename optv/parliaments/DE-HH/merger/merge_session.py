@@ -2,22 +2,28 @@
 """Emit Stage 2 JSON for one DE-HH Sitzung from the intermediate media file.
 
 The mediathek session page provides the per-speech spine (speaker, role, faction,
-per-TOP agenda title and a clip-relative start offset). The Plenarprotokoll PDF
-(ParlDok) is parsed via ``optv.shared.pdf2tei`` and joined onto that spine here
-(``join_text_to_spine``), so each matched speech carries verbatim ``textContents``
-(speeches with no text match keep ``textContents: []``). This text join is
-**experimental and unvalidated** — see manifest.
+per-TOP agenda title, the speech's own server-cut HLS clip and its wall-clock
+times). Each speech's ``videoFileURI`` is that clip (per-speech video file mode),
+with ``media.duration`` and ``additionalInformation.startOffset = 0`` /
+``endOffset = duration``; the sign-language clip of the same range is in
+``additionalInformation.signLanguageVideoFileURI``. ``sourcePage`` is the
+mediathek's own per-speech anchor (``…#rede-{speechPk}``), unique per speech as
+the platform keys speech identity on it; the source's speech UUID is
+``media.originMediaID`` (there is no joint media+proceedings id, so no speech
+``originID``). The speech ``dateStart``/``dateEnd`` are **real wall-clock** times
+(from the per-speech video-download timestamps), so
+``debug.timesAreVideoRelative`` is ``false``.
 
-DE-HH is the SE/DE-SH per-speech-offset model with a per-TOP twist: each
-Tagesordnungspunkt is its own server-side HLS clip, and per-speech windows are
-addressed by an HTML5 media-fragment ``#t=start,end`` on ``videoFileURI`` (the
-offsets are relative to that TOP's clip) plus ``startOffset``/``endOffset`` in
-``additionalInformation``. ``sourcePage`` is made unique per speech
-(``…#rede-{speechPk}``, the mediathek's own per-speech anchor) so the platform's
-sourcePage-keyed speech identity does not collapse distinct speeches. The
-speech ``dateStart``/``dateEnd`` are **real wall-clock** times (from the
-per-speech video-download timestamps), so ``debug.timesAreVideoRelative`` is
-``false``.
+Text, one source per sitting:
+
+- once the Plenarprotokoll PDF (ParlDok) is parsed via ``optv.shared.pdf2tei``,
+  it is joined onto the spine (``join_text_to_spine``, ``type: "proceedings"``,
+  untimed until aeneas); speeches with no text match keep ``textContents: []``.
+  This join is **experimental and unvalidated** — see manifest;
+- before that, each speech with mediathek subtitles carries them as
+  ``type: "generated"`` text whose sentences are already timed against the
+  speech clip (``debug.textSource = "subtitles"``); the align stage then only
+  stamps them (``workflow.py``).
 """
 
 from __future__ import annotations
@@ -37,7 +43,7 @@ if __package__ is None or __package__ == "":
     __package__ = "optv.parliaments.DE-HH.merger"
 
 from optv.shared.agenda_types import classify_de_hh
-from optv.shared.merge_format import agenda_id as _agenda_id, format_offset as _num
+from optv.shared.merge_format import agenda_id as _agenda_id
 from optv.shared.lang.de import speaker_context as _speaker_context
 
 from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
@@ -50,8 +56,10 @@ logger = logging.getLogger(__name__)
 
 PARLIAMENT_ID = "DE-HH"
 SOURCE_URI = _get_rights("DE-HH", stream="media")["sourceURI"]
-PROCEEDINGS_CREATOR = "Hamburgische Bürgerschaft"
-PROCEEDINGS_LICENSE = "Amtliches Werk (§ 5 Abs. 2 UrhG)"
+PROCEEDINGS_CREATOR = _get_rights("DE-HH", stream="proceedings")["creator"]
+PROCEEDINGS_LICENSE = _get_rights("DE-HH", stream="proceedings")["license"]
+TRANSCRIPT_CREATOR = _get_rights("DE-HH", stream="transcript")["creator"]
+TRANSCRIPT_LICENSE = _get_rights("DE-HH", stream="transcript")["license"]
 
 _SLUG_RE = re.compile(r'[^a-z0-9]+')
 
@@ -91,14 +99,12 @@ def _build_agenda(speech: dict) -> dict:
 
 
 def _build_media(speech: dict) -> dict:
-    clean = speech.get("clean_hls") or ""
-    start = speech.get("start_offset")
-    end = speech.get("end_offset")
-    fragment = f"#t={_num(start)},{_num(end)}" if end is not None else f"#t={_num(start)}"
+    duration = float(speech.get("duration") or 0)
     page = speech.get("video_page_url") or SOURCE_URI
     pk = speech.get("speech_pk") or ""
     media: dict = {
-        "videoFileURI": f"{clean}{fragment}" if clean else "",
+        "videoFileURI": speech.get("video_uri") or "",
+        "duration": duration,
         # sourcePage must be unique per speech (the platform keys speech
         # identity on it); the mediathek anchors each speech at #rede-{pk}.
         "sourcePage": f"{page}#rede-{pk}" if pk else page,
@@ -106,16 +112,44 @@ def _build_media(speech: dict) -> dict:
         "license": MEDIA_LICENSE,
         "originMediaID": speech.get("speech_id") or pk,
     }
-    extras: dict = {}
-    if start is not None:
-        extras["startOffset"] = float(start)
-    if end is not None:
-        extras["endOffset"] = float(end)
-    sign = speech.get("sign_hls") or ""
+    # The clip is the speech: it spans 0..duration of the file.
+    extras: dict = {"startOffset": 0.0, "endOffset": duration}
+    sign = speech.get("sign_video_uri") or ""
     if sign:
-        extras["signLanguageVideoFileURI"] = f"{sign}{fragment}"
+        extras["signLanguageVideoFileURI"] = sign
     media["additionalInformation"] = extras
     return media
+
+
+def _attach_subtitles(merged: list[dict], speeches: list[dict]) -> int:
+    """Put each speech's subtitle sentences (timed against its clip) into
+    ``textContents`` as ``generated`` text. Returns the number of speeches."""
+    attached = 0
+    for rec, sp in zip(merged, speeches):
+        sentences = sp.get("subtitle_sentences")
+        if not sentences:
+            continue
+        first = (rec.get("people") or [{}])[0]
+        rec["textContents"] = [{
+            "type": "generated",
+            "language": "de",
+            "creator": TRANSCRIPT_CREATOR,
+            "license": TRANSCRIPT_LICENSE,
+            "textBody": [{
+                "type": "speech",
+                "speaker": first.get("label") or "",
+                "speakerstatus": first.get("context") or "main-speaker",
+                "sentences": sentences,
+            }],
+        }]
+        dbg = rec.setdefault("debug", {})
+        dbg["textSource"] = "subtitles"
+        # The speech's own subtitle track is its text record (as DE-NI's VTT).
+        dbg["proceedingIndex"] = rec.get("speechIndex")
+        # Cut by the speech's own time range, not joined by speaker order.
+        dbg["confidence"] = 1.0
+        attached += 1
+    return attached
 
 
 def merge_session(session: str, config, options=None) -> Path:
@@ -156,7 +190,6 @@ def merge_session(session: str, config, options=None) -> Path:
             "dateStart": date_start,
             "dateEnd": date_end,
             "speechIndex": sp.get("speech_index") or 0,
-            "originID": sp.get("speech_id") or sp.get("speech_pk"),
             "originalLanguage": "de",
             "agendaItem": _build_agenda(sp),
             "people": [_build_person(sp)],
@@ -166,11 +199,13 @@ def merge_session(session: str, config, options=None) -> Path:
             "debug": {
                 "source": "mediathek-sessionpage",
                 "sessionUUID": sp.get("session_uuid"),
+                "speechLegacyId": sp.get("legacy_id"),
                 "topIndex": sp.get("top_index"),
                 "topNumber": sp.get("top_number"),
                 "rednerRaw": sp.get("name_raw"),
                 "functionRaw": sp.get("function_raw"),
                 "roleRaw": sp.get("role"),
+                # Offsets within the agenda item's clip.
                 "startOffset": sp.get("start_offset"),
                 "endOffset": sp.get("end_offset"),
                 "duration": sp.get("duration"),
@@ -181,7 +216,8 @@ def merge_session(session: str, config, options=None) -> Path:
         }
         merged.append(record)
 
-    # Spine-join: attach proceedings text (if parsed) onto the fixed media spine.
+    # Text: the protocol (if parsed) joined onto the fixed media spine, else the
+    # mediathek subtitles.
     turns = load_turns(config, session)
     if turns:
         spine_keys = [_match_key(sp.get("label") or sp.get("name_raw") or "") for sp in speeches]
@@ -190,6 +226,10 @@ def merge_session(session: str, config, options=None) -> Path:
                                      license=PROCEEDINGS_LICENSE)
         logger.info(f"{session}: matched {matched}/{len(merged)} speeches to "
                     f"{len(turns)} proceedings turns")
+    else:
+        attached = _attach_subtitles(merged, speeches)
+        if attached:
+            logger.info(f"{session}: subtitle text for {attached}/{len(merged)} speeches")
 
     doc = {
         "meta": build_meta(

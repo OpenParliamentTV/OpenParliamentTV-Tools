@@ -1,16 +1,34 @@
 #! /bin/sh
 
 # Main update script - expects a data directory as the only argument.
-# Period 23 (current WP) is baked in. the align/ner flags are
-# omitted here (routine update); run them separately once the experimental
-# PDF→TEI text join is validated. See manifest.yaml.
+# Period 23 (current WP) is baked in. The align/ner flags are omitted here
+# (routine update); run them separately once the experimental PDF→TEI text join
+# is validated. See manifest.yaml.
+#
+# Pass 2 re-runs, with --rebuild, the already-published sittings whose protocol
+# arrived in pass 1 while they carried subtitle text (listed in
+# cache/de-hh-protocol-upgrades.txt): the publish guard refuses a changed
+# transcript otherwise.
+
+set -e
 
 OUTPUT=${1?Missing output directory parameter (data base directory)}
 
 CALLDIR="$(dirname "$(readlink "$0" 2>/dev/null || echo "$0")")"
+UPGRADES="${OUTPUT}/cache/de-hh-protocol-upgrades.txt"
 
 python3 "${CALLDIR}/workflow.py" --period=23 \
     --retry-count=20 \
     --download-original --merge-speeches \
     --link-entities \
     "${OUTPUT}"
+
+if [ -s "$UPGRADES" ]; then
+    SESSIONS="$(tr -s '[:space:]' '|' < "$UPGRADES" | sed 's/^|//; s/|$//')"
+    python3 "${CALLDIR}/workflow.py" --period=23 \
+        --retry-count=20 \
+        --rebuild --limit-session "^(${SESSIONS})$" \
+        --merge-speeches --link-entities \
+        "${OUTPUT}"
+    rm -f "$UPGRADES"
+fi

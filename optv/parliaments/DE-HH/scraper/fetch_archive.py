@@ -8,12 +8,14 @@ Produces ``metadata/archive-wp{N}.json`` — the candidate list that
 - ``sitzung`` — the Sitzung number,
 - ``session_id`` — ``{WP:02d}{sitzung:03d}`` (e.g. ``23018``).
 
-Unlike DE-BW (unguessable slug content-IDs requiring AJAX pagination), Hamburg's
-session URLs are **fully predictable** (``/sitzung/{WP}/{n}/``), so discovery is
-a simple ``1..max`` enumeration. The upper bound for the current term is read
-from the mediathek landing page (the highest ``/sitzung/{WP}/{n}/`` link); pass
-``--max-session`` to bound an older term (or any range) explicitly. Gaps are
-harmless — ``fetch_media`` skips a candidate whose page 404s.
+Hamburg's session URLs are **predictable** (``/sitzung/{WP}/{n}/``), so
+discovery is a ``1..max`` enumeration. The upper bound for the current term is
+the highest sitting linked from the mediathek's plenary list
+(``/sitzungen/plenar``, the most recent sittings), read on every run and merged
+into the cached index, so new sittings are picked up without ``--force``. The
+list only covers the current term: pass ``--max-session`` to bound an older term
+(or any range) explicitly. Gaps are harmless — ``fetch_media`` skips a candidate
+whose page 404s.
 
 Operator-supplied URLs (``--session-url`` / ``metadata/seed-urls.txt``) are
 always merged in as a manual override.
@@ -34,7 +36,7 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.DE-HH.scraper"
 
-from .common import front_page_max_session, parse_session_ref, session_url
+from .common import listing_max_session, parse_session_ref, session_url
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +60,9 @@ def fetch_archive(*, period: int, media_dir: Path, metadata_dir: Path,
                   force: bool = False, retry_count: int = 20) -> dict:
     """Build (and cache) the candidate session index for ``period``.
 
-    Cached at ``metadata/archive-wp{period}.json``; rebuilt when missing or when
-    ``force`` is set. Candidates are the union of the ``1..max`` enumeration and
+    Cached at ``metadata/archive-wp{period}.json``. Candidates are the union of
+    the cached index (dropped when ``force`` is set), the ``1..max``
+    enumeration (``max_session``, else the plenary list's highest sitting) and
     any operator-supplied URLs.
     """
     metadata_dir.mkdir(parents=True, exist_ok=True)
@@ -74,18 +77,20 @@ def fetch_archive(*, period: int, media_dir: Path, metadata_dir: Path,
             sitzungen.add(int(s["sitzung"]))
         logger.info(f"Loaded {len(sitzungen)} cached candidate(s) from {out_path.name}")
 
-    if force or not sitzungen:
-        upper = max_session
-        if upper is None:
-            upper = front_page_max_session(period, retry_count=retry_count)
-            if upper:
-                logger.info(f"WP{period}: landing page reports up to Sitzung {upper}")
+    upper = max_session
+    if upper is None:
+        try:
+            upper = listing_max_session(period, retry_count=retry_count)
+        except RuntimeError as ex:
+            logger.warning(f"WP{period}: plenary list unavailable ({ex})")
         if upper:
-            sitzungen.update(range(1, upper + 1))
-        elif not seed_urls:
-            logger.warning(
-                f"WP{period}: could not determine an upper Sitzung bound "
-                f"(no --max-session, landing page yielded nothing) — relying on seeds")
+            logger.info(f"WP{period}: plenary list reports up to Sitzung {upper}")
+    if upper:
+        sitzungen.update(range(1, upper + 1))
+    elif not sitzungen and not seed_urls:
+        logger.warning(
+            f"WP{period}: could not determine an upper Sitzung bound "
+            f"(no --max-session, plenary list yielded nothing) — relying on seeds")
 
     for u in (seed_urls or []):
         ref = parse_session_ref(u.strip())
@@ -124,7 +129,7 @@ if __name__ == "__main__":
                         help="Session video-page URL to include (repeatable)")
     parser.add_argument("--max-session", type=int, default=None,
                         help="Upper Sitzung bound for the enumeration "
-                             "(default: read from the landing page)")
+                             "(default: read from the plenary list)")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--retry-count", type=int, default=20)
     parser.add_argument("--debug", action="store_true")

@@ -6,8 +6,9 @@ MEDIADIR := $(DATADIR)/original/media
 MERGEDDIR := $(DATADIR)/cache/merged
 
 # Media is one intermediate JSON per Sitzung (23NNN-media.json), built from the
-# mediathek session page. There is no proceedings stream for DE-HH (PDF-only
-# Plenarprotokolle via ParlDok, no parser).
+# mediathek session page (plus its per-speech subtitles). The Plenarprotokoll
+# PDFs (ParlDok) are parsed by parsers/proceedings2json.py into
+# original/proceedings/23NNN-proceedings.json; the merger reads both.
 MEDIA_DEST := $(wildcard $(MEDIADIR)/23*-media.json)
 MERGE_DEST := $(patsubst $(MEDIADIR)/%-media.json,$(MERGEDDIR)/%-merged.json,$(MEDIA_DEST))
 

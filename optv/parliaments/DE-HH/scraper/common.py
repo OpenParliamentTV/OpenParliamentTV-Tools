@@ -1,32 +1,39 @@
 """Shared HTTP + HTML-parsing helpers for the DE-HH scrapers.
 
-The Hamburg mediathek (``mediathek.buergerschaft-hh.de``, built by im-en.com —
-the same vendor as Niedersachsen Plenar-TV) serves each plenary session at a
-clean, directly-addressable URL ``/sitzung/{WP}/{Sitzung}/`` (e.g.
-``/sitzung/23/18/``). Unlike DE-BW's unguessable slug content-IDs, the session
-URL is fully predictable, so discovery is a simple ``{WP}/{n}`` probe.
+The Hamburg mediathek (``mediathek.buergerschaft-hh.de``, built and run by
+Intermediate Engineering, im-en.com) serves each plenary session at a
+predictable URL ``/sitzung/{WP}/{Sitzung}/`` (e.g. ``/sitzung/23/18/``), so
+discovery is a ``1..max`` enumeration. The upper bound for the current term is
+the highest sitting linked from the plenary list ``/sitzungen/plenar`` (the most
+recent sittings only).
 
-The session page is **static HTML** carrying a full per-speech spine (the
-research doc's "no machine-readable access" is wrong):
+The session page is **static HTML** carrying a full per-speech spine:
 
 - one **agenda item** (TOP) per ``<video id="sessionitem-{UUID}">``: the
-  ``data-cleanStreamingSources`` attribute holds a Python-dict-syntax list with
-  a server-side-clipped HLS master URL
-  (``/hls/clipFrom/{ms}/clipTo/{ms}/{date}/clean_{UUID}/…/master.m3u8``); a
-  sibling ``data-signStreamingSources`` carries the sign-language variant. The
-  TOP number sits in a ``div.agendaItemNumber`` ("TOP 38"), the title in an
-  ``<h3 class="… topheader" aria-label="…">``.
+  ``data-cleanStreamUrls`` attribute holds a Python-dict-syntax list with a
+  server-side-clipped HLS master URL
+  (``/hls/clipFrom/{ms}/clipTo/{ms}/{date}/clean_{UUID}/…/master.m3u8``, the
+  offsets in ms into the day's recording); a sibling ``data-signStreamUrls``
+  carries the sign-language variant (its own clip range). The TOP number sits in
+  a ``div.agendaItemNumber`` ("TOP 38"), the title in an
+  ``<h3 class="… topheader" aria-label="…">``. The whole-sitting video
+  (``<video id="session-{UUID}">``) is not an agenda item and is skipped.
 - one **speech** per ``<div class="speech" …>`` inside that item's
-  ``<ul class="speeches">``: ``data-speechPk`` (UUID), ``data-start`` +
-  ``data-duration`` (seconds, relative to the item's HLS clip),
-  ``data-sessionItemId`` (the owning TOP), ``data-speakerNameWithoutFunction``
-  and ``data-speakerFunction`` (faction, or a government role). Each speech
-  ``<li>`` also carries a ``video-download/?start={unix}&stop={unix}`` link
-  whose timestamps are the **real wall-clock** speech start/stop.
+  ``<ul class="speeches">``: ``data-speechPk`` (UUID), ``data-speechLegacyId``
+  (numeric in WP 22, ``None`` in WP 23), ``data-start`` + ``data-duration``
+  (seconds, relative to the item's HLS clip), ``data-sessionItemId`` (the owning
+  TOP), ``data-speakerNameWithoutFunction`` and ``data-speakerFunction``
+  (faction, or a government role). Each speech ``<li>`` also carries a
+  ``video-download/?start={unix}&stop={unix}`` link whose timestamps are the
+  **real wall-clock** speech start/stop.
 
-There is no per-speech MP4 — DE-HH is the SE/DE-SH per-speech-offset model (the
-TOP HLS clip + a ``#t=start,end`` media fragment). We use stdlib urllib with a
-polite User-Agent + a small retry/backoff loop.
+The server cuts any range of the day's recording: the item's clip URL with
+``clipFrom``/``clipTo`` narrowed to a speech (``speech_clip_url``) is that
+speech's own HLS clip. From 2022-06-15 the clip URL's urlset also lists a WebVTT
+file (``lang/deu/{date}_clean.vtt``), and the master then carries a subtitle
+rendition whose cue times count from the clip start (``has_subtitles``).
+
+We use stdlib urllib with a polite User-Agent + a small retry/backoff loop.
 """
 
 from __future__ import annotations
@@ -34,9 +41,11 @@ from __future__ import annotations
 import logging
 import re
 import time
+from datetime import datetime
 from html import unescape
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -110,15 +119,22 @@ def parse_session_ref(url: str) -> tuple[int, int] | None:
     return (int(m.group("wp")), int(m.group("nr"))) if m else None
 
 
-def front_page_max_session(period: int, *, retry_count: int = 20) -> int | None:
-    """Read the highest ``/sitzung/{period}/{n}/`` link from the mediathek
-    landing page. Used to bound the discovery probe for the *current* term."""
-    html = fetch_text(f"{BASE}/", retry_count=retry_count)
-    if not html:
-        return None
-    nums = [int(m.group("nr")) for m in _SESSION_REF_RE.finditer(html)
+PLENAR_LIST_URL = f"{BASE}/sitzungen/plenar"
+
+
+def max_session_in(html: str, period: int) -> int | None:
+    """Highest ``/sitzung/{period}/{n}/`` link in ``html``, or ``None``."""
+    nums = [int(m.group("nr")) for m in _SESSION_REF_RE.finditer(html or "")
             if int(m.group("wp")) == period]
     return max(nums) if nums else None
+
+
+def listing_max_session(period: int, *, retry_count: int = 20) -> int | None:
+    """Read the highest ``/sitzung/{period}/{n}/`` link from the plenary list
+    (``/sitzungen/plenar``, the most recent sittings). Used to bound the
+    discovery enumeration for the *current* term."""
+    html = fetch_text(PLENAR_LIST_URL, retry_count=retry_count)
+    return max_session_in(html, period) if html else None
 
 
 # ---------------------------------------------------------------------------
@@ -127,13 +143,46 @@ def front_page_max_session(period: int, *, retry_count: int = 20) -> int | None:
 
 _VIDEO_RE = re.compile(
     r'<video\b[^>]*\bid="sessionitem-(?P<sid>[0-9a-fA-F-]+)"[^>]*>', re.S)
-_CLEAN_SRC_RE = re.compile(r'data-cleanStreamingSources="(?P<v>[^"]*)"')
-_SIGN_SRC_RE = re.compile(r'data-signStreamingSources="(?P<v>[^"]*)"')
+_CLEAN_SRC_RE = re.compile(r'data-cleanStreamUrls="(?P<v>[^"]*)"')
+_SIGN_SRC_RE = re.compile(r'data-signStreamUrls="(?P<v>[^"]*)"')
 # The attribute value is a Python-dict-style list (single quotes), not JSON:
 # [{'src': '/hls/…/master.m3u8', 'type': 'application/x-mpegURL'}]
 _SRC_IN_SOURCES_RE = re.compile(r"'src'\s*:\s*'(?P<src>[^']+)'")
 # /hls/clipFrom/644000/clipTo/944000/2026-02-11/clean_…/…/master.m3u8
 _DATE_IN_HLS_RE = re.compile(r'/clip(?:From|To)/\d+/clip(?:From|To)/\d+/(?P<date>\d{4}-\d{2}-\d{2})/')
+_CLIP_RANGE_RE = re.compile(r'/clipFrom/(?P<from>\d+)/clipTo/(?P<to>\d+)/')
+# A WebVTT file in the clip's urlset (",…,lang/deu/2026-02-11_clean.vtt,.urlset")
+# means the HLS master carries a subtitle rendition.
+_VTT_IN_URLSET_RE = re.compile(r',[^,/]*(?:/[^,/]+)*\.vtt,')
+
+BERLIN = ZoneInfo("Europe/Berlin")
+
+
+def speech_clip_url(item_hls: str, start: float, end: float) -> str:
+    """The server-cut HLS clip of one speech.
+
+    ``item_hls`` is an agenda item's clip URL (``/clipFrom/{a}/clipTo/{b}/``, ms
+    into the day's recording); ``start``/``end`` are the speech's seconds
+    relative to that clip (``data-start`` and ``data-start + data-duration``).
+    The result narrows the range to ``a + start·1000 … a + end·1000``. A negative
+    ``start`` (a speech beginning just before its TOP's clip) is kept: the server
+    cuts from the day's recording. Returns ``""`` when ``item_hls`` carries no
+    clip range.
+    """
+    m = _CLIP_RANGE_RE.search(item_hls or "")
+    if not m:
+        return ""
+    base = int(m.group("from"))
+    clip_from = max(base + round(start * 1000), 0)
+    clip_to = base + round(end * 1000)
+    return (item_hls[:m.start()]
+            + f"/clipFrom/{clip_from}/clipTo/{clip_to}/"
+            + item_hls[m.end():])
+
+
+def has_subtitles(hls: str) -> bool:
+    """Whether a clip URL's urlset lists a WebVTT file (subtitle rendition)."""
+    return bool(_VTT_IN_URLSET_RE.search(hls or ""))
 
 # Title + TOP number (both duplicated in the responsive layout; we take the
 # last occurrence before each video, which is one of the identical copies).
@@ -201,8 +250,10 @@ def _parse_speech_li(li_html: str) -> dict | None:
     except ValueError:
         start, duration = 0.0, 0.0
     dl = _DL_RE.search(li_html)
+    legacy = (_attr(tag, "data-speechLegacyId") or "").strip()
     return {
         "speech_pk": pk,
+        "legacy_id": int(legacy) if legacy.isdigit() else None,
         "session_item_id": sid,
         "start_offset": start,
         "duration": duration,
@@ -275,6 +326,14 @@ def parse_session_page(html: str) -> dict | None:
     sm = _SESSION_UUID_RE.search(html)
     if sm:
         session_uuid = sm.group("uuid")
+
+    if not iso_date:
+        # No dated clip URL: fall back to the local date of the first speech's
+        # wall-clock start.
+        starts = [s["download_start"] for sps in speeches_by_sid.values()
+                  for s in sps if s.get("download_start")]
+        if starts:
+            iso_date = datetime.fromtimestamp(min(starts), tz=BERLIN).date().isoformat()
 
     return {
         "date": iso_date,

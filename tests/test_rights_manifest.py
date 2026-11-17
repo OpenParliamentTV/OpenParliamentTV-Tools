@@ -21,9 +21,9 @@ _REPO = Path(__file__).resolve().parent.parent
 _PARL_DIR = _REPO / "optv" / "parliaments"
 
 # Parliaments that emit a ``textContents`` stream and therefore need proceedings
-# rights in the manifest. DE-HH is video-only today (no textContents).
+# rights in the manifest.
 _TEXT_PARLIAMENTS = {
-    "DE", "DE-RP", "DE-ST", "DE-BW", "DE-BY", "DE-NI", "DE-NW", "DE-SH",
+    "DE", "DE-RP", "DE-ST", "DE-BW", "DE-BY", "DE-HH", "DE-NI", "DE-NW", "DE-SH",
     "DE-SN", "ES", "EU", "FI", "FR", "NO", "PT", "SE", "TW",
 }
 

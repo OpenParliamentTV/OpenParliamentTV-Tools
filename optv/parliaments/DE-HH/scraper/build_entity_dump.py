@@ -23,7 +23,7 @@ NEL coverage caveat (the DE-SH / DE-BY / DE-BW class): Wikidata's
 statement, and government members (``Senator(in)``, ``Bürgermeister(in)``) who
 are not sitting MdHB. Person-NEL is therefore partial; it is fixable downstream
 by enriching the SPARQL or scraping the Bürgerschaft member roster
-(abgeordnetenwatch parliament id 7, CC0). The mediathek already names speakers
+(abgeordnetenwatch parliament id 3, CC0). The mediathek already names speakers
 ``Firstname Lastname``, so no reordering is needed for label matching.
 """
 

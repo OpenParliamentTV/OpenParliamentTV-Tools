@@ -6,10 +6,10 @@ For each candidate session in the archive (optionally filtered by a
 (``/sitzung/{WP}/{n}/``) and parse its static markup into the agenda-item +
 per-speech structure (``scraper/common.py:parse_session_page``).
 
-Unlike DE-BW, a Hamburg Sitzung is a **single page** — there is no multi-part
-MP4 split; instead each Tagesordnungspunkt is its own server-side HLS clip on
-the one page. Candidate pages that 404 (gaps in the ``1..max`` enumeration) are
-skipped silently.
+A Hamburg Sitzung is a **single page**; each Tagesordnungspunkt is its own
+server-side HLS clip on it, from which ``parsers/media2json.py`` derives each
+speech's own clip. Candidate pages that 404 (gaps in the ``1..max`` enumeration)
+are skipped silently.
 
 Writes ``original/media/{session_id}-items.json`` per session::
 
@@ -20,8 +20,8 @@ Writes ``original/media/{session_id}-items.json`` per session::
         {"index": 0, "sid": "94773ec3-…", "top_number": null,
          "title": "Gedenkworte …", "clean_hls": "…/master.m3u8",
          "sign_hls": "…/master.m3u8",
-         "speeches": [{"speech_pk","start_offset","duration","name_raw",
-                       "function","download_start","download_stop"}]} ,
+         "speeches": [{"speech_pk","legacy_id","start_offset","duration",
+                       "name_raw","function","download_start","download_stop"}]} ,
         ...
       ]
     }

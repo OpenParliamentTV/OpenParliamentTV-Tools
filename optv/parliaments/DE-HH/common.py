@@ -5,7 +5,8 @@
 Mirrors the DE-SH / DE-BY / DE-BW Config shape: ``original/{media,proceedings}``
 for raw downloads, ``cache/{merged,aligned,ner}`` for per-stage outputs,
 ``processed/`` for the published Stage 2 files, ``metadata/`` for the NEL
-entity dump and the session index.
+entity dump and the session index. DE-HH adds ``original/subtitles/{sid}/`` for
+the per-speech WebVTT files of the mediathek.
 
 DE-HH sessions are keyed by Sitzung number combined with the Wahlperiode,
 e.g. ``23018`` = WP 23, 18. Sitzung. Sitzung is the canonical unit for
@@ -37,10 +38,15 @@ from optv.shared.session_status import SessionStatus  # noqa: F401
 
 
 class Config(BaseConfig):
-    # The Plenarprotokoll PDFs are parsed (pdf2tei) and joined onto the video
-    # spine, so sessions carry proceedings text. Sessions are discovered from
-    # bare ``{session}-media.json`` files (BaseConfig defaults).
+    # Sessions carry text: the Plenarprotokoll PDF (pdf2tei, joined onto the
+    # video spine) once it is published, the mediathek subtitles until then.
+    # Sessions are discovered from bare ``{session}-media.json`` files
+    # (BaseConfig defaults).
     HAS_TEXT = True
-    # Media spine: clips without a protocol text match keep empty
-    # textContents; the session is still aligned and NER'd.
+    # Media spine: clips without text keep empty textContents; the session is
+    # still aligned and NER'd.
     TEXT_PROBE = "any"
+
+    def __init__(self, data_dir: Path, cache_dir: Path = None):
+        super().__init__(data_dir, cache_dir)
+        self._dir['subtitles'] = Path(data_dir) / "original" / "subtitles"
