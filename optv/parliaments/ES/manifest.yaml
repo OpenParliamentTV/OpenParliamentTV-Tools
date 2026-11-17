@@ -12,8 +12,7 @@ periods: [15]                   # XV Legislature (2023-08-17 to dissolution 2026
 # entity_dump_url is empty because no hosted dump exists yet — set it once
 # the ES platform publishes one, so workflow.py --update-nel-entities can
 # refresh in place.
-# `ner` is omitted: entity-fishing ships no Spanish KB, so NER disambiguation
-# can't run (nel — local name-matching against entities.json — is unaffected).
+# `ner` is omitted: the Spanish entity-fishing KB (`db-es`, `sciencialab/entity-fishing-db-es` on Hugging Face) is not loaded into our entity-fishing, so NER would link nothing (nel — local name-matching against entities.json — is unaffected).
 supported_stages: [download, parse, merge, nel, align]
 entity_dump_url: ""             # set once the ES entities.json is published
 default_retry_count: 20
