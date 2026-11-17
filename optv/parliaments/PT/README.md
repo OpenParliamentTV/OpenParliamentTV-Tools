@@ -48,7 +48,7 @@ The text body lists the speaker's turns as `speech` (`main-speaker`), chair rema
 - av.parlamento.pt (Metatheke) exposes an **undocumented** REST API; the URL patterns here were reverse-engineered. No auth, occasional 5xx (retried).
 - The DAR text lives behind `debates.parlamento.pt/...?sft=true`; the bare catalog page is a pdf.js viewer and is **not** the text source. The text is extracted automatically from the PDF, so the parser accepts marker variants (`Sr.a` for `Sr.ª`, a missing colon or parenthesis, `⎯` for the dash, names without the space).
 - The open data file links carry encrypted path parameters; the scraper finds them on the folder pages instead of storing them.
-- NER needs the Portuguese KB (`db-pt`, `sciencialab/entity-fishing-db-pt` on Hugging Face) loaded into the entity-fishing endpoint (`--ner-api-endpoint`); the Conductor's `docker-compose.yml` mounts it. The manifest turns on the NER filters (`ner.filters`, [optv/shared/ner_filters.py](../../shared/ner_filters.py)): forms of address ("Srs.", "Deputados") and links to name or letter pages are dropped, and party abbreviations and the sitting's speakers take their ID from the entity dump ("CH" → Chega).
+- NER needs the Portuguese KB (`db-pt`, `sciencialab/entity-fishing-db-pt` on Hugging Face) loaded into the entity-fishing endpoint (`--ner-api-endpoint`); the Conductor's `docker-compose.yml` mounts it. The manifest turns on the NER corrections (`ner.corrections`, [optv/shared/ner_corrections.py](../../shared/ner_corrections.py)): forms of address ("Srs.", "Deputados") and links to name or letter pages are dropped, and party abbreviations and the sitting's speakers take their ID from the entity dump ("CH" → Chega).
 
 ## Known limitations
 

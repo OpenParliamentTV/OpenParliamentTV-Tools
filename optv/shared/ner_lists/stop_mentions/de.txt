@@ -1,4 +1,4 @@
-# German mentions that are never entities: forms of address. One per line, compared after NEL label normalisation (case, accents and punctuation ignored). Read by optv/shared/ner_filters.py.
+# German mentions that are never entities: forms of address. One per line, compared after NEL label normalisation (case, accents and punctuation ignored). Read by optv/shared/ner_corrections.py.
 Herr
 Frau
 Herren

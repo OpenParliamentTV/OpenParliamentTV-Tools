@@ -78,7 +78,7 @@ proceedings:
 
 `supported_stages` lets parliaments opt out of stages that don't apply (e.g. a parliament with pre-aligned source data can omit `align`).
 
-`ner: {filters: true}` turns on the NER filters ([optv/shared/ner_filters.py](../optv/shared/ner_filters.py)). They drop mentions on the stop list for the spaCy model's language (`optv/shared/ner_lists/stop_mentions/<lang>.txt`) and links to the Wikidata classes in `optv/shared/ner_lists/excluded_classes.yaml` (disambiguation pages, letters, name articles), and give a mention that exactly matches a faction label in `metadata/entities.json` or a speaker linked in the same sitting that entity's ID. One-off QID → QID corrections belong in the platform's EntityRemap, not in these lists.
+`ner: {corrections: true}` turns on the NER corrections ([optv/shared/ner_corrections.py](../optv/shared/ner_corrections.py)). They drop mentions on the stop list for the spaCy model's language (`optv/shared/ner_lists/stop_mentions/<lang>.txt`) and links to the Wikidata classes in `optv/shared/ner_lists/excluded_classes.yaml` (disambiguation pages, letters, name articles), and give a mention that exactly matches a faction label in `metadata/entities.json` or a speaker linked in the same sitting that entity's ID. One-off QID → QID corrections belong in the platform's EntityRemap, not in these lists; [NER-CORRECTIONS.md](NER-CORRECTIONS.md) says where a fix belongs.
 
 `language_code` is the lowercase ISO 639-1 code the parser writes into `originalLanguage` and `textContents[].language`; read it via `optv.parliaments.get_language(parliament_id)`. It is distinct from the ISO-639-3 `language` used by the locale stack.
 

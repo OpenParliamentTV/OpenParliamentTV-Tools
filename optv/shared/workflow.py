@@ -513,17 +513,17 @@ def _run_ner_stage(config, args, in_scope, publish, state, scope_key) -> None:
         _set_state(state, scope_key, 'ner', current_mtime)
         return
     logger.info(f"Updating NER for published sessions ({len(todo)} session(s))")
-    filters = None
-    if getattr(args, 'ner_filters', False) and args.ner_api_endpoint:
-        from optv.shared.ner_filters import NerFilters
-        filters = NerFilters.build(
+    corrections = None
+    if getattr(args, 'ner_corrections', False) and args.ner_api_endpoint:
+        from optv.shared.ner_corrections import NerCorrections
+        corrections = NerCorrections.build(
             language=(getattr(args, 'spacy_model', None) or '').split('_')[0],
             nel_data_dir=config.dir('nel_data'),
             api_base=args.ner_api_endpoint)
     for session, source_file in todo:
         logger.warning(f"Extracting Named Entities for {session} from {source_file.name}")
         ner_file = config.file(session, 'ner', create=True)
-        extract_entities_from_file(source_file, ner_file, args, filters)
+        extract_entities_from_file(source_file, ner_file, args, corrections)
         publish(session, ner_file)
 
 
@@ -641,7 +641,7 @@ def build_common_argparser(*, description: str) -> argparse.ArgumentParser:
 def _apply_manifest_defaults(args, parliament_id: str) -> None:
     """Fill ``--retry-count`` / ``--retry-delay-max`` / ``--lang`` from the
     manifest when the caller did not pass them explicitly, and set
-    ``args.ner_filters`` from the manifest's ``ner.filters``."""
+    ``args.ner_corrections`` from the manifest's ``ner.corrections``."""
     try:
         from optv.parliaments import load_manifest
         manifest = load_manifest(parliament_id)
@@ -656,8 +656,8 @@ def _apply_manifest_defaults(args, parliament_id: str) -> None:
         # aeneas_language is the canonical per-parliament language code; --lang
         # is the legacy alias the Conductor/align path still reads.
         args.lang = getattr(args, "aeneas_language", None)
-    if getattr(args, "ner_filters", None) is None:
-        args.ner_filters = bool((manifest.get("ner") or {}).get("filters"))
+    if getattr(args, "ner_corrections", None) is None:
+        args.ner_corrections = bool((manifest.get("ner") or {}).get("corrections"))
 
 
 def run_main(parliament_id: str, hooks: WorkflowHooks, *, description: str,

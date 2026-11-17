@@ -1,4 +1,4 @@
-"""Filters on the entities the NER stage links (opt-in per parliament).
+"""Corrections to the entities the NER stage links (opt-in per parliament).
 
 entity-fishing links every span spaCy tags as an entity, and some links are wrong in a way no confidence threshold separates ("Srs" in "Srs. Deputados" → Sender Rewriting Scheme; the party abbreviation "CH" → Order of the Companions of Honour). Each kind of error is handled by the key it depends on, all as data:
 
@@ -6,9 +6,9 @@ entity-fishing links every span spaCy tags as an entity, and some links are wron
 2. **Ambiguous names and abbreviations depend on the parliament.** A mention that exactly matches a speaker linked in the same sitting, or a faction label/alias in the parliament's ``metadata/entities.json``, gets that entity's wid. This also links mentions entity-fishing left unlinked. Persons come only from the sitting's own linked speakers, so a namesake elsewhere in the entity dump cannot take over.
 3. **Bad targets are wrong in every parliament.** ``ner_lists/excluded_classes.yaml`` lists Wikidata classes (disambiguation pages, letters, given and family names, …); a link whose ``P31`` (instance of) is one of them is dropped. The classes are read from the entity-fishing KB (``/kb/concept/{qid}``).
 
-One-off QID → QID corrections belong in the platform's EntityRemap, which applies them at import.
+One-off QID → QID corrections belong in the platform's EntityRemap, which applies them at import. docs/NER-CORRECTIONS.md says where a fix belongs.
 
-A parliament turns the filters on with ``ner: {filters: true}`` in its ``manifest.yaml``.
+A parliament turns the corrections on with ``ner: {corrections: true}`` in its ``manifest.yaml``.
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ class ClassLookup:
 
 
 @dataclass
-class NerFilters:
+class NerCorrections:
     stop_mentions: frozenset[str] = frozenset()
     factions: dict[str, str] = field(default_factory=dict)   # cleaned label → wid
     class_lookup: Optional[Callable[[str], frozenset[str]]] = None
@@ -87,20 +87,20 @@ class NerFilters:
 
     @classmethod
     def build(cls, *, language: str, nel_data_dir: Optional[Path],
-              api_base: str) -> "NerFilters":
+              api_base: str) -> "NerCorrections":
         factions: dict[str, str] = {}
         if nel_data_dir is not None and (Path(nel_data_dir) / "entities.json").is_file():
             _, faction_entities = get_nel_data(Path(nel_data_dir))
             factions = {key: ent["id"] for key, ent in faction_entities.items()
                         if key and ent.get("id")}
-        filters = cls(stop_mentions=load_stop_mentions(language),
+        corrections = cls(stop_mentions=load_stop_mentions(language),
                       factions=factions,
                       class_lookup=ClassLookup(api_base),
                       excluded_classes=load_excluded_classes())
-        logger.info(f"NER filters: {len(filters.stop_mentions)} stop mention(s) "
+        logger.info(f"NER corrections: {len(corrections.stop_mentions)} stop mention(s) "
                     f"for {language!r}, {len(factions)} faction label(s), "
-                    f"{len(filters.excluded_classes)} excluded class(es)")
-        return filters
+                    f"{len(corrections.excluded_classes)} excluded class(es)")
+        return corrections
 
     @staticmethod
     def session_persons(speeches: Iterable[dict]) -> dict[str, str]:

@@ -66,12 +66,12 @@ def _build_pipeline(spacy_model: str, ef_lang: str, api_ef_base: str):
     return nlp
 
 
-def _run_pipeline_on(nlp, group: list, filters=None) -> collections.Counter:
+def _run_pipeline_on(nlp, group: list, corrections=None) -> collections.Counter:
     """Run an already-built spaCy pipeline over a list of speeches in place.
 
-    With ``filters`` (an ``optv.shared.ner_filters.NerFilters``), every span is passed through them, with the sitting's linked speakers as the person list; without, every span entity-fishing linked is kept. Returns the filter counts.
+    With ``corrections`` (an ``optv.shared.ner_corrections.NerCorrections``), every span is passed through them, with the sitting's linked speakers as the person list; without, every span entity-fishing linked is kept. Returns the correction counts.
     """
-    persons = filters.session_persons(group) if filters is not None else None
+    persons = corrections.session_persons(group) if corrections is not None else None
     stats = collections.Counter()
     for item in group:
         start_time = time.time()
@@ -85,8 +85,8 @@ def _run_pipeline_on(nlp, group: list, filters=None) -> collections.Counter:
                                          wtype=ent.label_,
                                          score=ent._.nerd_score)
                                     for ent in doc.ents]
-                        if filters is not None:
-                            entities = filters.apply(mentions, persons, stats)
+                        if corrections is not None:
+                            entities = corrections.apply(mentions, persons, stats)
                         else:
                             entities = [m for m in mentions if m['wid']]
                         sentence['entities'] = entities
@@ -98,7 +98,7 @@ def _run_pipeline_on(nlp, group: list, filters=None) -> collections.Counter:
     return stats
 
 
-def extract_entities(source: list, args, filters=None) -> list:
+def extract_entities(source: list, args, corrections=None) -> list:
     """Extract entities from a list of speeches using the parliament's
     manifest-supplied spaCy model + entityfishing language."""
     if not args.ner_api_endpoint:
@@ -108,16 +108,16 @@ def extract_entities(source: list, args, filters=None) -> list:
     nlp = _build_pipeline(spacy_model, ef_lang, args.ner_api_endpoint)
     if nlp is None:
         return source
-    stats = _run_pipeline_on(nlp, source, filters)
-    if filters is not None:
-        logger.info(f"NER filters: dropped {stats['stop']} stop mention(s) and {stats['class']} excluded-class link(s); took {stats['relinked']} relinked and {stats['rescued']} unlinked mention(s) from the entity list")
+    stats = _run_pipeline_on(nlp, source, corrections)
+    if corrections is not None:
+        logger.info(f"NER corrections: dropped {stats['stop']} stop mention(s) and {stats['class']} excluded-class link(s); took {stats['relinked']} relinked and {stats['rescued']} unlinked mention(s) from the entity list")
     return source
 
-def extract_entities_from_file(source_file, output_file, args, filters=None):
+def extract_entities_from_file(source_file, output_file, args, corrections=None):
     with open(source_file) as f:
         source = json.load(f)
 
-    data = extract_entities(source['data'], args, filters)
+    data = extract_entities(source['data'], args, corrections)
 
     output = { "meta": { **source['meta'],
                          'processing': {
