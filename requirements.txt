@@ -8,6 +8,8 @@ click
 spacyfishing
 numpy
 aeneas
+# PyMuPDF (imported as `fitz`) is the PDF extraction backend of optv.shared.pdf2tei and the DE-ST parser.
+pymupdf
 pyyaml
 jsonschema>=4.0
 pytest>=8.0.0
