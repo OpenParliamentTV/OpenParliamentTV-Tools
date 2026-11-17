@@ -15,6 +15,14 @@ recording; the per-speech video clip + audio are derived from them (see
 parsers/media2json.py). The JSON carries **no transcript text** (that comes from
 debates.parlamento.pt) and **no Wikidata/BID** (resolved via the entity dump).
 
+Two sidecars per meeting:
+
+* ``/api/v1/videos/Plenary/{leg}/{sl}/{meeting}/metadata/json`` — a one-line
+  summary per intervention (``title``, e.g. "Apresenta o Projeto de Lei n.º
+  447/XVII/1.ª (BE) — …"), used to assign agenda items.
+* The meeting page ``/videos/Plenary/{leg}/{sl}/{meeting}`` — its
+  ``meetingVideoSources`` script variable names the recording (HLS, DASH, MP4).
+
 Two acquisition modes:
 
 * **Targeted** (``--pt-session 17-1-059``, repeatable): fetch those reuniões.
@@ -22,7 +30,10 @@ Two acquisition modes:
   ``/videos/Plenary/{leg}`` and the meetings from ``/videos/Plenary/{leg}/{sl}``
   (HTML listing pages), then fetch each meeting's JSON.
 
-Output: ``original/media/{session}-av.json`` (raw API JSON). Idempotent.
+Outputs: ``original/media/{session}-av.json`` (raw API JSON),
+``{session}-av-metadata.json`` (raw summaries) and ``{session}-av-sources.json``
+(``{"hls": …, "dash": …, "mp4": …}``). Each file is fetched once; a missing one
+is fetched on the next run (``--force`` re-fetches all three).
 """
 
 from __future__ import annotations
@@ -46,11 +57,19 @@ from optv.parliaments.PT.scraper.common import http_get
 logger = logging.getLogger(__name__)
 
 API_MEETING_URL = "https://av.parlamento.pt/api/v1/videos/Plenary/{leg}/{sl}/{meeting}"
+API_METADATA_URL = API_MEETING_URL + "/metadata/json"
+MEETING_PAGE_URL = "https://av.parlamento.pt/videos/Plenary/{leg}/{sl}/{meeting}"
 LIST_LEG_URL = "https://av.parlamento.pt/videos/Plenary/{leg}"
 LIST_SL_URL = "https://av.parlamento.pt/videos/Plenary/{leg}/{sl}"
 
 _SL_LINK_RE = re.compile(r"/videos/Plenary/(\d+)/(\d+)(?![\d/])")
 _MEETING_LINK_RE = re.compile(r"/videos/Plenary/(\d+)/(\d+)/(\d+)(?![\d/])")
+_SOURCES_BLOCK_RE = re.compile(r"meetingVideoSources\s*=\s*\[(.*?)\]", re.S)
+_SOURCE_RE = re.compile(r"""src\s*:\s*["']([^"']+)["']\s*,\s*type\s*:\s*["']([^"']+)["']""")
+_SOURCE_KINDS = {"application/vnd.apple.mpegurl": "hls",
+                 "application/x-mpegurl": "hls",
+                 "application/dash+xml": "dash",
+                 "video/mp4": "mp4"}
 
 
 def _matches_limit(session: str, args) -> bool:
@@ -80,28 +99,79 @@ def _list_meetings(leg: int, sl: int, args) -> list[int]:
     return sorted(meetings)
 
 
+def parse_meeting_sources(page_html: str) -> dict[str, str]:
+    """``{"hls": url, "dash": url, "mp4": url}`` from a meeting page's
+    ``meetingVideoSources`` script variable (empty if absent)."""
+    m = _SOURCES_BLOCK_RE.search(page_html or "")
+    if not m:
+        return {}
+    out: dict[str, str] = {}
+    for src, mime in _SOURCE_RE.findall(m.group(1)):
+        kind = _SOURCE_KINDS.get(mime.strip().lower())
+        if kind and kind not in out:
+            out[kind] = src.strip()
+    return out
+
+
+def _get(url: str, args) -> str:
+    return http_get(url, retry_count=args.retry_count,
+                    retry_delay_max=args.retry_delay_max)
+
+
+def _write_json(path: Path, doc) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
 def _fetch_one(config: Config, session: str, args) -> bool:
-    out = config.raw_av(session)
-    if out.exists() and not args.force:
-        logger.debug(f"[{session}] av JSON cached")
-        return False
+    """Fetch the meeting JSON and its two sidecars; return True if any was written."""
     leg, sl, meeting = parse_session(session)
-    url = API_MEETING_URL.format(leg=leg, sl=sl, meeting=meeting)
-    logger.info(f"[{session}] fetching {url}")
-    raw = http_get(url, retry_count=args.retry_count,
-                   retry_delay_max=args.retry_delay_max)
-    try:
-        doc = json.loads(raw)
-    except json.JSONDecodeError as e:
-        logger.error(f"[{session}] av JSON not parseable: {e}")
-        return False
-    if not doc.get("interventions"):
-        logger.warning(f"[{session}] av JSON has no interventions — skipping")
-        return False
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
-    logger.info(f"[{session}] wrote {out.name} ({len(doc['interventions'])} interventions)")
-    return True
+    fmt = dict(leg=leg, sl=sl, meeting=meeting)
+    force = getattr(args, "force", False)
+    wrote = False
+
+    out = config.raw_av(session)
+    if out.exists() and not force:
+        logger.debug(f"[{session}] av JSON cached")
+    else:
+        url = API_MEETING_URL.format(**fmt)
+        logger.info(f"[{session}] fetching {url}")
+        try:
+            doc = json.loads(_get(url, args))
+        except json.JSONDecodeError as e:
+            logger.error(f"[{session}] av JSON not parseable: {e}")
+            return False
+        if not doc.get("interventions"):
+            logger.warning(f"[{session}] av JSON has no interventions — skipping")
+            return False
+        _write_json(out, doc)
+        wrote = True
+        logger.info(f"[{session}] wrote {out.name} ({len(doc['interventions'])} interventions)")
+
+    meta_out = config.raw_av_metadata(session)
+    if force or not meta_out.exists():
+        try:
+            meta = json.loads(_get(API_METADATA_URL.format(**fmt), args))
+            if isinstance(meta, list) and meta:
+                _write_json(meta_out, meta)
+                wrote = True
+                logger.info(f"[{session}] wrote {meta_out.name} ({len(meta)} summaries)")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[{session}] intervention summaries unavailable: {e}")
+
+    src_out = config.raw_av_sources(session)
+    if force or not src_out.exists():
+        try:
+            sources = parse_meeting_sources(_get(MEETING_PAGE_URL.format(**fmt), args))
+            if sources:
+                _write_json(src_out, sources)
+                wrote = True
+                logger.info(f"[{session}] wrote {src_out.name}")
+            else:
+                logger.warning(f"[{session}] no meetingVideoSources on the meeting page")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[{session}] meeting page unavailable: {e}")
+    return wrote
 
 
 def download_media(config: Config, args) -> None:

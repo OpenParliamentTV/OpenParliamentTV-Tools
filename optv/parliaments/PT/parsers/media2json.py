@@ -1,7 +1,11 @@
 #! /usr/bin/env python3
 """Normalize av.parlamento.pt per-meeting JSON into the intermediate media format.
 
-Input:  ``original/media/{session}-av.json`` (raw API JSON; fetch_media.py)
+Input:  ``original/media/{session}-av.json`` (raw API JSON; fetch_media.py),
+        optional sidecars ``{session}-av-metadata.json`` (per-intervention
+        summaries), ``{session}-av-sources.json`` (the recording URLs from the
+        meeting page) and ``original/opendata/{session}-od.json`` (open data
+        Intervenções records; fetch_opendata.py)
 Output: ``original/media/{session}-media.json``
         ``{"meta": {...}, "data": [<intervention>, ...]}`` — one media item per
         intervention, in source order. **This is the merge spine** (the av list
@@ -18,6 +22,14 @@ Per intervention we derive:
   startOffset+duration]`` for aeneas.
 - ``startOffset`` / ``duration`` (seconds) — for align_prep + the merger.
 - ``sourcePage`` — the per-speech av page (unique per speech).
+- ``summary`` — the av one-line summary of the intervention (agenda assignment).
+- ``od`` — the open data record, when there is one: Diário ``pages``, the
+  deputy's ``personID`` (``idCadastro``), ``debateID`` / ``debate`` / ``subject``.
+
+The recording path comes from the meeting page's ``meetingVideoSources``; the
+path built from ``eventDate`` (``_content_path``) is the fallback. ``eventDate``
+is Lisbon local time without an offset, so ``dateStart`` is localised to
+Europe/Lisbon.
 """
 
 from __future__ import annotations
@@ -30,6 +42,7 @@ import re
 import sys
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
@@ -43,6 +56,7 @@ logger = logging.getLogger(__name__)
 
 AV_BASE = "https://av.parlamento.pt"
 PARLIAMENT_CODE = "PT"
+LISBON = ZoneInfo("Europe/Lisbon")
 
 _HMS_RE = re.compile(r"^(\d+):(\d{2}):(\d{2}(?:\.\d+)?)$")
 
@@ -68,15 +82,39 @@ def _content_path(leg: int, sl: int, meeting: int, event_date: str) -> Optional[
     return f"/content/hls/DAR/L{leg}/SL{sl}/A{yyyy}/M{mm}/{fname}"
 
 
-def parse_av(av_doc: dict, session: str) -> dict:
+def localize(event_date: str) -> Optional[str]:
+    """``2026-02-25T14:58:00`` (Lisbon wall clock) → ``2026-02-25T14:58:00+00:00``."""
+    if not re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", event_date or ""):
+        return None
+    try:
+        dt = datetime.datetime.fromisoformat(event_date)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=LISBON)
+    return dt.isoformat()
+
+
+def _recording_base(sources: Optional[dict], leg: int, sl: int, meeting: int,
+                    event_date: str) -> str:
+    """``https://av.parlamento.pt/content/hls/…/{file}.mp4`` (no ``/index.m3u8``)."""
+    hls = (sources or {}).get("hls") or ""
+    if hls.endswith("/index.m3u8"):
+        return hls[:-len("/index.m3u8")]
+    content_path = _content_path(leg, sl, meeting, event_date)
+    return f"{AV_BASE}{content_path}" if content_path else ""
+
+
+def parse_av(av_doc: dict, session: str, *, metadata: Optional[list] = None,
+             sources: Optional[dict] = None, od: Optional[dict] = None) -> dict:
     leg, sl, meeting = parse_session(session)
     event_date = av_doc.get("eventDate") or ""
-    content_path = _content_path(leg, sl, meeting, event_date)
-    session_hls = f"{AV_BASE}{content_path}/index.m3u8" if content_path else ""
-
-    date_start = None
-    if re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", event_date):
-        date_start = event_date  # naive local (Europe/Lisbon); kept as-is
+    base = _recording_base(sources, leg, sl, meeting, event_date)
+    session_hls = f"{base}/index.m3u8" if base else ""
+    date_start = localize(event_date)
+    summaries = {str(x.get("number")): (x.get("title") or "").strip()
+                 for x in (metadata or []) if isinstance(x, dict)}
+    od_by_number = (od or {}).get("interventions") or {}
 
     items: list[dict] = []
     for iv in av_doc.get("interventions") or []:
@@ -90,14 +128,13 @@ def parse_av(av_doc: dict, session: str) -> dict:
             duration = round(_hms_to_seconds(iv.get("duration")), 3)
 
         video_uri = ""
-        if content_path and start_s is not None and end_s is not None:
+        if base and start_s is not None and end_s is not None:
             start_ms = int(round(start_s * 1000))
             end_ms = int(round(end_s * 1000))
-            video_uri = (f"{AV_BASE}{content_path}"
-                         f"/ClipFrom/{start_ms}/ClipTo/{end_ms}/index.m3u8")
+            video_uri = f"{base}/ClipFrom/{start_ms}/ClipTo/{end_ms}/index.m3u8"
 
         affiliation = iv.get("affiliation") or {}
-        items.append({
+        item = {
             "number": number,
             "interventionType": iv.get("interventionType") or "",
             "speakerType": iv.get("speakerType") or "",
@@ -112,7 +149,11 @@ def parse_av(av_doc: dict, session: str) -> dict:
             "videoFileURI": video_uri,
             "audioFileURI": session_hls,
             "sourcePage": f"{AV_BASE}/videos/Plenary/{leg}/{sl}/{meeting}/{number}",
-        })
+            "summary": summaries.get(str(number), ""),
+        }
+        if str(number) in od_by_number:
+            item["od"] = od_by_number[str(number)]
+        items.append(item)
 
     return {
         "meta": {
@@ -126,6 +167,7 @@ def parse_av(av_doc: dict, session: str) -> dict:
             "legislativeSession": sl,
             "meeting": meeting,
             "sessionVideo": session_hls,
+            "openData": bool(od_by_number),
             "processing": {
                 "parse_media": datetime.datetime.utcnow().isoformat(timespec="seconds"),
             },
@@ -134,12 +176,24 @@ def parse_av(av_doc: dict, session: str) -> dict:
     }
 
 
+def _read_json(path: Path):
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def _inputs(config: Config, session: str) -> list[Path]:
+    return [config.raw_av(session), config.raw_av_metadata(session),
+            config.raw_av_sources(session), config.raw_od(session)]
+
+
 def parse_media_for_session(config: Config, session: str) -> dict:
     av_path = config.raw_av(session)
     if not av_path.exists():
         raise FileNotFoundError(f"[{session}] av JSON missing: {av_path}")
     av_doc = json.loads(av_path.read_text(encoding="utf-8"))
-    return parse_av(av_doc, session)
+    return parse_av(av_doc, session,
+                    metadata=_read_json(config.raw_av_metadata(session)),
+                    sources=_read_json(config.raw_av_sources(session)),
+                    od=_read_json(config.raw_od(session)))
 
 
 def parse_media_directory(config: Config, args) -> None:
@@ -154,9 +208,8 @@ def parse_media_directory(config: Config, args) -> None:
                 if args.limit_session != session:
                     continue
         out = config.file(session, "media")
-        raw = config.raw_av(session)
-        if (out.exists() and not args.force
-                and out.stat().st_mtime > raw.stat().st_mtime):
+        newest = max(p.stat().st_mtime for p in _inputs(config, session) if p.exists())
+        if out.exists() and not args.force and out.stat().st_mtime > newest:
             logger.debug(f"[{session}] media intermediate cached")
             continue
         logger.info(f"[{session}] parsing media")

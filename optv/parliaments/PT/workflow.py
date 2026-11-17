@@ -5,15 +5,20 @@ Two sources, joined by a speaker-sequence alignment (DE two-source pattern):
 
 - **av.parlamento.pt JSON API** (per-meeting) → the media spine: one
   intervention per speech with speaker / party / interventionType / per-speech
-  video clip + offsets. No transcript text.
+  video clip + offsets, plus a one-line summary per intervention and the
+  recording URLs from the meeting page. No transcript text.
 - **debates.parlamento.pt ``?sft=true``** → verbatim DAR text (the
-  ``textContents``), matched onto the av interventions by surname / chair role.
+  ``textContents``), grouped into speeches and matched onto the av
+  interventions by speaker.
+- **Open data Intervenções** (one file per legislatura) → per intervention the
+  Diário pages and the deputy's ``idCadastro``, where the file covers the
+  reunião.
 - **Wikidata SPARQL** (P39 Q19953703 members; P102 parties) → ``entities.json``
   for NEL (av carries no Wikidata/BID).
 
 Stage orchestration (merge → NEL → align → NER → publish) is shared via
 ``optv.shared.workflow``. NER runs in Portuguese (entity-fishing ``pt`` + spaCy
-``pt_core_news_md``); the Portuguese KB (``db-pt``) must be loaded into the
+``pt_core_news_md``) and needs the Portuguese KB (``db-pt``) in the
 entity-fishing instance — see the README.
 
 Period semantics: ``--period`` is the legislatura (``17``). Session keys are
@@ -48,6 +53,7 @@ from .parsers.media2json import parse_media_directory
 from .parsers.proceedings2json import parse_proceedings_directory
 from .scraper.build_entity_dump import write_entity_dump
 from .scraper.fetch_media import download_media
+from .scraper.fetch_opendata import download_opendata
 from .scraper.fetch_proceedings import download_proceedings
 
 logger = logging.getLogger(__name__ if __name__ != "__main__" else os.path.basename(sys.argv[0]))
@@ -80,6 +86,11 @@ def _download(config, args):
         except Exception as e:  # noqa: BLE001
             logger.error(f"entity dump build failed ({e}); NEL may be degraded")
     download_media(config, args)        # av JSON first (supplies the date)
+    try:
+        download_opendata(config, args)  # open data Intervenções (optional)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"open data Intervenções unavailable ({e}); "
+                       "joining without page anchors")
     download_proceedings(config, args)  # debates ?sft=true text
 
 

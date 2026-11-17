@@ -96,6 +96,8 @@ class Config(BaseConfig):
             'cache': cache_dir,
             'media': data_dir / "original" / "media",
             'proceedings': data_dir / "original" / "proceedings",
+            'opendata': data_dir / "original" / "opendata",
+            'opendata_cache': cache_dir / "opendata",
             'merged': cache_dir / "merged",
             'aligned': cache_dir / "aligned",
             'ner': cache_dir / "ner",
@@ -117,6 +119,18 @@ class Config(BaseConfig):
     def raw_av(self, session: str) -> Path:
         """Raw av.parlamento.pt per-meeting JSON (media spine) for one reunião."""
         return self.dir('media') / f"{session}-av.json"
+
+    def raw_av_metadata(self, session: str) -> Path:
+        """av.parlamento.pt per-intervention summaries (``…/metadata/json``)."""
+        return self.dir('media') / f"{session}-av-metadata.json"
+
+    def raw_av_sources(self, session: str) -> Path:
+        """Recording URLs from the av meeting page (``meetingVideoSources``)."""
+        return self.dir('media') / f"{session}-av-sources.json"
+
+    def raw_od(self, session: str) -> Path:
+        """This reunião's records from the open data Intervenções file."""
+        return self.dir('opendata') / f"{session}-od.json"
 
     def raw_dar(self, session: str) -> Path:
         """Raw debates.parlamento.pt full-text (``?sft=true``) HTML for one reunião."""
