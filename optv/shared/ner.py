@@ -6,6 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import argparse
+import collections
 from datetime import datetime
 import json
 import requests.exceptions
@@ -65,8 +66,13 @@ def _build_pipeline(spacy_model: str, ef_lang: str, api_ef_base: str):
     return nlp
 
 
-def _run_pipeline_on(nlp, group: list):
-    """Run an already-built spaCy pipeline over a list of speeches in place."""
+def _run_pipeline_on(nlp, group: list, filters=None) -> collections.Counter:
+    """Run an already-built spaCy pipeline over a list of speeches in place.
+
+    With ``filters`` (an ``optv.shared.ner_filters.NerFilters``), every span is passed through them, with the sitting's linked speakers as the person list; without, every span entity-fishing linked is kept. Returns the filter counts.
+    """
+    persons = filters.session_persons(group) if filters is not None else None
+    stats = collections.Counter()
     for item in group:
         start_time = time.time()
         for content in item.get('textContents', []):
@@ -74,21 +80,25 @@ def _run_pipeline_on(nlp, group: list):
                 for sentence in speech.get('sentences', []):
                     try:
                         doc = nlp(sentence.get('text', ""))
-                        entities = [dict(label=ent.text,
+                        mentions = [dict(label=ent.text,
                                          wid=ent._.kb_qid,
                                          wtype=ent.label_,
                                          score=ent._.nerd_score)
-                                    for ent in doc.ents
-                                    if ent._.kb_qid]
+                                    for ent in doc.ents]
+                        if filters is not None:
+                            entities = filters.apply(mentions, persons, stats)
+                        else:
+                            entities = [m for m in mentions if m['wid']]
                         sentence['entities'] = entities
                     except requests.exceptions.HTTPError as e:
                         logger.error(f"NER Server error: {e}")
         end_time = time.time()
         debug = item.setdefault('debug', {})
         debug['nerDuration'] = end_time - start_time
+    return stats
 
 
-def extract_entities(source: list, args) -> list:
+def extract_entities(source: list, args, filters=None) -> list:
     """Extract entities from a list of speeches using the parliament's
     manifest-supplied spaCy model + entityfishing language."""
     if not args.ner_api_endpoint:
@@ -98,14 +108,16 @@ def extract_entities(source: list, args) -> list:
     nlp = _build_pipeline(spacy_model, ef_lang, args.ner_api_endpoint)
     if nlp is None:
         return source
-    _run_pipeline_on(nlp, source)
+    stats = _run_pipeline_on(nlp, source, filters)
+    if filters is not None:
+        logger.info(f"NER filters: dropped {stats['stop']} stop mention(s) and {stats['class']} excluded-class link(s); took {stats['relinked']} relinked and {stats['rescued']} unlinked mention(s) from the entity list")
     return source
 
-def extract_entities_from_file(source_file, output_file, args):
+def extract_entities_from_file(source_file, output_file, args, filters=None):
     with open(source_file) as f:
         source = json.load(f)
 
-    data = extract_entities(source['data'], args)
+    data = extract_entities(source['data'], args, filters)
 
     output = { "meta": { **source['meta'],
                          'processing': {

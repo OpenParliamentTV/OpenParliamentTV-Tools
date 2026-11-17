@@ -1,0 +1,12 @@
+# Wikidata classes a NER link must not be an instance of (P31), in any parliament: pages about a name or a letter, not about an entity. QID: label. Read by optv/shared/ner_filters.py.
+Q4167410: Wikimedia disambiguation page
+Q22808320: Wikimedia human name disambiguation page
+Q13406463: Wikimedia list article
+Q4167836: Wikimedia category
+Q9788: letter
+Q19776628: Latin-script letter
+Q3841820: consonant letter
+Q202444: given name
+Q12308941: male given name
+Q11879590: female given name
+Q101352: family name

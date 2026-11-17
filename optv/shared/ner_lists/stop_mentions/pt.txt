@@ -1,0 +1,19 @@
+# Portuguese mentions that are never entities: forms of address and the address nouns used with them ("Sr. Presidente, Sr.as e Srs. Deputados"). One per line, compared after NEL label normalisation (case, accents and punctuation ignored). Read by optv/shared/ner_filters.py.
+Sr
+Sra
+Srs
+Sras
+Sr.ª
+Sr.as
+Ex.ª
+Ex.mo
+Ex.ma
+Exa
+Exas
+V. Ex.ª
+Dr
+Dra
+Deputado
+Deputada
+Deputados
+Deputadas

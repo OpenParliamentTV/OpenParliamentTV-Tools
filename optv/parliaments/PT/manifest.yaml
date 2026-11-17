@@ -13,6 +13,8 @@ locale:                         # consumed by optv.shared.{align,ner}
 # term (TW/FI/FR composite-encoding class). See optv/parliaments/PT/common.py.
 periods: [17]                   # XVII legislatura (since 2025)
 supported_stages: [download, parse, merge, nel, align, ner]
+ner:
+  filters: true                 # optv.shared.ner_filters: drop forms of address and name/letter pages, take party abbreviations and speakers from the entity list
 entity_dump_url: ""             # built locally via scraper/build_entity_dump.py (FR/NO/FI pattern)
 default_retry_count: 10
 default_retry_delay_max: 10

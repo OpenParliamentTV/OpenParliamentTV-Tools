@@ -26,6 +26,8 @@ def load_manifest(parliament_id: str) -> dict[str, Any]:
     ``default_retry_delay_max``. ``locale`` is a sub-mapping with
     ``spacy_model``, ``aeneas_language``, ``entityfishing_language`` (consumed
     by ``optv.shared.ner`` / ``optv.shared.align``).
+
+    ``ner`` is an optional sub-mapping; ``ner.filters: true`` turns on ``optv.shared.ner_filters`` for the NER stage.
     """
     import yaml
 

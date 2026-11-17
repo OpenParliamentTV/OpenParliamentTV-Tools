@@ -13,7 +13,7 @@ Three input streams, joined per speech:
   The per-speech video is a server-side-clipped HLS stream of that recording (`…/{file}.mp4/ClipFrom/{startMs}/ClipTo/{endMs}/index.m3u8`); the un-clipped session HLS is the audio source for alignment. The av `eventDate` is Lisbon wall-clock time, so `dateStart` carries the Europe/Lisbon offset.
 - **Text — debates.parlamento.pt.** `scraper/fetch_proceedings.py` → `original/proceedings/{session}-dar.html`; `parsers/proceedings2json.py` → `original/proceedings/{session}-proceedings.json`. Appending `?sft=true` ("Texto Completo") to the DAR catalog URL returns the verbatim text as HTML: one `<p>` per PDF line inside one `waypointMarker` div per Diário page, with speaker markers `O/A Sr.(ª) Name (Party): —`; no PDF parsing needed. Each parsed turn records its pages.
 - **Open data Intervenções.** `scraper/fetch_opendata.py` downloads the legislatura's Intervenções file (link found in the plain HTML of the parlamento.pt folder pages; raw copy in `cache/opendata/`, refreshed at most every 20 h) and writes `original/opendata/{session}-od.json`: per av intervention its Diário page range, the deputy's `idCadastro` and group, and the debate. Only reuniões the file covers get one.
-- **NEL — Wikidata.** `scraper/build_entity_dump.py` → `metadata/entities.json` (members of the Assembly via `P39 wd:Q19953703`; parties via `P102`). The av JSON carries no Wikidata/BID, so the dump is Wikidata-only.
+- **NEL — Wikidata.** `scraper/build_entity_dump.py` → `metadata/entities.json` (members of the Assembly via `P39 wd:Q19953703`, one entry per Wikidata item; parties via `P102`, current ones pinned). Each member carries the Assembly deputy ID (`P6199`, the open data `idCadastro`) as `additionalInformation.originPersonID`, so NEL links a speaker the open data identifies by ID; otherwise by name, where a name several members share goes to the most recent member.
 
 ## Merge strategy
 
@@ -48,7 +48,7 @@ The text body lists the speaker's turns as `speech` (`main-speaker`), chair rema
 - av.parlamento.pt (Metatheke) exposes an **undocumented** REST API; the URL patterns here were reverse-engineered. No auth, occasional 5xx (retried).
 - The DAR text lives behind `debates.parlamento.pt/...?sft=true`; the bare catalog page is a pdf.js viewer and is **not** the text source. The text is extracted automatically from the PDF, so the parser accepts marker variants (`Sr.a` for `Sr.ª`, a missing colon or parenthesis, `⎯` for the dash, names without the space).
 - The open data file links carry encrypted path parameters; the scraper finds them on the folder pages instead of storing them.
-- NER needs the Portuguese KB (`db-pt`, `sciencialab/entity-fishing-db-pt` on Hugging Face) loaded into the entity-fishing endpoint (`--ner-api-endpoint`); the Conductor's `docker-compose.yml` mounts it.
+- NER needs the Portuguese KB (`db-pt`, `sciencialab/entity-fishing-db-pt` on Hugging Face) loaded into the entity-fishing endpoint (`--ner-api-endpoint`); the Conductor's `docker-compose.yml` mounts it. The manifest turns on the NER filters (`ner.filters`, [optv/shared/ner_filters.py](../../shared/ner_filters.py)): forms of address ("Srs.", "Deputados") and links to name or letter pages are dropped, and party abbreviations and the sitting's speakers take their ID from the entity dump ("CH" → Chega).
 
 ## Known limitations
 
@@ -57,4 +57,4 @@ The text body lists the speaker's turns as `speech` (`main-speaker`), chair rema
 - **Open data coverage.** The XVII Intervenções file starts with the second sessão legislativa (2026-09-16), so earlier reuniões are joined without page anchors; the chair's procedural interventions have no record.
 - **Text–video join is a sequence alignment, not a hard key.** A clip with long interruptions can carry little text for its length; a turn whose speaker marker the automatic text mangles beyond the accepted variants stays inside the previous turn.
 - **Agenda items** follow the sitting description: a debate the description does not list inherits the previous item's title, and items debated jointly share the first item's title.
-- **NEL coverage is name-based** (no Wikidata IDs at the source), so hyphenated or all-caps source names can miss; a miss is a warning, not an error.
+- **NEL is ID-based only where the open data identifies the speaker**; elsewhere it matches names, so hyphenated source names and people who are not members (most government members) can miss; a miss is a warning, not an error.
