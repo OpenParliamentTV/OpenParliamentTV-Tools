@@ -5,9 +5,7 @@ Unlike FR/DE there is no parliament-side roster open-data to join — the
 av.parlamento.pt JSON names each speaker (and party) but carries no Wikidata or
 BID identifier. So the dump is Wikidata-only:
 
-1. **Persons** — every member of the Assembly of the Republic
-   (``P39 wd:Q19953703``), keyed by normalised name, ``subType:
-   memberOfParliament``.
+1. **Persons** — every member of the Assembly of the Republic (``P39 wd:Q19953703``), one entry per Wikidata item, ``subType: memberOfParliament``. The Assembly's own deputy ID (``P6199``, the open data ``idCadastro``) is kept as ``additionalInformation.originPersonID``, so NEL links a speaker the open data identifies by ID before trying the name. Members are ordered by the start of their latest term, so a name several members share resolves to the most recent one when there is no ID.
 2. **Factions** — the parliamentary parties those members belong to
    (``P102``), keyed by short name (``P1813``), ``subType: faction``.
 
@@ -51,13 +49,18 @@ SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 # P39 wd:Q19953703 = "member of the Assembly of the Republic" (Portugal). p:/ps:
 # so former memberships are followed too — once an MP, always a former MP.
 SPARQL_PT_MEMBERS = """
-SELECT DISTINCT ?person ?label_pt ?label_en ?label_mul WHERE {
+SELECT ?person (SAMPLE(?pt) AS ?label_pt) (SAMPLE(?en) AS ?label_en)
+       (SAMPLE(?mul) AS ?label_mul) (MAX(?start) AS ?latest)
+       (GROUP_CONCAT(DISTINCT ?arid; separator="|") AS ?arids) WHERE {
   ?person p:P39 ?stmt .
   ?stmt ps:P39 wd:Q19953703 .
-  OPTIONAL { ?person rdfs:label ?label_pt FILTER(LANG(?label_pt)="pt") }
-  OPTIONAL { ?person rdfs:label ?label_en FILTER(LANG(?label_en)="en") }
-  OPTIONAL { ?person rdfs:label ?label_mul FILTER(LANG(?label_mul)="mul") }
+  OPTIONAL { ?stmt pq:P580 ?start }
+  OPTIONAL { ?person wdt:P6199 ?arid }
+  OPTIONAL { ?person rdfs:label ?pt FILTER(LANG(?pt)="pt") }
+  OPTIONAL { ?person rdfs:label ?en FILTER(LANG(?en)="en") }
+  OPTIONAL { ?person rdfs:label ?mul FILTER(LANG(?mul)="mul") }
 }
+GROUP BY ?person
 """
 
 # Parties (P102) of Assembly members, with their short name (P1813). Aggregated
@@ -79,7 +82,10 @@ ORDER BY DESC(?n)
 # uneven). Anything not pinned still resolves dynamically from SPARQL.
 PARTY_QIDS_OVERRIDE: dict[str, str] = {
     "BE": "Q884840",        # Bloco de Esquerda
+    "CH": "Q63645885",      # Chega
     "IL": "Q46122950",      # Iniciativa Liberal
+    "JPP": "Q19694667",     # Juntos pelo Povo
+    "PAN": "Q2054840",      # Pessoas–Animais–Natureza
     "PCP": "Q769829",       # Partido Comunista Português
 }
 
@@ -115,14 +121,19 @@ def _bind(b: dict, key: str) -> str | None:
 
 
 def fetch_members() -> "OrderedDict[str, dict]":
-    """Return ``{clean_name: {id, label, aliases}}`` for Assembly members."""
+    """Return ``{qid: {id, label, aliases, arids}}`` for Assembly members, ordered by the start of their latest term (oldest first; NEL's name lookup keeps the last entry per name)."""
     logger.info("Querying Wikidata for members of the Assembly of the Republic…")
     try:
         payload = _sparql_get(SPARQL_PT_MEMBERS)
     except Exception as e:  # noqa: BLE001
         logger.error(f"Wikidata members query failed ({e}); persons will have no QID")
         return OrderedDict()
-    persons: "OrderedDict[str, dict]" = OrderedDict()
+    return parse_members(payload)
+
+
+def parse_members(payload: dict) -> "OrderedDict[str, dict]":
+    """The ``fetch_members`` result for a members query response."""
+    rows = []
     for b in (payload.get("results") or {}).get("bindings") or []:
         iri = _bind(b, "person") or ""
         if not iri:
@@ -134,18 +145,19 @@ def fetch_members() -> "OrderedDict[str, dict]":
                  or _bind(b, "label_mul") or "")
         if not label:
             continue
-        key = _clean(label)
-        if not key:
+        if not _clean(label):
             continue
-        entry = persons.get(key)
-        if entry is None:
-            aliases = []
-            for k in ("label_en", "label_mul"):
-                alt = _bind(b, k)
-                if alt and alt != label and alt not in aliases:
-                    aliases.append(alt)
-            persons[key] = {"id": qid, "label": label, "aliases": aliases}
-    logger.info(f"Wikidata: {len(persons)} distinct Assembly members")
+        aliases = []
+        for k in ("label_en", "label_mul"):
+            alt = _bind(b, k)
+            if alt and alt != label and alt not in aliases:
+                aliases.append(alt)
+        arids = sorted(a for a in (_bind(b, "arids") or "").split("|") if a)
+        rows.append((_bind(b, "latest") or "", qid,
+                     {"id": qid, "label": label, "aliases": aliases, "arids": arids}))
+    rows.sort(key=lambda r: (r[0], r[1]))
+    persons: "OrderedDict[str, dict]" = OrderedDict((qid, entry) for _, qid, entry in rows)
+    logger.info(f"Wikidata: {len(persons)} Assembly members")
     return persons
 
 
@@ -179,13 +191,16 @@ def build() -> dict:
 
     data: list[dict] = []
     for entry in persons.values():
-        data.append({
+        person = {
             "id": entry["id"],
             "label": entry["label"],
             "labelAlternative": entry["aliases"],
             "type": "person",
             "subType": "memberOfParliament",
-        })
+        }
+        if entry.get("arids"):
+            person["additionalInformation"] = {"originPersonID": entry["arids"]}
+        data.append(person)
 
     # One faction entry per distinct abbreviation (the av affiliation `initials`
     # are the per-speech faction labels NEL matches against). Pinned overrides
@@ -204,10 +219,11 @@ def build() -> dict:
                 "type": "organisation",
                 "subType": "faction",
             }
-    # Ensure pinned current parties are present even if SPARQL lacked their abbrev.
+    # Ensure pinned current parties are present even if SPARQL lacked their abbrev; their names come from the party row with the same QID.
+    names = {p["qid"]: [x for x in (p["label"], p["label_en"]) if x] for p in parties}
     for ab, qid in PARTY_QIDS_OVERRIDE.items():
         factions.setdefault(ab, {
-            "id": qid, "label": ab, "labelAlternative": [],
+            "id": qid, "label": ab, "labelAlternative": names.get(qid, []),
             "type": "organisation", "subType": "faction",
         })
     data.extend(factions.values())
@@ -216,7 +232,7 @@ def build() -> dict:
     logger.info(f"Built {len(persons)} persons ({with_qid} with QID), "
                 f"{len(factions)} factions")
     return {
-        "meta": {"source": "Wikidata SPARQL (P39 Q19953703 persons; P102 parties)"},
+        "meta": {"source": "Wikidata SPARQL (P39 Q19953703 persons with P6199 ids; P102 parties)"},
         "data": data,
     }
 

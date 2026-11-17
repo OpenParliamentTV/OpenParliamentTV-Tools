@@ -274,6 +274,8 @@ def carry_forward_wids(new_data: list, published_data: list) -> int:
     Makes entity links append-only across a publish: a publish can add wids
     but never remove one processed/ already has, even when fed by an
     out-of-date cache. Mutates new_data; returns the number of wids carried.
+
+    A person's wid and its faction's wid are carried independently, so a speaker NEL could not link keeps a linked faction.
     """
     published_by_key = {}
     for speech in published_data:
@@ -287,7 +289,7 @@ def carry_forward_wids(new_data: list, published_data: list) -> int:
             continue
         prev_people = {p['label']: p
                        for p in (prev.get('people') or [])
-                       if p.get('label') and p.get('wid')}
+                       if p.get('label') and (p.get('wid') or _faction_wid(p))}
         for person in (speech.get('people') or []):
             ref = prev_people.get(person.get('label'))
             if not ref:
@@ -303,7 +305,13 @@ def carry_forward_wids(new_data: list, published_data: list) -> int:
                 faction['wid'] = ref_faction['wid']
                 if ref_faction.get('wtype'):
                     faction['wtype'] = ref_faction['wtype']
+                carried += 1
     return carried
+
+
+def _faction_wid(person: dict) -> str:
+    faction = person.get('faction')
+    return faction.get('wid', '') if isinstance(faction, dict) else ''
 
 
 def carry_forward_documents(new_data: list, published_data: list) -> int:

@@ -44,15 +44,28 @@ def cleanup(name):
 _PERSON_ID_KEYS = ("epId", "originPersonID")
 
 
+class PersonIndex(dict):
+    """Cleaned name → person entity, as returned by ``get_nel_data``.
+
+    ``entities`` keeps every person entity, including namesakes the name map holds only one of, so ID lookups (``_build_person_id_index``) reach all of them.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.entities: list = []
+
+
 def _build_person_id_index(persons: dict) -> dict:
     """Build ``{(key, id): entity}`` from the persons map.
 
     ``persons`` is keyed by cleaned-name strings, with duplicate values for
-    each entity (one per alternative label). We dedupe by ``id(ent)``.
+    each entity (one per alternative label). We dedupe by ``id(ent)``. A ``PersonIndex`` contributes its full entity list, so a namesake shadowed in the name map is still found by ID.
     """
     by_id: dict = {}
     seen: set = set()
-    for ent in persons.values():
+    # members last, so a memberOfParliament wins an ID it shares with a `person` entry (as it wins names)
+    entities = sorted(getattr(persons, 'entities', []), key=lambda e: e.get('subType') == 'memberOfParliament')
+    for ent in [*entities, *persons.values()]:
         if id(ent) in seen:
             continue
         seen.add(id(ent))
@@ -134,7 +147,7 @@ def link_entities(source: list, persons: dict, factions: dict,
 def get_nel_data(nel_data_dir: Path = None):
     nel_data_file = nel_data_dir / "entities.json"
 
-    persons = {}
+    persons = PersonIndex()
     factions = {}
 
     if nel_data_file and nel_data_file.is_file():
@@ -150,12 +163,14 @@ def get_nel_data(nel_data_dir: Path = None):
         for ent in nel_data['data']:
             if ent['subType'] != 'memberOfParliament':
                 continue
+            persons.entities.append(ent)
             persons[cleanup(ent['label'])] = ent
             for alt in ent['labelAlternative']:
                 persons[cleanup(alt)] = ent
         for ent in nel_data['data']:
             if ent['subType'] != 'person':
                 continue
+            persons.entities.append(ent)
             for label in [ent['label'], *ent['labelAlternative']]:
                 key = cleanup(label)
                 if key not in persons:

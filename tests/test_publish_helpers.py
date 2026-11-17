@@ -108,6 +108,18 @@ def test_carry_forward_enriches_dict_faction_wid():
     assert new[0]["people"][0]["faction"]["wid"] == "Q49768"
 
 
+def test_carry_forward_keeps_faction_wid_of_an_unlinked_speaker():
+    # NEL linked the party but not the person: the faction wid must survive
+    # a publish from a cache that predates NEL.
+    published = [_speech("A", people=[{
+        "label": "Eva Exemplo", "faction": {"label": "PSD", "wid": "Q595575"}}])]
+    new = [_speech("A", people=[{
+        "label": "Eva Exemplo", "faction": {"label": "PSD"}}])]
+    assert carry_forward_wids(new, published) == 1
+    assert new[0]["people"][0]["faction"]["wid"] == "Q595575"
+    assert "wid" not in new[0]["people"][0]
+
+
 # carry_forward_enrichments -- per-speech derived fields are monotonic
 # across a publish; stale code can't strip what newer code produced.
 
