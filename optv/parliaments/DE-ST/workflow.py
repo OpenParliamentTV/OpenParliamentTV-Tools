@@ -1,10 +1,11 @@
 #! /usr/bin/env python3
 """DE-ST Landtag Sachsen-Anhalt workflow.
 
-Scrapes the portal's per-Sitzungsperiode HTML pages and their associated
-per-speech video AJAX endpoints, splits each page into per-Landtagssitzung
-intermediate JSONs, then merges, links, aligns, and NERs them through the
-shared pipeline. Stage orchestration lives in ``optv.shared.workflow``.
+Scrapes the portal's per-Sitzungsperiode HTML pages, their per-speech video
+AJAX endpoints and each sitting's protocol PDF, splits each page into
+per-Landtagssitzung intermediate JSONs, then merges, links, aligns, and NERs
+them through the shared pipeline. Stage orchestration lives in
+``optv.shared.workflow``.
 """
 
 import logging
@@ -28,7 +29,7 @@ from .parsers.media2json import parse_media_directory
 from .parsers.proceedings2json import parse_proceedings_directory
 from .scraper.fetch_archive import fetch_archive_and_build_sitzung_map
 from .scraper.fetch_media import fetch_media_for_session_map
-from .scraper.fetch_sessions import fetch_session_pages
+from .scraper.fetch_protocols import fetch_protocols_for_session_map
 
 logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basename(sys.argv[0]))
 
@@ -44,12 +45,8 @@ def _download(config, args):
         force=args.force,
         retry_count=args.retry_count,
     )
-    fetch_session_pages(
-        sitzung_map=sitzung_map,
-        proceedings_dir=config.dir('proceedings'),
-        force=args.force,
-        retry_count=args.retry_count,
-    )
+    if sitzung_map is None:
+        return
     fetch_media_for_session_map(
         sitzung_map=sitzung_map,
         proceedings_dir=config.dir('proceedings'),
@@ -58,14 +55,20 @@ def _download(config, args):
         retry_count=args.retry_count,
         session_filter=args.limit_session,
     )
+    fetch_protocols_for_session_map(
+        sitzung_map=sitzung_map,
+        proceedings_dir=config.dir('proceedings'),
+        force=args.force,
+        retry_count=args.retry_count,
+        session_filter=args.limit_session,
+    )
 
 
 def _parse(config, args):
-    metadata_dir = config.dir('nel_data')
     parse_proceedings_directory(
         config.dir('proceedings'),
-        media_dir=config.dir('media'),
-        metadata_dir=metadata_dir,
+        metadata_dir=config.dir('nel_data'),
+        period=args.period,
     )
     parse_media_directory(config.dir('media'))
 
@@ -84,7 +87,7 @@ def _align(config, session, args):
 
 
 def _session_in_scope(args, session: str) -> bool:
-    """DE-ST session keys are 5-digit ``{period:02d}{sitzung:03d}`` (e.g. 08105).
+    """DE-ST session keys are 5-digit ``{period:02d}{sitzung:03d}`` (e.g. 09002).
 
     The shared default uses ``session.startswith(str(args.period))`` which
     fails for single-digit periods because the zero-padding hides the prefix.

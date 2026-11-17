@@ -1,62 +1,73 @@
 # Landtag von Sachsen-Anhalt (DE-ST)
 
-Parser/merger for the Saxony-Anhalt state parliament (Wahlperiode 8, since 2021). Both proceedings and media come from the same Landtag portal (`landtag.sachsen-anhalt.de`); the per-speech text-video join is in the DOM, so no Needleman-Wunsch alignment is needed. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md). For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
+Parser/merger for the Saxony-Anhalt state parliament (Wahlperiode 9, since October 2026). Proceedings and media come from the same Landtag portal (`landtag.sachsen-anhalt.de`); the per-speech text-video join is in the DOM, so no Needleman-Wunsch alignment is needed. For repo-wide context and onboarding, see [`docs/ADDING-A-PARLIAMENT.md`](../../../docs/ADDING-A-PARLIAMENT.md). For how its data shape compares to the cross-parliament model, see [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
+
+The portal keeps only the electoral period in progress online: the pages and videos of a period go offline when it ends (the Landtag archive keeps them). Each sitting has to be imported while its period runs.
 
 ## Data model
 
-A single source page per **Sitzungsperiode** (`/{N}-sitzungsperiode`) bundles 1–3 **Landtagssitzungen** (calendar days). The portal exposes the Sitzungsperiode as the URL boundary; we treat each Sitzung as the OPTV `session` (matching DE/DE-RP's convention). One scraped HTML page therefore yields N intermediate proceedings files and N media file collections — one per day-section (`<section id="section-N">`).
+A single source page per **Sitzungsperiode** bundles 1–3 **Landtagssitzungen** (calendar days). We treat each Sitzung as the OPTV `session` (matching DE/DE-RP's convention). One scraped page therefore yields N intermediate proceedings files and N media file collections — one per day section (`<section id="section-N">`).
 
-- **Archive crawler** ([`scraper/fetch_archive.py`](scraper/fetch_archive.py)): walks `/archiv`, fetches each `sp-{NN:03d}.html`, counts day-sections, and builds a cumulative Sitzung map written to `<data>/metadata/sitzung-map.json`. The canonical Sitzung number is not exposed as structured data anywhere on the portal — we derive it from the cumulative day-count and correct for any archive gaps via a single transcript probe on the latest SP (see "Sitzung numbering" below).
-- **Per-speech video** ([`scraper/fetch_media.py`](scraper/fetch_media.py)): for every standard video player-id (`data-js-id="video-std"`; sign-language `video-sign` skipped), GETs `?videoSessions=videoAjax&videoId={pid}` and saves the raw HTML under `original/media/{08NNN}/{player-id}.html`. The AJAX response carries a `data-jsb` JSON blob with the MP4 URLs (1080p/720p/360p), duration, and thumbnail.
-- **Per-Sitzung proceedings** ([`parsers/proceedings2json.py`](parsers/proceedings2json.py)): splits the SP HTML by day-section and emits `{08NNN}-proceedings.json` for each Sitzung. Each speech record carries speaker label, party, role, TOP number + title, std/sign player-ids, transcript speaker-id + cHash.
-- **Per-Sitzung media** ([`parsers/media2json.py`](parsers/media2json.py)): decodes the `data-jsb` JSON on each AJAX response and aggregates `{08NNN}-media.json` keyed by player-id (duration, thumbnail, MP4 URLs at three qualities).
-- **Transcript fetch** is deferred to the merger to keep the proceedings parser cheap and pure; cached under `original/proceedings/transcripts/{08NNN}/{speaker-id}.html`.
+- **Archive crawler** ([`scraper/fetch_archive.py`](scraper/fetch_archive.py)): reads the Sitzungsperioden listed under `<h2>{N}. Wahlperiode</h2>` on `/archiv`. Page addresses are editor-chosen (`/1-sitzungsperiode`, `/2-sitzungsperiode-1`), so each page's href is used as it is and the SP number comes from the link text. Pages are cached as `original/proceedings/sp-{PP}-{NNN}.html`; a cached page is fetched again while one of its days still lacks a protocol link. The map of sittings goes to `<data>/metadata/sitzung-map-{PP}.json` (see "Sitzung numbering"). A run for a period the archive no longer lists downloads nothing.
+- **Per-speech video** ([`scraper/fetch_media.py`](scraper/fetch_media.py)): for every standard video player-id (`data-js-id="video-std"`; sign-language `video-sign` skipped), GETs `{SP page}?videoSessions=videoAjax&videoId={pid}` and saves the raw HTML under `original/media/{PPNNN}/{player-id}.html`. The AJAX response carries a `data-jsb` JSON blob with the MP4 URLs (1080p/720p/360p), duration, and thumbnail.
+- **Protocol** ([`scraper/fetch_protocols.py`](scraper/fetch_protocols.py)): each day section links that sitting's Plenarprotokoll (`/fileadmin/files/plenum/wp{P}/{NNN}stzg.pdf`) once it is published; the PDF is saved as `original/proceedings/{PPNNN}.pdf`. The link redirects to the PADOKA documentation server.
+- **Per-Sitzung proceedings** ([`parsers/proceedings2json.py`](parsers/proceedings2json.py)): splits the SP page by day section and emits `{PPNNN}-proceedings.json` for each Sitzung. Each speech record carries speaker label, party, role, TOP number + title, std/sign player-ids, the clip's page anchor (`#section-video-{n}-{m}`) and the transcript URLs as the page links them. With the protocol on disk, `meta.sittingTimes` holds the sitting's start, breaks and end. A file is rewritten only when its content changes.
+- **Per-Sitzung media** ([`parsers/media2json.py`](parsers/media2json.py)): decodes the `data-jsb` JSON on each AJAX response and aggregates `{PPNNN}-media.json` keyed by player-id (duration, thumbnail, MP4 URLs at three qualities).
+- **Transcript fetch** is deferred to the merger to keep the proceedings parser cheap and pure; cached under `original/proceedings/transcripts/{PPNNN}/{speaker-id}.html`. The AJAX transcript URL is used exactly as linked: its `cHash` is bound to the SP page's path.
 
 ## Sitzung numbering
 
-The portal URL-groups plenary work by **Sitzungsperiode** (multi-day blocks) but never renders the canonical **Landtagssitzung** number anywhere in structured HTML — only in transcript prose ("Hiermit eröffne ich die NNN. Sitzung") and the Tagesordnung / Plenarprotokoll PDF headers. We derive it structurally:
+The portal groups plenary work by **Sitzungsperiode** and shows the canonical **Landtagssitzung** number only in text (transcript prose, agenda and protocol PDFs). The number of each sitting day is:
 
-1. Walk `/archiv` → list of SP URLs in WP order.
-2. For each SP HTML, count `<section id="section-N">` tags → days in that SP.
-3. Cumulative sum across SPs → "expected" Sitzung number for each day.
-4. **Offset probe**: fetch the latest SP's opening transcript, regex `(\d+)\. Sitzung` from the prose, compare to the cumulative count, derive offset (= number of sittings in SPs missing from the archive).
-5. Apply the offset uniformly to all sittings in the map and persist.
+1. the number in the file name of the protocol the day section links (`{NNN}stzg.pdf`), once the protocol is published;
+2. otherwise the previous day's number + 1, in archive order (days before the first protocol count back from it; without any protocol, numbering starts at 1).
 
-For WP 8 this offset is `+2` because SP 42 is missing from the archive (presumably 2 sittings) — the probe self-corrects without any per-SP special-casing.
+`numberSource` in the map records which rule applied. A protocol number that disagrees with the sequence is logged.
 
 ## Merge strategy
 
-[`merger/merge_session.py`](merger/merge_session.py) does a **1:1 ordered zip** on the standard-video player-id (no Needleman-Wunsch). Every video-list-item on the SP page produces one entry on both streams; their order in DOM is the join order. The merger fetches each speech's transcript inline, drops the speaker prefix line, and splits the rest into speech / `(comment)` paragraphs. Per-speech `dateStart` is synthesised from cumulative durations (real per-sentence timing is filled by the alignment stage).
+[`merger/merge_session.py`](merger/merge_session.py) does a **1:1 ordered zip** on the standard-video player-id (no Needleman-Wunsch). Every video-list-item on the SP page produces one entry on both streams; their order in DOM is the join order.
+
+The transcript of a clip is the text of the Stenografischer Bericht for that clip, with interjections. It holds one or more contributions, each opened by a speaker line (`Präsident Tobias Rausch:`, `Daniel Roi (AfD):`, `Matthias Büttner (Staßfurt) (AfD):`, `Sven Schulze (Ministerpräsident):`). The merger:
+
+- drops the agenda headings between speeches (`Tagesordnungspunkt 30`, the item's title and printed-paper lines, `Erste Beratung`, `Abstimmung`);
+- makes each contribution its own `textBody` item with `speaker`/`speakerstatus`, and `(…)` paragraphs `comment` items;
+- attributes text before the first speaker line to the last speaker of the previous clip of the sitting (the protocol writes no new speaker line when the speaker continues);
+- puts everyone who speaks into `people[]`: the slot's speaker first (`main-speaker`), then presidium (`president`/`vice-president`/`interim-president`) and other speakers (`speaker`). A procedural slot (`Eröffnung`, `Abstimmung`, `Wahl`, `Schlussbemerkungen`) has no person in its heading, so its first contribution's speaker — the presiding officer — is the main speaker. A speaker whose line names only an office gets the faction their slot heading shows elsewhere in the sitting.
+
+`media.sourcePage` is the SP page with the clip's anchor (`#section-video-{n}-{m}`), which opens that clip; the anchor is unique on the page. `textContents[].sourceURI` is the clip's stand-alone transcript page.
+
+**Times.** `dateStart`/`dateEnd` are German wall-clock with the Europe/Berlin UTC offset. The clock starts at the protocol's `Beginn` and runs on by each clip's duration; at each `Unterbrechung`/`Wiederbeginn` pair it moves to the resumption time at the clip whose transcript contains the protocol text the sitting resumed with (a break that matches no clip is placed by clock time). The page lists the clips by agenda item, but a sitting can take items out of order (e.g. part of TOP 6 after TOP 8); with the protocol, the clock and the carried-over speaker follow the protocol's order instead, found by locating each clip's first speech paragraph in the protocol text (`debug.sittingOrder`; `speechIndex` keeps the page order). Until the protocol is published, the clock starts at 09:00 and follows the page order (`debug.sittingTimesSource = "default"`, else `"protocol"`); the next run after its publication re-merges the sitting. Gaps between clips are not in the durations, so times drift a little within each part of a sitting. `session.dateStart`/`dateEnd` are the protocol's start and end (without protocol: first and last clip).
 
 Agenda-item classification (TOP titles → `nativeType` / `type`) uses [`classify_de_st`](../../shared/agenda_types.py) — `Wahl` → election, `Vereidigung` → oath, `Eröffnung` → opening, `Erste/Zweite/Dritte Beratung` → regular, `Aktuelle Debatte` → current_affairs, `Befragung der Landesregierung` → questioning_of_the_government.
 
 ## Entity dump
 
-[`scraper/build_entity_dump.py`](scraper/build_entity_dump.py) queries Wikidata for everyone with `P39 wd:Q18559580` ("member of the Landtag of Saxony-Anhalt") and combines with the hand-curated WP 8 party list. Writes `<data>/metadata/entities.json` in the format `optv.shared.nel.get_nel_data` expects. The `entity_dump_url` in [`manifest.yaml`](manifest.yaml) is aspirational; until the hosted dump exists, the workflow falls back to the local file.
+[`scraper/build_entity_dump.py`](scraper/build_entity_dump.py) queries Wikidata for everyone with `P39 wd:Q18559580` ("member of the Landtag of Saxony-Anhalt") and combines with the hand-curated party list of WP 8 and WP 9 (incl. BSW). Writes `<data>/metadata/entities.json` in the format `optv.shared.nel.get_nel_data` expects. The `entity_dump_url` in [`manifest.yaml`](manifest.yaml) is empty; the workflow uses the local file.
 
 ## Running
 
 ```bash
 ./optv/parliaments/DE-ST/update <data_dir>
 # expands to:
-# python3 workflow.py --period=8 --retry-count=20 \
-#     --limit-session '0810[56]' \
+# python3 workflow.py --period=9 --retry-count=20 \
+#     --limit-session '0900[1-3]' \
 #     --download-original --merge-speeches \
 #     --link-entities --align-sentences --extract-entities \
 #     <data_dir>
 ```
 
-The default session regex scopes downstream stages to the validated sample (Sittings 105+106 = Sitzungsperiode 47). Override with `--limit-session` to widen. `make download` / `make all` mirror the mtime-driven flow.
+The session regex scopes the media/protocol download and the downstream stages to the sample sittings 1–3; override `--limit-session` to widen. `make download` / `make all` mirror the mtime-driven flow.
 
 ## Access notes
 
-The portal is plain nginx + TYPO3 with no anti-bot — stdlib `urllib` with a polite User-Agent suffices. The video AJAX endpoint and the transcript AJAX endpoint are both undocumented (not a stable API) but have been stable across the WP 8 lifetime. **nginx rate-limits at ~60 requests / 60 s window per IP**; the scraper enforces a 1.5 s global throttle (`POLITE_DELAY` in [`scraper/common.py`](scraper/common.py)) to stay under it. A 241-speech Sitzungsperiode merge takes ~6 minutes at this rate.
+The portal is plain nginx + TYPO3 with no anti-bot — stdlib `urllib` with a polite User-Agent suffices. The video AJAX endpoint and the transcript AJAX endpoint are undocumented (not a stable API). **nginx rate-limits at ~60 requests / 60 s window per IP**; the scraper enforces a 1.5 s global throttle (`POLITE_DELAY` in [`scraper/common.py`](scraper/common.py)) to stay under it. A 404/410 is not retried. The protocol PDFs are served by PADOKA (`padoka.landtag.sachsen-anhalt.de`), whose robots.txt disallows all paths; the adapter fetches one PDF per sitting through the link on the SP page.
 
 ## Known limitations
 
-- **Cumulative day-count is uniformly offset.** The probe only fires for the latest SP, so the +2 offset (caused by SP 42's absence) is applied to *all* sittings — including those before SP 42. Sittings 1–N before the gap therefore appear in the map as 3–(N+2). For our immediate scope (current Sittings) this is harmless; backfilling pre-gap data would need a piecewise offset (probe each "block" between gaps).
-- **`entity_dump_url` is aspirational.** The hosted `de-st.openparliament.tv/api/v1/entityDump` does not exist yet. Until it does, point `--nel-data-dir` at `<data>/metadata/entities.json` produced by `scraper/build_entity_dump.py`. Coverage is ~389 MP QIDs from Wikidata plus 6 faction QIDs; non-MP speakers (Landesminister, guests) won't link.
-- **Sitzungsperiode dropped from Stage 2.** The portal's URL-grouping unit is recorded only in `debug.sitzungsperiode` and `meta.sitzungsperiode`. DE-ST is another instance of the three-level temporal pattern (alongside NO/SE) that the current schema flattens.
+- **Only the current electoral period is online.** The WP 8 sample sittings (08105–08107) in the data repository can't be merged again: their MP4 links no longer resolve, and their `textContents[].license` is still `© Landtag von Sachsen-Anhalt — Schriftdolmetschung`.
+- **`sourcePage` is unique within a period only.** Page slugs are reused across periods (`/1-sitzungsperiode` served SP 1 of both WP 8 and WP 9), and the platform's import keys speech identity on the exact `sourcePage`.
+- **`entity_dump_url` is empty.** Point the NEL stage at `<data>/metadata/entities.json` produced by `scraper/build_entity_dump.py`. Non-MP speakers (Landesminister, guests) and members without a Wikidata Landtag statement don't link.
+- **Sitzungsperiode dropped from Stage 2.** The portal's URL-grouping unit is recorded only in `meta.sitzungsperiode`. DE-ST is another instance of the three-level temporal pattern (alongside NO/SE) that the current schema flattens.
 - **No live API contract.** Video AJAX (`?videoSessions=videoAjax`) and transcript AJAX (`?transcriptSessions=lsaSessionsAjax`) are undocumented TYPO3 extension endpoints. If the portal is rebuilt, both scrapers will need rework.
 - **VMS MP4 URLs may rotate.** Hash-named MP4 URLs on `app.vms.landtag-lsa.de` are persisted at scrape time; if the Landtag rotates them, alignment will need to refetch via the AJAX endpoint.
-- **Transcript is Schriftdolmetschung** (live text transcription), not the official Plenarprotokoll. Wording may differ slightly from the canonical PDF in PADOKA.

@@ -95,7 +95,7 @@ Schema validation is structural. Cross-field, cross-item, and cross-source invar
 6. Warnings when `people[].wid` or `people[].faction` are absent (faction warning is restricted to speaker contexts where a faction is expected).
 7. Warning on the deprecated `agendaItem.speechIndex`.
 8. Warning on `Unknown` speaker context.
-9. Warning when two speeches in a session share a `media.sourcePage` (`semantic.media.sourcePage.duplicate`). The platform's media.php import keys speech identity on `sourcePage`, so duplicates collapse distinct speeches at import. Parliaments serving one video per session/debate/part must make it unique per speech — e.g. appending the per-speech start offset (SE `?pos=`, NO `&t=`, FI `?start=`) or a per-speech id (DE-SH, DE-ST `?player=`).
+9. Warning when two speeches in a session share a `media.sourcePage` (`semantic.media.sourcePage.duplicate`). The platform's media.php import keys speech identity on `sourcePage`, so duplicates collapse distinct speeches at import. Parliaments serving one video per session/debate/part must make it unique per speech — e.g. appending the per-speech start offset (SE `?pos=`, NO `&t=`, FI `?start=`) or a per-speech id or anchor (DE-SH; DE-ST's per-clip anchor `#section-video-{n}-{m}`).
 10. Warning on a deprecated speech-level `originTextID` (`semantic.speech.originTextID_deprecated`) — the speech id belongs in `originID` (joint id) or `textContents[].originTextID`. See [Speech identity model](#speech-identity-model-originid--originmediaid--origintextid).
 11. Warning when `originalLanguage` matches no `textContents[].language` (`semantic.speech.originalLanguage_mismatch`) — they must share the same code standard so `originalLanguage` can select the original text.
 12. Warning when `meta` carries `parliament` or `electoralPeriod` (`semantic.meta.duplicatesPerSpeech`) — those live per-speech in `data[]`; a meta-level copy is redundant.
@@ -180,7 +180,7 @@ lockstep:
 | `debug.nerDuration` | `Config.status` / `publish.data_has_ner` / Conductor |
 | `debug.proceedingIndex` | `Config.status` (text-merged signal) |
 | `debug.mediaIndex`, `debug.proceedingIndexes` | intra-merge linking |
-| `debug.transcriptSpeakerId`, `debug.transcriptCHash` | DE-ST merger (transcript fetch) |
+| `debug.transcriptSpeakerId`, `debug.transcriptURL`, `debug.transcriptPageURL`, `debug.videoAnchor`, `debug.stdPlayerId`, `debug.h3Label` | DE-ST merger (transcript fetch, source URLs, media join) |
 
 Everything else (`rednerRaw`/`gruppeRaw`/… raw speaker/faction strings,
 `originalTitle`, `proceedingsSource`, `alignError`, per-source ids, …) is

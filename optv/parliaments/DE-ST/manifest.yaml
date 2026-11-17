@@ -5,7 +5,7 @@ locale:
   spacy_model: de_core_news_md
   aeneas_language: deu
   entityfishing_language: de
-periods: [8]
+periods: [8, 9]
 supported_stages: [download, parse, merge, nel, align, ner]
 entity_dump_url: ""
 default_retry_count: 20
@@ -19,6 +19,4 @@ media:
 proceedings:
   default:
     creator: Landtag von Sachsen-Anhalt
-    # The proceedings text is the live captioning (Schriftdolmetschung), not the
-    # stenographic record — its rights string differs from the media license.
-    license: © Landtag von Sachsen-Anhalt — Schriftdolmetschung
+    license: Amtliches Werk (§ 5 Abs. 2 UrhG)

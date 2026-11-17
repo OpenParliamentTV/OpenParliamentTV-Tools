@@ -4,12 +4,12 @@
 Two sources, joined on German label:
 
 1. **Wikidata SPARQL** — everyone who has held the position
-   ``P39 wd:Q113486420`` ("Abgeordneter im Landtag von Sachsen-Anhalt").
+   ``P39 wd:Q18559580`` ("member of the Landtag of Saxony-Anhalt").
    Provides the QID plus German label variants.
-2. **Hand-curated party list** for the parties currently represented in
-   WP 8. Wikidata IDs and the surface variants the portal renders
-   (``DIE LINKE`` vs ``Die Linke``, ``BÜNDNIS 90/DIE GRÜNEN`` vs the same in
-   mixed case, ``FDP``, ``AfD``, ``CDU``, ``SPD``).
+2. **Hand-curated party list** for the parties represented in WP 8 and
+   WP 9. Wikidata IDs and the surface variants the portal renders
+   (``DIE LINKE`` vs ``Die Linke``, ``BÜNDNIS 90/DIE GRÜNEN`` vs ``GRÜNE``,
+   ``FDP``, ``AfD``, ``CDU``, ``SPD``, ``BSW``).
 
 Run:
 
@@ -60,7 +60,8 @@ SELECT DISTINCT ?person ?label_de ?label_en ?label_mul WHERE {
 }
 """
 
-# Parties currently represented in WP 8 (CDU, AfD, Linke, SPD, FDP, Grüne).
+# Parties represented in WP 8 (CDU, AfD, Linke, SPD, FDP, Grüne) and WP 9
+# (CDU, AfD, Linke, SPD, Grüne, BSW).
 # `label` mirrors the canonical form used by the parser after normalisation;
 # `aliases` covers the surface variants in the source HTML.
 DE_ST_PARTIES: list[dict] = [
@@ -87,6 +88,10 @@ DE_ST_PARTIES: list[dict] = [
         "GRÜNE",
         "Grüne",
         "B90/Grüne",
+    ]},
+    {"id": "Q123121346", "label": "BSW", "aliases": [
+        "Bündnis Sahra Wagenknecht",
+        "Bündnis Sahra Wagenknecht – Vernunft und Gerechtigkeit",
     ]},
 ]
 

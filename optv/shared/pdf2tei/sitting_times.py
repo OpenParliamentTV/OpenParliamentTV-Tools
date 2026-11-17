@@ -3,8 +3,10 @@
 German Landtag protocols state the sitting's clock times to the minute: the
 start (``Beginn: 9:33 Uhr``), the end (``Schluss: 16:44 Uhr``), and every
 interruption in the body (``(Unterbrechung der Sitzung: 12:04 Uhr)`` …
-``(Wiederaufnahme der Sitzung: 13:16 Uhr)``). Some cover pages also summarise
-the lunch break (``Mittagspause: 12:04 bis 13:16 Uhr``).
+``(Wiederaufnahme der Sitzung: 13:16 Uhr)``; Sachsen-Anhalt writes
+``Unterbrechung: 10:14 Uhr.`` … ``Wiederbeginn: 11:15 Uhr.`` and full hours
+without minutes, ``Beginn: 10 Uhr``). Some cover pages also summarise the lunch
+break (``Mittagspause: 12:04 bis 13:16 Uhr``).
 
 :func:`parse_sitting_times` reads these from plain text into
 ``{"begin": "HH:MM", "end": "HH:MM", "breaks": [["HH:MM", "HH:MM"], …]}``;
@@ -21,17 +23,18 @@ from .extract_text import extract_blocks
 
 logger = logging.getLogger(__name__)
 
-_T = r"(\d{1,2})[:.](\d{2})\s*Uhr"
+_T = r"(\d{1,2})(?:[:.](\d{2}))?\s*Uhr"
 _BEGIN_RE = re.compile(r"\bBeginn:\s*" + _T)
 _END_RE = re.compile(r"\bSchluss:\s*" + _T)
-_BREAK_RE = re.compile(r"Unterbrechung\s+der\s+Sitzung:\s*" + _T)
-_RESUME_RE = re.compile(r"Wiederauf-?\s*nahme\s+der\s+Sitzung:\s*" + _T)
+_BREAK_RE = re.compile(r"\bUnterbrechung(?:\s+der\s+Sitzung)?:\s*" + _T)
+_RESUME_RE = re.compile(
+    r"(?:\bWiederauf-?\s*nahme\s+der\s+Sitzung|\bWiederbeginn):\s*" + _T)
 _LUNCH_RE = re.compile(
     r"Mittagspause:\s*(\d{1,2})[:.](\d{2})\s*bis\s*(\d{1,2})[:.](\d{2})\s*Uhr")
 
 
-def _hm(h: str, m: str) -> Optional[str]:
-    hh, mm = int(h), int(m)
+def _hm(h: str, m: Optional[str]) -> Optional[str]:
+    hh, mm = int(h), int(m or 0)
     if hh > 23 or mm > 59:
         return None
     return f"{hh:02d}:{mm:02d}"

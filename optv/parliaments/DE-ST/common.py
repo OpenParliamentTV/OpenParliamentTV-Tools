@@ -5,11 +5,11 @@
 Mirrors the DE-RP Config shape: ``original/{media,proceedings}`` for raw
 downloads, ``cache/{merged,aligned,ner}`` for per-stage outputs,
 ``processed/`` for the published Stage 2 files, ``metadata/`` for the NEL
-entity dump and the cumulative Sitzung map.
+entity dump and the per-period Sitzung map.
 
-DE-ST sessions are keyed by Landtagssitzung number (e.g. ``08105``) — the
+DE-ST sessions are keyed by Landtagssitzung number (e.g. ``09002``) — the
 canonical reference unit for Plenarprotokolle and Drucksachen. The session
-HTML on the portal is grouped per-Sitzungsperiode (``sp-NNN.html``), but
+HTML on the portal is grouped per-Sitzungsperiode (``sp-PP-NNN.html``), but
 the parser splits each multi-day page into per-Sitzung intermediates.
 """
 

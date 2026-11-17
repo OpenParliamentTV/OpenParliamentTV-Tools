@@ -38,7 +38,16 @@ PARTY_NORMALISATION: dict[str, str] = {
     "spd": "SPD",
     "fdp": "FDP",
     "afd": "AfD",
+    "bsw": "BSW",
+    "fraktionslos": "fraktionslos",
 }
+
+# Office keywords that mark a parenthesis in a transcript speaker line as the
+# speaker's function (``Sven Schulze (Ministerpräsident):``) rather than a
+# constituency (``Matthias Büttner (Staßfurt) (AfD):``).
+_OFFICE_RE = re.compile(
+    r"minister|präsident|berichterstatt|staatssekretär|beauftragt|vorsitzend",
+    re.IGNORECASE)
 
 
 _WS_RE = re.compile(r"\s+")
@@ -56,6 +65,13 @@ def normalize_party(label: str | None) -> str | None:
         return None
     key = normalize_ws(label).lower()
     return PARTY_NORMALISATION.get(key, normalize_ws(label))
+
+
+def known_faction(label: str | None) -> str | None:
+    """Canonical faction label if ``label`` is a known faction surface form."""
+    if not label:
+        return None
+    return PARTY_NORMALISATION.get(normalize_ws(label).lower())
 
 
 def role_to_context(role: str | None) -> str | None:
@@ -81,17 +97,44 @@ def strip_honorifics(name: str) -> str:
     return s
 
 
-def parse_speaker_label(h3_text: str) -> dict:
+_NAME_PARTICLES = {"von", "van", "vom", "zu", "zur", "de", "der", "den", "di", "da"}
+
+
+def looks_like_name(text: str) -> bool:
+    """True for ``Dr. Hans-Thomas Tillschneider`` / ``Eva von Angern``.
+
+    At least two tokens, each capitalised (honorifics included) or a name
+    particle; prose such as ``Ich zitiere`` fails on the lower-case verb.
+    """
+    tokens = normalize_ws(text).split(" ")
+    if len(tokens) < 2 or not tokens[0][:1].isupper():
+        return False
+    return all(t[:1].isupper() or t in _NAME_PARTICLES for t in tokens)
+
+
+def name_key(name: str | None) -> str:
+    """Comparable form of a person's name (honorifics dropped, lower case)."""
+    return strip_honorifics(name or "").lower()
+
+
+def parse_speaker_label(h3_text: str, has_profile: bool = False) -> dict:
     """Parse the ``<h3 class="no-style">`` content into speaker components.
 
     The portal renders one of these shapes:
       - ``Sven Schulze (CDU)  - Ministerpräsident``  → MP with party + role
       - ``Dr. Gunnar Schellenberger   - Landtagspräsident``  → presidium (no party)
-      - ``Eröffnung`` / ``Wahl`` / ``Vereidigung``  → procedural marker, not a name
+      - ``Ulrich Siegmund (AfD)``  → member (the slot links the member's profile)
+      - ``Eröffnung`` / ``Abstimmung (Namensaufruf)`` / ``Erster Wahlgang``
+        → procedural marker, not a name
 
-    Returns ``{"label", "party", "role", "is_procedural"}``. When the h3 has
-    no name structure (procedural marker), ``label`` is left empty and the
-    merger fills it in from the transcript's speaker prefix line.
+    A parenthesis counts as the faction only when it is a known faction or
+    the slot links a member profile (``has_profile``); otherwise it is a
+    qualifier of a procedural marker. A label is a person when it has a
+    faction, a profile link, or a role after a name.
+
+    Returns ``{"label", "party", "role", "is_procedural"}``. For a procedural
+    marker ``label`` is empty; the merger takes the speaker from the
+    transcript's first speaker line.
     """
     text = normalize_ws(h3_text or "")
     if not text:
@@ -102,29 +145,56 @@ def parse_speaker_label(h3_text: str) -> dict:
     name_part = text
     if " - " in text:
         name_part, role_text = text.rsplit(" - ", 1)
-        name_part = normalize_ws(name_part)
-        role = normalize_ws(role_text)
+        role = normalize_ws(role_text) or None
 
-    # Extract party from parens
+    parens = [normalize_ws(p) for p in _PAREN_RE.findall(name_part)]
+    name = normalize_ws(_PAREN_RE.sub(" ", name_part))
     party = None
-    m = _PAREN_RE.search(name_part)
-    if m:
-        party = normalize_party(m.group(1))
-        name_part = _PAREN_RE.sub(" ", name_part)
-        name_part = normalize_ws(name_part)
+    for p in parens:
+        party = known_faction(p) or party
+    if party is None and has_profile and parens:
+        party = normalize_party(parens[-1])
 
-    # If the remaining "name" lacks any lowercase letter and no role/party
-    # was found, treat as procedural (Wahl, Vereidigung, Eröffnung, ...).
-    is_procedural = False
-    if not party and not role:
-        # All caps / short noun → procedural-only
-        if name_part and not re.search(r"\b[A-ZÄÖÜ][a-zäöüß]+\s+[A-ZÄÖÜ][a-zäöüß]+", name_part):
-            is_procedural = True
-            name_part = ""
+    is_person = bool(party or has_profile or (role and looks_like_name(name)))
+    if not is_person:
+        return {"label": "", "party": None, "role": None, "is_procedural": True}
+    return {"label": name, "party": party, "role": role, "is_procedural": False}
 
-    return {
-        "label": name_part,
-        "party": party,
-        "role": role,
-        "is_procedural": is_procedural,
-    }
+
+_PRESIDIUM_LINE_RE = re.compile(
+    r"^(?P<role>(?:Alters|Vize)?[Pp]räsident(?:in)?)\s+(?P<name>[^():]{3,80}?)\s*:$")
+_PAREN_LINE_RE = re.compile(
+    r"^(?P<name>[^():]{3,80}?)\s*(?P<parens>(?:\([^()]{1,160}\)\s*)+):$")
+
+
+def parse_speaker_line(paragraph: str) -> dict | None:
+    """Parse a transcript speaker line, or return ``None`` for any other text.
+
+    The transcript (the Stenografischer Bericht text of one video clip) starts
+    each contribution with a line of one of these shapes:
+      - ``Präsident Tobias Rausch:`` / ``Vizepräsidentin Anne-Marie Keding:``
+      - ``Daniel Roi (AfD):`` / ``Matthias Büttner (Staßfurt) (AfD):``
+      - ``Sven Schulze (Ministerpräsident):`` / ``Gordon Köhler (Berichterstatter):``
+
+    Returns ``{"name", "role", "faction", "presidium"}``. In a parenthesised
+    line the known faction is the faction, a parenthesis naming an office is
+    the role, and any other parenthesis (a constituency) is dropped.
+    """
+    text = normalize_ws(paragraph)
+    if not text.endswith(":") or len(text) > 240:
+        return None
+    m = _PRESIDIUM_LINE_RE.match(text)
+    if m and looks_like_name(m.group("name")):
+        return {"name": normalize_ws(m.group("name")), "role": m.group("role"),
+                "faction": None, "presidium": True}
+    m = _PAREN_LINE_RE.match(text)
+    if not m or not looks_like_name(m.group("name")):
+        return None
+    faction = role = None
+    for p in (normalize_ws(x) for x in _PAREN_RE.findall(m.group("parens"))):
+        if known_faction(p):
+            faction = known_faction(p)
+        elif role is None and _OFFICE_RE.search(p):
+            role = p
+    return {"name": normalize_ws(m.group("name")), "role": role,
+            "faction": faction, "presidium": False}

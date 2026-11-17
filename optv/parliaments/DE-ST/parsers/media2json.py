@@ -1,13 +1,13 @@
 #! /usr/bin/env python3
 """Parse per-speech video AJAX HTML into intermediate media JSON.
 
-Each ``original/media/{08NNN}/{player-id}.html`` is the AJAX response from
+Each ``original/media/{PPNNN}/{player-id}.html`` is the AJAX response from
 ``?videoSessions=videoAjax&videoId={pid}`` carrying ``data-jsb`` attributes
 with a JSON-encoded ``selected_video`` block (duration, MP4 sources at
 1080p/720p/360p, preview image).
 
 We collapse all per-player-id files for a Sitzung into one
-``{08NNN}-media.json`` keyed by player-id, so the merger can do a 1:1
+``{PPNNN}-media.json`` keyed by player-id, so the merger can do a 1:1
 lookup against the proceedings stream.
 """
 

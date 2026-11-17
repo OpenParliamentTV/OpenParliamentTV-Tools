@@ -26,6 +26,9 @@ _LAST_FETCH_AT = 0.0
 # enough to finish a 241-speech Sitzungsperiode merge in ~6 minutes.
 POLITE_DELAY = 1.5
 
+# HTTP statuses that retrying cannot fix.
+GONE_STATUSES = frozenset({404, 410})
+
 
 def fetch(url: str, *, retry_count: int = 10, timeout: float = 60.0,
           base_delay: float = 1.0) -> bytes:
@@ -35,7 +38,9 @@ def fetch(url: str, *, retry_count: int = 10, timeout: float = 60.0,
     Landtag's nginx will start refusing connections under sustained pressure
     (we hit ECONNREFUSED after a burst of unthrottled AJAX calls during
     initial testing). When connections are refused, backoff doubles up to
-    60s to give the IP block time to clear.
+    60s to give the IP block time to clear. A 404/410 is final and raises
+    at once: the portal keeps only the current electoral period online, and a
+    retried dead URL would cost minutes of backoff.
     """
     global _LAST_FETCH_AT
     req = Request(url, headers={"User-Agent": USER_AGENT})
@@ -53,6 +58,8 @@ def fetch(url: str, *, retry_count: int = 10, timeout: float = 60.0,
         except (HTTPError, URLError, TimeoutError) as e:
             _LAST_FETCH_AT = time.monotonic()
             last_err = e
+            if isinstance(e, HTTPError) and e.code in GONE_STATUSES:
+                raise RuntimeError(f"GET {url} failed: {e}") from e
             if attempt >= retry_count:
                 break
             logger.warning(f"GET {url} retry {attempt}/{retry_count} after {delay:.1f}s: {e}")
