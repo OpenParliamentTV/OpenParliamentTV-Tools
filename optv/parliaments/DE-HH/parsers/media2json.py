@@ -18,8 +18,8 @@ This pass, per speech:
 - keeps the clip-relative ``start_offset`` + ``end_offset`` (= start + duration)
   for the merger's ``#t=start,end`` media fragment;
 - derives **real wall-clock** ``start_datetime`` / ``end_datetime`` (UTC, ``Z``)
-  from the ``video-download`` timestamps — DE-HH is the first video-only German
-  Landtag with absolute per-speech times (DE-SH/DE-BY/DE-BW are video-relative);
+  from the ``video-download`` timestamps (absolute per-speech times in the
+  source);
 - assigns a deterministic global ``speech_index`` ordered by (agenda order,
   start offset).
 

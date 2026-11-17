@@ -14,9 +14,9 @@ addressed by an HTML5 media-fragment ``#t=start,end`` on ``videoFileURI`` (the
 offsets are relative to that TOP's clip) plus ``startOffset``/``endOffset`` in
 ``additionalInformation``. ``sourcePage`` is made unique per speech
 (``…#rede-{speechPk}``, the mediathek's own per-speech anchor) so the platform's
-sourcePage-keyed speech identity does not collapse distinct speeches. Unlike
-DE-BW, the speech ``dateStart``/``dateEnd`` are **real wall-clock** times (from
-the per-speech video-download timestamps), so ``debug.timesAreVideoRelative`` is
+sourcePage-keyed speech identity does not collapse distinct speeches. The
+speech ``dateStart``/``dateEnd`` are **real wall-clock** times (from the
+per-speech video-download timestamps), so ``debug.timesAreVideoRelative`` is
 ``false``.
 """
 
