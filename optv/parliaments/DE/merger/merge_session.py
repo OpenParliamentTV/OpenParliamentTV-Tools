@@ -525,6 +525,32 @@ def needleman_wunsch_align(proceedings, media, options):
 def is_utc_offset(s: str) -> bool:
     return re.match(r'^[+-]\d\d:\d\d$', s)
 
+NAIVE_TIMESTAMP_RE = re.compile(r'^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$')
+
+def session_bounds(proceedings_meta: dict, media_meta: dict) -> tuple:
+    """Return the session (dateStart, dateEnd).
+
+    The official times are in proceedings (sitzung-start/ende-uhrzeit), as
+    naive local timestamps; the UTC offset is only defined in media
+    timestamps. ParlaMint-DE carries no sitting times, so its parser emits
+    the whole day as a placeholder, and upstream XML is occasionally
+    malformed (sitzung-datum="02014", an empty sitzung-ende-uhrzeit).
+    Neither is a session bound: each such value falls back to the media's
+    first speech start / last speech end.
+    """
+    start = proceedings_meta.get('dateStart') or ''
+    end = proceedings_meta.get('dateEnd') or ''
+    utc_offset = (media_meta.get('dateStart') or '')[-6:]
+    placeholder = start.endswith('T00:00:00') and end.endswith('T23:59:59')
+
+    def bound(value, fallback):
+        if is_utc_offset(utc_offset) and not placeholder and NAIVE_TIMESTAMP_RE.match(value):
+            return value + utc_offset
+        return fallback
+
+    return (bound(start, media_meta.get('dateStart')),
+            bound(end, media_meta.get('dateEnd')))
+
 def merge_data(proceedings, media, options) -> list:
     """Merge data structures.
 
@@ -634,15 +660,7 @@ def merge_data(proceedings, media, options) -> list:
                     if src_fac.get('label') and not cur_fac.get('label'):
                         cur_fac['label'] = src_fac['label']
 
-    # Let's fix dateStart/dateEnd: the official info is in proceedings
-    # (sitzung-start/ende-uhrzeit), but the UTC offset is only defined
-    # in media timestamps.
-    utc_offset = media['meta']['dateStart'][-6:]
-    # Check that we actually have a UTC offset
-    if is_utc_offset(utc_offset) and not is_utc_offset(proceedings['meta']['dateStart'][-6:]):
-        # Simply copy the UTC offset string at the end.
-        dateStart = proceedings['meta']['dateStart'] + utc_offset
-        dateEnd = proceedings['meta']['dateEnd'] + utc_offset
+    dateStart, dateEnd = session_bounds(proceedings['meta'], media['meta'])
 
     # Update session info in all speeches
     for speech in speeches:
