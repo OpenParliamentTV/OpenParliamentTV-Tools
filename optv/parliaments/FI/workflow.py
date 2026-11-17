@@ -5,22 +5,24 @@ Three sources joined per session:
 
 - **verkkolähetys** broadcast page → per-speech video offsets + speaker +
   party + agenda topic + reply flag (the merge spine).
-- **avoindata VaskiData** PTK XML → verbatim per-speech text (grafted on).
-- **Wikidata SPARQL ⋈ MemberOfParliament** → ``entities.json`` for NEL.
+- **api.eduskunta.fi** speech records → verbatim per-speech text with UTC
+  times (grafted on).
+- **Wikidata SPARQL ⋈ api.eduskunta.fi MP register** → ``entities.json`` for NEL.
 
 Stage orchestration (merge → NEL → align → publish) is shared via
 ``optv.shared.workflow``. NER is intentionally absent from
 ``supported_stages`` — entity-fishing ships no Finnish KB. The pipeline runs in
-Finnish throughout; the per-speech ``originalLanguage`` (fi/sv) is recorded as
-data but does not switch models (Swedish-minority speeches degrade slightly).
+Finnish throughout; the per-speech ``originalLanguage`` (fi/sv, detected from
+the text) is recorded as data but does not switch models (Swedish-minority
+speeches degrade slightly).
 
 Period semantics: ``--period`` is the vaalikausi (electoral term) start year
 (``2023``). Session keys are ``{year}-{number:03d}`` (e.g. ``2026-058``); see
 ``common.py`` for the year+number ↔ ``session.number`` encoding.
 
-Download discovers sessions from ``SaliDBIstunto`` for the term years, or takes
-explicit ``--fi-session YYYY-NNN`` values (repeatable; avoids the API's
-occasional ingest lag for the very latest session).
+Download discovers the sittings of the term years from the open data API
+(every sitting that has speech records), or takes explicit ``--session
+YYYY-NNN`` values (repeatable).
 """
 
 from __future__ import annotations
@@ -46,11 +48,11 @@ from .align_prep import prepare_per_speech_audio
 from .common import Config, parse_session_str, session_str, term_years
 from .merger.merge_session import merge_session
 from .parsers.media2json import parse_media_for_session
-from .parsers.proceedings2json import parse_ptk
+from .parsers.proceedings2json import parse_speeches
 from .scraper.build_entity_dump import write_entity_dump
 from .scraper.fetch_media import fetch_media
 from .scraper.fetch_proceedings import fetch_proceedings
-from .scraper.avoindata import filter_rows
+from .scraper.eduskunta_api import list_sittings
 
 logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basename(sys.argv[0]))
 
@@ -71,20 +73,15 @@ def _session_in_scope(args, session):
     return True
 
 
+def sittings_in_term(sittings, period: int) -> list[tuple[int, int]]:
+    """The ``(year, number)`` keys of ``sittings`` that fall in the term's years."""
+    years = set(term_years(period))
+    return sorted(k for k in sittings if k[0] in years)
+
+
 def _discover_sessions(period: int, **kw) -> list[tuple[int, int]]:
-    """Plenary (TAYSISTUN) sessions for the term's years, from SaliDBIstunto."""
-    found: list[tuple[int, int]] = []
-    for year in term_years(period):
-        rows = filter_rows("SaliDBIstunto", "IstuntoVPVuosi", str(year),
-                           per_page=100, max_pages=20, **kw)
-        for r in rows:
-            if r.get("IstuntoTyyppi") != "TAYSISTUN":
-                continue
-            num = r.get("IstuntoNumero")
-            try:
-                found.append((year, int(num)))
-            except (TypeError, ValueError):
-                continue
+    """Plenary sittings with speech records for the term's years, from the open data API."""
+    found = sittings_in_term(list_sittings(**kw), period)
     logger.info(f"Discovered {len(found)} plenary sessions across term {period}")
     return found
 
@@ -117,19 +114,20 @@ def _parse(config, args):
     for session in sessions:
         year, number = parse_session_str(session)
 
-        ptk_path = config.raw_ptk(session)
+        raw_path = config.raw_speeches(session)
         proc_out = config.file(session, "proceedings")
-        if ptk_path.exists():
+        if raw_path.exists():
             stale = (args.force or not proc_out.exists()
-                     or ptk_path.stat().st_mtime > proc_out.stat().st_mtime)
+                     or raw_path.stat().st_mtime > proc_out.stat().st_mtime)
             if stale:
                 logger.info(f"[{session}] parsing proceedings")
-                doc = parse_ptk(ptk_path.read_bytes(), args.spacy_model, year, number)
+                records = json.loads(raw_path.read_text(encoding="utf-8"))
+                doc = parse_speeches(records, args.spacy_model, year, number)
                 proc_out.parent.mkdir(parents=True, exist_ok=True)
                 proc_out.write_text(json.dumps(doc, indent=2, ensure_ascii=False))
                 logger.info(f"[{session}] wrote {proc_out.name} ({len(doc['data'])} speeches)")
         else:
-            logger.warning(f"[{session}] no PTK XML — proceedings will be empty (media-only)")
+            logger.warning(f"[{session}] no speech records — proceedings will be empty (media-only)")
 
         event_path = config.raw_event(session)
         media_out = config.file(session, "media")
@@ -189,7 +187,7 @@ def _add_arguments(parser):
     """Parliament-specific flags beyond the shared set."""
     parser.add_argument("--session", dest="fi_session", action="append", default=[],
                         help="Session key to download (e.g. 2026-058). Repeatable. "
-                             "When omitted, sessions are discovered from SaliDBIstunto.")
+                             "When omitted, sessions are discovered from the open data API.")
 
 
 def main():

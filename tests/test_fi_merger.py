@@ -44,8 +44,8 @@ def test_match_by_person_and_nearest_time():
     # Two speeches by the same member; each video clip must bind the nearest
     # PTK speech in time, not just the first.
     proc = [
-        _proc(1391, "2026-05-29T13:07:28", 1, text="Eka."),
-        _proc(1391, "2026-05-29T13:20:00", 2, text="Toka."),
+        _proc(1391, "2026-05-29T13:07:28+03:00", 1, text="Eka."),
+        _proc(1391, "2026-05-29T13:20:00+03:00", 2, text="Toka."),
     ]
     index = M._index_proceedings(proc)
     early = M._match_proceeding(_media(1391, 455, "2026-05-29T10:07:28.300Z"), index)
@@ -57,14 +57,14 @@ def test_match_by_person_and_nearest_time():
 
 
 def test_match_respects_tolerance():
-    proc = [_proc(1391, "2026-05-29T13:07:28", 1)]
+    proc = [_proc(1391, "2026-05-29T13:07:28+03:00", 1)]
     index = M._index_proceedings(proc)
-    # Video timestamp 30 min off the PTK time → beyond JOIN_TOLERANCE_S.
+    # Video timestamp 30 min off the speech-record time → beyond JOIN_TOLERANCE_S.
     assert M._match_proceeding(_media(1391, 455, "2026-05-29T10:40:00Z"), index) is None
 
 
 def test_merge_one_grafts_text_and_keeps_media():
-    proc = _proc(1391, "2026-05-29T13:07:28", 1, text="Sisältö.")
+    proc = _proc(1391, "2026-05-29T13:07:28+03:00", 1, text="Sisältö.")
     proc["_utc"] = 0.0
     proc["_used"] = False
     speech = M.merge_one(_media(1391, 455, "2026-05-29T10:07:28Z", is_reply=True),
@@ -87,8 +87,10 @@ def test_merge_one_media_only_when_no_text():
     assert speech["agendaItem"]["id"] == "kohta-6"
 
 
-def test_helsinki_to_utc_dst_offset():
-    # Late May → EEST (UTC+3): 13:07:28 local == 10:07:28 UTC.
-    local = M._helsinki_to_utc_epoch("2026-05-29T13:07:28")
+def test_utc_epoch_offset_and_z_agree():
+    # Speech records carry Helsinki time with offset, the broadcast UTC with Z.
+    local = M._utc_epoch("2026-05-29T13:07:28+03:00")
     utc = M._utc_epoch("2026-05-29T10:07:28Z")
-    assert abs(local - utc) < 1.0
+    assert local == utc
+    assert M._utc_epoch(None) is None
+    assert M._utc_epoch("not a date") is None

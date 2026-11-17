@@ -78,7 +78,7 @@ def session_number_int(period: int, year: int, number: int) -> int:
 
 
 class Config(BaseConfig):
-    # Media is the spine: a broadcast clip without a matching PTK speech keeps
+    # Media is the spine: a broadcast clip without a matching speech record keeps
     # empty textContents, and text shows as non-empty textContents. A
     # session is text-bearing when any speech has text; align and NER skip
     # the others.
@@ -114,9 +114,9 @@ class Config(BaseConfig):
             d.mkdir(parents=True)
         return d / f"{session}-{suffix}.json"
 
-    def raw_ptk(self, session: str) -> Path:
-        """Raw PTK plenary-minutes XML downloaded from VaskiData."""
-        return self.dir('proceedings') / f"{session}-ptk.xml"
+    def raw_speeches(self, session: str) -> Path:
+        """Raw speech records of the sitting from the open data API search."""
+        return self.dir('proceedings') / f"{session}-speeches.json"
 
     def raw_event(self, session: str) -> Path:
         """Raw verkkolähetys event (speakers[] + media URLs) extracted from the page."""

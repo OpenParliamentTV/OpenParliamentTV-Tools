@@ -1,0 +1,226 @@
+[
+  {
+    "id": "PUH 58/2026/6/1/1",
+    "tunnus": {
+      "fi": "PTK 58/2026 vp",
+      "sv": "PR 58/2026 rd"
+    },
+    "tila": "Hyväksytty",
+    "puheenvuorotyyppikoodi": "T",
+    "puheenvuorotyyppinimi": "Varsinainen puheenvuoro",
+    "valtiopaiva": "2026 vp",
+    "valtiopaivavuosi": "2026",
+    "taysistuntonumero": "58",
+    "asia": {
+      "fi": {
+        "eduskuntatunnus": "HE 40/2026 vp",
+        "nimeketeksti": "Hallituksen esitys eduskunnalle työeläkejärjestelmää koskevan lainsäädännön muuttamiseksi",
+        "asiatyyppi": "HE"
+      },
+      "sv": {
+        "eduskuntatunnus": "RP 40/2026 rd",
+        "nimeketeksti": "Regeringens proposition till riksdagen med förslag till ändring av lagstiftningen om arbetspensionssystemet",
+        "asiatyyppi": "RP"
+      }
+    },
+    "poytakirjanasiankohta": {
+      "fi": {
+        "eduskuntatunnus": "PTK 58/2026 vp",
+        "kohtanumero": "6",
+        "nimeketeksti": "Hallituksen esitys eduskunnalle työeläkejärjestelmää koskevan lainsäädännön muuttamiseksi"
+      },
+      "sv": {
+        "eduskuntatunnus": "PR 58/2026 rd",
+        "kohtanumero": "6",
+        "nimeketeksti": "Regeringens proposition till riksdagen med förslag till ändring av lagstiftningen om arbetspensionssystemet"
+      }
+    },
+    "puhuja": {
+      "henkilonro": "1391",
+      "asema": null,
+      "etunimi": "Ari",
+      "sukunimi": "Koponen",
+      "lisatieto": "ps",
+      "eduskuntaryhma_tunnus": "PS01~PERUSSUOMALAISTEN EDUSKUNTARYHMÄ"
+    },
+    "aloitushetki": "2026-05-29T10:07:28+00:00",
+    "lopetushetki": "2026-05-29T10:07:50+00:00",
+    "kellonaika": "13.07",
+    "puheenvuoro": "Arvoisa herra puhemies! [Hälinää — Puhemies koputtaa] Tällä esityksellä turvataan työeläkejärjestelmää. Esityksessä vahvistetaan varojen rahastointia.",
+    "puheenvuoroXml": null,
+    "puheenjohtajanRepliikki": {
+      "puheenjohtaja": "\"Puhemies Jussi Halla-aho\"",
+      "repliikki": "Kiitoksia. — Edustaja Lyly, olkaa hyvä.",
+      "asiakohtaAsiakirjaViitteet": []
+    },
+    "historiallinen": false
+  },
+  {
+    "id": "PUH 56/2026/5/1/1",
+    "tunnus": {
+      "fi": "PTK 56/2026 vp",
+      "sv": "PR 56/2026 rd"
+    },
+    "tila": "Tarkistettu",
+    "puheenvuorotyyppikoodi": "E",
+    "puheenvuorotyyppinimi": "Esittelypuheenvuoro",
+    "valtiopaiva": "2026 vp",
+    "valtiopaivavuosi": "2026",
+    "taysistuntonumero": "56",
+    "asia": {
+      "fi": {
+        "eduskuntatunnus": "HE 97/2026 vp",
+        "nimeketeksti": "Hallituksen esitys eduskunnalle laeiksi sähköisestä lääkemääräyksestä annetun lain ja sosiaali- ja terveydenhuollon asiakastietojen käsittelystä annetun lain 102 §:n muuttamisesta",
+        "asiatyyppi": "HE"
+      },
+      "sv": {
+        "eduskuntatunnus": "RP 97/2026 rd",
+        "nimeketeksti": "Regeringens proposition till riksdagen med förslag till lagar om ändring av lagen om elektroniska recept och ändring av 102 § i lagen om behandling av kunduppgifter inom social- och hälsovården",
+        "asiatyyppi": "RP"
+      }
+    },
+    "poytakirjanasiankohta": {
+      "fi": {
+        "eduskuntatunnus": "PTK 56/2026 vp",
+        "kohtanumero": "5",
+        "nimeketeksti": "Hallituksen esitys eduskunnalle laeiksi sähköisestä lääkemääräyksestä annetun lain ja sosiaali- ja terveydenhuollon asiakastietojen käsittelystä annetun lain 102 §:n muuttamisesta"
+      },
+      "sv": {
+        "eduskuntatunnus": "PR 56/2026 rd",
+        "kohtanumero": "5",
+        "nimeketeksti": "Regeringens proposition till riksdagen med förslag till lagar om ändring av lagen om elektroniska recept och ändring av 102 § i lagen om behandling av kunduppgifter inom social- och hälsovården"
+      }
+    },
+    "puhuja": {
+      "henkilonro": "1100",
+      "asema": "Sosiaaliturvaministeri",
+      "etunimi": "Sanni",
+      "sukunimi": "Grahn-Laasonen",
+      "lisatieto": "",
+      "eduskuntaryhma_tunnus": "KOK01~KANSALLISEN KOKOOMUKSEN EDUSKUNTARYHMÄ"
+    },
+    "aloitushetki": "2026-05-27T11:21:39+00:00",
+    "lopetushetki": "2026-05-27T11:27:22+00:00",
+    "kellonaika": "14.21",
+    "puheenvuoro": "Kiitos, arvoisa puhemies! Hallitus on antanut eduskunnalle esityksen laeiksi sähköisestä lääkemääräyksestä annetun lain ja sosiaali- ja terveydenhuollon asiakastietojen käsittelystä annetun lain 102 §:n muuttamisesta.",
+    "puheenvuoroXml": null,
+    "puheenjohtajanRepliikki": {
+      "puheenjohtaja": "\"Puhemies Jussi Halla-aho\"",
+      "repliikki": "Kiitoksia, ministeri. — Edustaja Hänninen, olkaa hyvä.",
+      "asiakohtaAsiakirjaViitteet": []
+    },
+    "historiallinen": false
+  },
+  {
+    "id": "PUH 5/2023/6/1/3",
+    "tunnus": {
+      "fi": "PTK 5/2023 vp",
+      "sv": "PR 5/2023 rd"
+    },
+    "tila": "Tarkistettu",
+    "puheenvuorotyyppikoodi": "T",
+    "puheenvuorotyyppinimi": "Varsinainen puheenvuoro",
+    "valtiopaiva": "2023 vp",
+    "valtiopaivavuosi": "2023",
+    "taysistuntonumero": "5",
+    "asia": {
+      "fi": {
+        "eduskuntatunnus": "K 3/2023 vp",
+        "nimeketeksti": "Yleisradion hallintoneuvoston kertomus eduskunnalle yhtiön toiminnasta vuonna 2022",
+        "asiatyyppi": "K"
+      },
+      "sv": {
+        "eduskuntatunnus": "B 3/2023 rd",
+        "nimeketeksti": "Förvaltningsrådets berättelse till riksdagen om Rundradions verksamhet 2022",
+        "asiatyyppi": "B"
+      }
+    },
+    "poytakirjanasiankohta": {
+      "fi": {
+        "eduskuntatunnus": "PTK 5/2023 vp",
+        "kohtanumero": "6",
+        "nimeketeksti": "Yleisradion hallintoneuvoston kertomus eduskunnalle yhtiön toiminnasta vuonna 2022"
+      },
+      "sv": {
+        "eduskuntatunnus": "PR 5/2023 rd",
+        "kohtanumero": "6",
+        "nimeketeksti": "Förvaltningsrådets berättelse till riksdagen om Rundradions verksamhet 2022"
+      }
+    },
+    "puhuja": {
+      "henkilonro": "1398",
+      "asema": null,
+      "etunimi": "Johan",
+      "sukunimi": "Kvarnström",
+      "lisatieto": "sd",
+      "eduskuntaryhma_tunnus": "SD01~SOSIALIDEMOKRAATTINEN EDUSKUNTARYHMÄ"
+    },
+    "aloitushetki": "2023-05-02T12:34:22+00:00",
+    "lopetushetki": "2023-05-02T12:35:16+00:00",
+    "kellonaika": "15.29",
+    "puheenvuoro": "Ärade talman! Avslutningsvis ett par kommentarer om Yles verksamhet på svenska vad gäller just denna berättelse. Svenska Yles del av berättelsen är inte helt tydligt utmärkt.",
+    "puheenvuoroXml": null,
+    "puheenjohtajanRepliikki": {
+      "puheenjohtaja": "\"Ensimmäinen varapuhemies Juho Eerola\"",
+      "repliikki": "Ja edustaja Hiltunen.",
+      "asiakohtaAsiakirjaViitteet": []
+    },
+    "historiallinen": false
+  },
+  {
+    "id": "PUH 58/2026/6/1/99",
+    "tunnus": {
+      "fi": "PTK 58/2026 vp",
+      "sv": "PR 58/2026 rd"
+    },
+    "tila": "Hyväksytty",
+    "puheenvuorotyyppikoodi": "T",
+    "puheenvuorotyyppinimi": "Varsinainen puheenvuoro",
+    "valtiopaiva": "2026 vp",
+    "valtiopaivavuosi": "2026",
+    "taysistuntonumero": "58",
+    "asia": {
+      "fi": {
+        "eduskuntatunnus": "HE 40/2026 vp",
+        "nimeketeksti": "Hallituksen esitys eduskunnalle työeläkejärjestelmää koskevan lainsäädännön muuttamiseksi",
+        "asiatyyppi": "HE"
+      },
+      "sv": {
+        "eduskuntatunnus": "RP 40/2026 rd",
+        "nimeketeksti": "Regeringens proposition till riksdagen med förslag till ändring av lagstiftningen om arbetspensionssystemet",
+        "asiatyyppi": "RP"
+      }
+    },
+    "poytakirjanasiankohta": {
+      "fi": {
+        "eduskuntatunnus": "PTK 58/2026 vp",
+        "kohtanumero": "6",
+        "nimeketeksti": "Hallituksen esitys eduskunnalle työeläkejärjestelmää koskevan lainsäädännön muuttamiseksi"
+      },
+      "sv": {
+        "eduskuntatunnus": "PR 58/2026 rd",
+        "kohtanumero": "6",
+        "nimeketeksti": "Regeringens proposition till riksdagen med förslag till ändring av lagstiftningen om arbetspensionssystemet"
+      }
+    },
+    "puhuja": {
+      "henkilonro": "1391",
+      "asema": null,
+      "etunimi": "Ari",
+      "sukunimi": "Koponen",
+      "lisatieto": "ps",
+      "eduskuntaryhma_tunnus": "PS01~PERUSSUOMALAISTEN EDUSKUNTARYHMÄ"
+    },
+    "aloitushetki": "2026-05-29T10:30:00+00:00",
+    "lopetushetki": "2026-05-29T10:30:05+00:00",
+    "kellonaika": "13.07",
+    "puheenvuoro": "[Hälinää]",
+    "puheenvuoroXml": null,
+    "puheenjohtajanRepliikki": {
+      "puheenjohtaja": "\"Puhemies Jussi Halla-aho\"",
+      "repliikki": "Kiitoksia. — Edustaja Lyly, olkaa hyvä.",
+      "asiakohtaAsiakirjaViitteet": []
+    },
+    "historiallinen": false
+  }
+]

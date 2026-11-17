@@ -1,24 +1,28 @@
-"""FI parser unit tests (PTK proceedings + broadcast media + helpers).
+"""FI parser unit tests (speech records + broadcast media + helpers).
 
-Fixtures under ``tests/fixtures/FI/`` are trimmed, synthetic copies modelled on
-the real PTK 58/2026 vp minutes and the verkkolähetys ``speakers[]`` payload for
-plenary 58/2026. No spaCy or network access is needed: the PTK parser is driven
-with a stub sentencizer.
+Fixtures under ``tests/fixtures/FI/`` are trimmed copies of real data:
+``speeches-sample.json`` holds open data API speech records (an MP from 58/2026,
+a minister from 56/2026, a Swedish speech from 5/2023, plus a synthetic record
+without spoken text); ``event-sample.json`` models the verkkolähetys
+``speakers[]`` payload for plenary 58/2026. No spaCy or network access is
+needed: the parser is driven with a stub sentencizer.
 """
 
 from __future__ import annotations
 
+import datetime
 import json
 from pathlib import Path
-
-import lxml.etree as ET
 
 from optv.parliaments.FI.common import (
     parse_session_str, session_number_int, session_str, term_years,
 )
 from optv.parliaments.FI.parsers import proceedings2json as p2j
 from optv.parliaments.FI.parsers.media2json import speaker_media_record
+from optv.parliaments.FI.scraper.eduskunta_api import parse_sitting_aggregation
 from optv.parliaments.FI.scraper.fetch_media import _extract_json_value
+from optv.parliaments.FI.scraper.fetch_proceedings import needs_refresh
+from optv.parliaments.FI.workflow import sittings_in_term
 from optv.shared.agenda_types import (
     CORE_BUDGET, CORE_QA, CORE_REGULAR, CORE_VOTING, classify_fi,
 )
@@ -108,44 +112,120 @@ def test_speaker_media_record_reply_flag():
     assert rec["isReply"] is True
 
 
-# ---- PTK proceedings parsing ----
+# ---- speech-record parsing ----
 
-def _parse_fixture_speeches():
-    root = ET.fromstring((FIX / "ptk-sample.xml").read_bytes())
-    nlp = StubNLP()
-    recs = []
-    for tp in p2j._findall_local(root, "PuheenvuoroToimenpide"):
-        rec = p2j.speech_record(tp, len(recs) + 1, nlp, "Täysistunto")
-        if rec:
-            recs.append(rec)
-    return recs
+def _records():
+    return json.loads((FIX / "speeches-sample.json").read_text())
 
 
-def test_ptk_parser_extracts_speaker_and_join_keys():
-    recs = _parse_fixture_speeches()
-    assert len(recs) == 2
-    a = recs[0]
-    assert a["people"][0]["label"] == "Ari Koponen"
-    assert a["people"][0]["faction"] == {"label": "ps"}
-    assert a["people"][0]["originPersonID"] == "1391"
+def _parse_fixture():
+    return p2j.parse_speeches(_records(), "unused", 2026, 58, nlp=StubNLP())
+
+
+def test_parser_extracts_speaker_and_join_keys():
+    doc = _parse_fixture()
+    a = doc["data"][0]
+    person = a["people"][0]
+    assert person["label"] == "Ari Koponen"
+    assert person["faction"] == {"label": "ps"}
+    assert person["originPersonID"] == "1391"
+    assert "role" not in person
     assert a["debug"]["personNumber"] == "1391"
-    assert a["dateStart"] == "2026-05-29T13:07:28"
-    assert a["originalLanguage"] == "fi"
-    assert a["originID"] == "647919"
+    assert a["debug"]["tila"] == "Hyväksytty"
+    assert a["originID"] == "PUH 58/2026/6/1/1"
+    assert a["textContents"][0]["originTextID"] == "PUH 58/2026/6/1/1"
 
 
-def test_ptk_parser_strips_brackets_and_excludes_chair():
-    recs = _parse_fixture_speeches()
-    sentences = recs[0]["textContents"][0]["textBody"][0]["sentences"]
+def test_parser_converts_utc_to_helsinki_offset():
+    a = _parse_fixture()["data"][0]
+    # Late May → EEST (UTC+3).
+    assert a["dateStart"] == "2026-05-29T13:07:28+03:00"
+    assert a["dateEnd"] == "2026-05-29T13:07:50+03:00"
+    assert p2j.to_helsinki("2026-01-15T10:00:00+00:00") == "2026-01-15T12:00:00+02:00"
+    assert p2j.to_helsinki(None) is None
+
+
+def test_parser_minister_gets_role_and_group_faction():
+    minister = _parse_fixture()["data"][1]["people"][0]
+    assert minister["label"] == "Sanni Grahn-Laasonen"
+    assert minister["role"] == "Sosiaaliturvaministeri"
+    assert minister["context"] == "main-speaker"
+    # No party abbreviation for ministers; the parliamentary group gives it.
+    assert minister["faction"] == {"label": "kok"}
+
+
+def test_parser_strips_brackets():
+    sentences = _parse_fixture()["data"][0]["textContents"][0]["textBody"][0]["sentences"]
     joined = " ".join(s["text"] for s in sentences)
     assert "Hälinää" not in joined            # editorial bracket stripped
-    assert "Kiitoksia" not in joined          # chair PuheenjohtajaRepliikki excluded
     assert "työeläkejärjestelmää" in joined
 
 
-def test_ptk_parser_agenda_classification():
-    recs = _parse_fixture_speeches()
-    agenda = recs[0]["agendaItem"]
+def test_parser_skips_records_without_spoken_text():
+    doc = _parse_fixture()
+    ids = [s["originID"] for s in doc["data"]]
+    assert "PUH 58/2026/6/1/99" not in ids    # text was only a stage direction
+    assert [s["speechIndex"] for s in doc["data"]] == [1, 2, 3]
+
+
+def test_parser_detects_swedish_speech():
+    doc = _parse_fixture()
+    langs = [(s["originalLanguage"], s["textContents"][0]["language"]) for s in doc["data"]]
+    assert langs == [("fi", "fi"), ("fi", "fi"), ("sv", "sv")]
+
+
+def test_parser_agenda_classification():
+    agenda = _parse_fixture()["data"][0]["agendaItem"]
     assert agenda["id"] == "kohta-6"
     assert agenda["type"] == CORE_REGULAR
     assert agenda["nativeType"] == "FI-esitys"
+
+
+def test_parser_meta_date_range():
+    meta = _parse_fixture()["meta"]
+    assert meta["session"] == "2026-058"
+    assert meta["sourceLabel"] == "PTK 58/2026 vp"
+    assert meta["dateStart"] == "2023-05-02T15:34:22+03:00"
+    assert meta["dateEnd"] == "2026-05-29T13:07:50+03:00"
+
+
+# ---- language detection ----
+
+def test_detect_language():
+    assert p2j.detect_language("Ärade talman! Det är viktigt att vi tar ansvar för detta.") == "sv"
+    assert p2j.detect_language("Arvoisa puhemies! Tämä on tärkeä asia, ja se pitää hoitaa.") == "fi"
+    # Finnish "en" (I don't) is not Swedish "en".
+    assert p2j.detect_language("Arvoisa rouva puhemies! En pitkitä enempää, haluan vain kiittää.") == "fi"
+    # A Swedish closing phrase does not turn a Finnish speech Swedish.
+    assert p2j.detect_language(
+        "Kunnioittakaamme siis toisiamme ja toistemme mielipiteitä. "
+        "Kiitoksia näistä vuosista, tack så mycket!") == "fi"
+    assert p2j.detect_language("") == "fi"
+
+
+# ---- download helpers ----
+
+def _rec(tila, start="2026-05-29T10:07:28+00:00"):
+    return {"id": "x", "tila": tila, "aloitushetki": start}
+
+
+def test_needs_refresh_only_for_recent_draft_text():
+    day = datetime.date(2026, 6, 15)
+    assert needs_refresh([_rec("Hyväksytty"), _rec("Käsitelty")], today=day)
+    assert not needs_refresh([_rec("Hyväksytty"), _rec("Tarkistettu")], today=day)
+    # Draft text of an old sitting is not fetched again.
+    assert not needs_refresh([_rec("Käsitelty")], today=datetime.date(2026, 11, 1))
+    assert not needs_refresh([_rec("Käsitelty", start=None)], today=day)
+
+
+def test_sitting_discovery_filters_term_years():
+    payload = {"results": [
+        {"key": {"valtiopaivavuosi": "2026", "taysistuntonumero": "58"}, "docCount": 11},
+        {"key": {"valtiopaivavuosi": "2019", "taysistuntonumero": "47"}, "docCount": 482},
+        {"key": {"valtiopaivavuosi": "2024", "taysistuntonumero": "3"}, "docCount": 6},
+        {"key": {"valtiopaivavuosi": None, "taysistuntonumero": "1"}, "docCount": 1},
+    ]}
+    sittings = parse_sitting_aggregation(payload)
+    assert sittings[(2026, 58)] == 11
+    assert len(sittings) == 3
+    assert sittings_in_term(sittings, 2023) == [(2024, 3), (2026, 58)]

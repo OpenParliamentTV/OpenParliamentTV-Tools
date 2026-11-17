@@ -7,8 +7,8 @@ Component) *flight* payload embedded in ``self.__next_f.push([1, "…"])`` scrip
 chunks. That payload contains, per session:
 
 - ``speakers[]`` — one entry per speech with ``time`` / ``endTime`` (seconds
-  into the session video), ``personNumber`` (= ``Henkilo/@muuTunnus`` in the
-  PTK and ``henkilonumero`` in SaliDB), ``party.{fi,sv}``, ``topicId``,
+  into the session video), ``personNumber`` (= ``puhuja.henkilonro`` in the
+  open data API's speech records), ``party.{fi,sv}``, ``topicId``,
   ``onkoVastauspuheenvuoro`` (reply flag) and absolute UTC ``timeStamp``.
 - the HLS master playlist + a session MP4 reference on the VideoSync CDN,
   ``sessionCuepoints`` (video start/end), and a ``plenum`` block with the PTK

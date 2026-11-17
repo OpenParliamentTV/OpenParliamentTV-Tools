@@ -25,4 +25,4 @@ media:
 proceedings:
   default:
     creator: Eduskunta
-    license: https://avoindata.eduskunta.fi/
+    license: "CC-BY-4.0"   # Open data: https://www.eduskunta.fi/fi/avoin-data/mita-on-avoin-data

@@ -1,16 +1,17 @@
 #! /usr/bin/env python3
-"""Merge FI proceedings (PTK text) with media (broadcast speakers[]) into Stage 2.
+"""Merge FI proceedings (speech records) with media (broadcast speakers[]) into Stage 2.
 
 **Media is the spine** (same model as SE/EU/NO): the broadcast ``speakers[]``
 array is the canonical record of which speeches actually happened on video, and
 the per-speech ``time``/``endTime`` offsets are what the platform plays. The
-PTK verbatim text is grafted onto each media record.
+verbatim text of the open data API's speech records is grafted onto each media
+record.
 
-Join key: ``personNumber`` + speech start time. The PTK
-``puheenvuoroAloitusHetki`` is a naive Europe/Helsinki timestamp; the broadcast
-``timeStamp`` is UTC. We convert the PTK time to UTC and, per personNumber,
-match each media clip to the nearest unused PTK speech within a tolerance —
-robust when a member speaks several times in one session.
+Join key: ``personNumber`` + speech start time. The speech records' start
+(``dateStart``, Europe/Helsinki with offset) and the broadcast ``timeStamp``
+(UTC) are the same instant to the second; per personNumber, each media clip is
+matched to the nearest unused speech record within a tolerance — robust when a
+member speaks several times in one session.
 
 Inputs:
 - ``original/proceedings/{session}-proceedings.json``  (proceedings parser)
@@ -43,39 +44,27 @@ from optv.shared.meta import build_meta, now_iso
 
 logger = logging.getLogger(__name__)
 
-# Max seconds between a PTK speech start and a video clip start to consider them
+# Max seconds between a speech-record start and a video clip start to consider them
 # the same speech (per personNumber). The two clocks agree to the second in
 # practice; a generous window absorbs the occasional editorial time rounding.
 JOIN_TOLERANCE_S = 300
 
 
-def _helsinki_to_utc_epoch(naive_iso: Optional[str]) -> Optional[float]:
-    if not naive_iso:
-        return None
-    try:
-        from zoneinfo import ZoneInfo
-        tz = ZoneInfo("Europe/Helsinki")
-    except Exception:  # pragma: no cover - zoneinfo always present on 3.9+
-        tz = datetime.timezone(datetime.timedelta(hours=2))
-    try:
-        local = datetime.datetime.fromisoformat(naive_iso).replace(tzinfo=tz)
-    except ValueError:
-        return None
-    return local.astimezone(datetime.timezone.utc).timestamp()
-
-
 def _utc_epoch(iso: Optional[str]) -> Optional[float]:
+    """Epoch seconds of an ISO timestamp with offset or ``Z`` (naive = UTC)."""
     if not iso:
         return None
-    s = iso.replace("Z", "+00:00")
     try:
-        return datetime.datetime.fromisoformat(s).timestamp()
+        dt = datetime.datetime.fromisoformat(iso.replace("Z", "+00:00"))
     except ValueError:
         return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    return dt.timestamp()
 
 
 def _index_proceedings(proc_data: list[dict]) -> dict[int, list[dict]]:
-    """``{personNumber: [proc, …]}`` with each proc tagged with its UTC epoch."""
+    """``{personNumber: [proc, …]}`` with each proc tagged with its epoch."""
     index: dict[int, list[dict]] = {}
     for s in proc_data:
         pn = s.get("debug", {}).get("personNumber")
@@ -83,7 +72,7 @@ def _index_proceedings(proc_data: list[dict]) -> dict[int, list[dict]]:
             pn = int(pn)
         except (TypeError, ValueError):
             continue
-        s["_utc"] = _helsinki_to_utc_epoch(s.get("dateStart"))
+        s["_utc"] = _utc_epoch(s.get("dateStart"))
         s["_used"] = False
         index.setdefault(pn, []).append(s)
     return index
@@ -155,9 +144,10 @@ def merge_one(media: dict, proc: Optional[dict], parliament: str,
         if proc.get("dateEnd"):
             speech["dateEnd"] = proc["dateEnd"]
         debug["proceedingIndex"] = proc.get("speechIndex")
-        debug["ptkStart"] = proc.get("debug", {}).get("ptkStart")
+        if proc.get("debug", {}).get("tila"):
+            debug["textStatus"] = proc["debug"]["tila"]
     else:
-        # Video without matching PTK text: minimal valid speech, empty text.
+        # Video without a matching speech record: minimal valid speech, empty text.
         title = "Täysistunto"
         agenda = {"officialTitle": title, "title": title}
         if media.get("topicId"):
@@ -209,7 +199,7 @@ def merge_session(config: Config, session: str, period: int = 2023) -> dict:
 
     proc_only = sum(1 for lst in proc_index.values() for s in lst if not s["_used"])
     if proc_only:
-        logger.warning(f"{proc_only} PTK speech(es) without matching video — dropped "
+        logger.warning(f"{proc_only} speech record(s) without matching video — dropped "
                        "(no clip for the platform to render)")
     logger.info(f"Merged {len(merged)} speeches: {matched} with text, "
                 f"{text_missing} media-only, {proc_only} proceedings-only dropped")

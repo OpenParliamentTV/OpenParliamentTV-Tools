@@ -4,7 +4,7 @@
 Eduskunta publishes one HLS stream per plenary session; per-speech navigation
 uses ``time`` / ``endTime`` (seconds into the session video) from the broadcast
 ``speakers[]`` array. Each speaker entry also carries ``personNumber`` (the
-relational join key to the PTK proceedings), ``topicId`` (agenda item),
+relational join key to the speech records), ``topicId`` (agenda item),
 ``onkoVastauspuheenvuoro`` (reply flag) and an absolute UTC ``timeStamp``.
 
 Output: ``original/media/{session}-media.json`` — one record per speaker with a
