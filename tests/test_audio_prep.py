@@ -241,10 +241,13 @@ def test_eu_adapter(monkeypatch):
 
 def test_fr_adapter(monkeypatch):
     from optv.parliaments.FR import align_prep as fr
-    sp = {"media": {"audioFileURI": "u",
-                    "additionalInformation": {"crvId": "C1", "startOffset": 2.0},
+    sp = {"media": {"audioFileURI": "u", "originMediaID": "hemi_20261112144538",
+                    "additionalInformation": {"startOffset": 2.0},
                     "duration": 10.0}}
-    assert fr._extract(sp).session_key == "C1"
+    assert fr._extract(sp).session_key == "hemi_20261112144538"
+    no_id = {"media": {"audioFileURI": "u", "additionalInformation": {"startOffset": 2.0},
+                       "duration": 10.0}}
+    assert fr._extract(no_id).session_key == md5_key("u")
     sub = {"media": {"audioFileURI": "u", "additionalInformation": {"startOffset": 1.0},
                      "duration": 0.05}}
     assert fr._extract(sub) is None

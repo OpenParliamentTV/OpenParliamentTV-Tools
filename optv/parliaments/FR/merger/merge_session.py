@@ -7,8 +7,15 @@ merging is a single ordered walk: attach the séance's one HLS video to every
 speech, set ``startOffset = stime`` and ``duration = next_stime − stime``, and
 wrap each speech with the ``parliament`` / ``electoralPeriod`` / ``session``
 envelope. No cross-source join is needed — unlike the EU/FI media-spine model,
-FR's text and offsets come from the same document; only the video URL is
-external (resolved per séance via the réunion id, see scraper/fetch_media.py).
+FR's text and offsets come from the same document; only the video URL and the
+recording's start time are external (from the HTML compte rendu, see
+scraper/fetch_media.py).
+
+Clock times: ``stime`` counts from the start of the séance recording, which
+begins before the sitting opens, so a speech's ``dateStart`` is the recording
+start (file name, Europe/Paris) plus its offset, and ``dateEnd`` adds the
+duration. Without a recording start, the first offset is anchored to the
+scheduled séance start (openings are within about a minute of it).
 
 Inputs::
 
@@ -34,10 +41,12 @@ from typing import Any, Optional
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
     sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent))
+    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.FR.merger"
 
-from optv.parliaments.FR.common import Config, save_if_changed, session_number_int
+from optv.parliaments.FR.common import (
+    PARIS, Config, recording_start, save_if_changed, session_number_int,
+)
 from optv.parliaments import get_rights as _get_rights
 from optv.shared.speech_id import normalize_speech_originid
 from optv.shared.meta import build_meta, now_iso
@@ -53,28 +62,56 @@ DEFAULT_LAST_DURATION = 120.0
 
 
 def _media_block(video: dict, start_offset: float, duration: float,
-                 speech_index: int) -> dict:
+                 origin_id: str) -> dict:
     hls = video.get("hlsUrl") or ""
     end = start_offset + duration
-    source_page = video.get("sourcePage") or hls
-    # sourcePage must be unique per speech (semantic validator); the timeCode +
-    # speech index make each speech's CRV reference distinct even when two
-    # speeches share a stime (e.g. a chair hand-over at the same video moment).
-    sep = "&" if "?" in source_page else "?"
+    cr_page = video.get("crPage") or ""
+    # The compte rendu page anchors every intervention by its id_syceron and
+    # offers "play from here" there; the anchor also keeps sourcePage unique per
+    # speech (semantic validator) when two speeches share a stime.
+    source_page = f"{cr_page}#{origin_id}" if cr_page and origin_id else (cr_page or hls)
     return {
         "videoFileURI": f"{hls}#t={start_offset:.2f},{end:.2f}",
-        "sourcePage": f"{source_page}{sep}timeCode={start_offset:.2f}&i={speech_index}",
+        "sourcePage": source_page,
         "audioFileURI": hls,
         "duration": round(duration, 2),
         "aligned": False,
         "creator": CREATOR,
         "license": LICENSE,
-        "originMediaID": video.get("crvId") or "",
+        "originMediaID": video.get("recordingId") or "",
         "additionalInformation": {
             "startOffset": round(start_offset, 2),
-            "crvId": video.get("crvId") or "",
         },
     }
+
+
+def _recording_anchor(session: str, video: dict, meta: dict,
+                      speeches: list[dict]) -> Optional[datetime.datetime]:
+    """Clock time of offset 0 of the séance recording."""
+    raw = video.get("recordingStart")
+    if raw:
+        return datetime.datetime.fromisoformat(raw)
+    start = recording_start(video.get("hlsUrl") or "")
+    if start is not None:
+        return start
+    scheduled = meta.get("dateStart")
+    if not scheduled:
+        return None
+    scheduled_dt = datetime.datetime.fromisoformat(scheduled)
+    first = next((sp["debug"]["stime"] for sp in speeches
+                  if (sp.get("debug") or {}).get("stime") is not None), None)
+    logger.warning(f"[{session}] no recording start — anchoring the first offset "
+                   f"to the scheduled séance start {scheduled}")
+    if first is None:
+        return scheduled_dt
+    return scheduled_dt - datetime.timedelta(seconds=float(first))
+
+
+def _clock(anchor: datetime.datetime, seconds: float) -> str:
+    """``anchor + seconds`` in Europe/Paris (computed in UTC, so a sitting that
+    runs across a DST change gets the right offset)."""
+    utc = anchor.astimezone(datetime.timezone.utc) + datetime.timedelta(seconds=seconds)
+    return utc.astimezone(PARIS).isoformat()
 
 
 def _offsets_and_durations(speeches: list[dict]) -> list[tuple[float, float]]:
@@ -123,14 +160,20 @@ def merge_session(session: str, config: Config, args=None) -> Path:
     period = getattr(args, "period", None) or 17
     session_number = session_number_int(session)
     meta = proc_doc.get("meta") or {}
-    session_start = meta.get("dateStart")
-    session_end = meta.get("dateEnd")
 
     timing = _offsets_and_durations(speeches)
+    anchor = _recording_anchor(session, video, meta, speeches)
+    clock: list[tuple[Optional[str], Optional[str]]] = [
+        (_clock(anchor, off), _clock(anchor, off + dur)) if anchor else (None, None)
+        for off, dur in timing
+    ]
+    session_start = clock[0][0] or meta.get("dateStart")
+    session_end = clock[-1][1] or session_start
+
     records: list[dict] = []
-    for idx, (sp, (start_offset, duration)) in enumerate(zip(speeches, timing), start=1):
+    for idx, (sp, (start_offset, duration), (date_start, date_end)) in enumerate(
+            zip(speeches, timing, clock), start=1):
         rec = deepcopy(sp)
-        rec.pop("_stime", None)
         rec["parliament"] = PARLIAMENT
         rec["electoralPeriod"] = {"number": int(period)}
         session_obj: dict[str, Any] = {"number": session_number}
@@ -140,12 +183,17 @@ def merge_session(session: str, config: Config, args=None) -> Path:
             session_obj["dateEnd"] = session_end
         rec["session"] = session_obj
         rec["speechIndex"] = idx
-        rec["media"] = _media_block(video, start_offset, duration, idx)
-        if not rec.get("dateStart") and session_start:
+        rec["media"] = _media_block(video, start_offset, duration, str(sp.get("originID") or ""))
+        rec.pop("dateStart", None)
+        rec.pop("dateEnd", None)
+        if date_start:
+            rec["dateStart"] = date_start
+            rec["dateEnd"] = date_end
+        elif session_start:
             rec["dateStart"] = session_start
         records.append(rec)
 
-    logger.info(f"[{session}] merged {len(records)} speeches onto {video.get('crvId')}")
+    logger.info(f"[{session}] merged {len(records)} speeches onto {video.get('recordingId')}")
 
     now = datetime.datetime.utcnow().isoformat(timespec="seconds")
     for _s in records:

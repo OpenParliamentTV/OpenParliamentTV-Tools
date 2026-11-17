@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<compteRendu xmlns="http://schemas.assemblee-nationale.fr/referentiel">
+   <uid>CRSANR5L17S2027O1N061</uid>
+   <seanceRef>RUANR5L17S2027IDS30999</seanceRef>
+   <sessionRef>SCR5A2027O1</sessionRef>
+   <metadonnees>
+      <dateSeance>20261112150000000</dateSeance>
+      <dateSeanceJour>jeudi 12 novembre 2026</dateSeanceJour>
+      <numSeanceJour>2</numSeanceJour>
+      <numSeance>61</numSeance>
+      <legislature>17</legislature>
+      <session>Session ordinaire 2026-2027</session>
+      <etat>complet</etat>
+      <version>avant_JO</version>
+      <heureGeneration>2026-11-16T22:30:37.000+01:00</heureGeneration>
+   </metadonnees>
+   <contenu>
+      <ouvertureSeance nivpoint="1" code_style="Présidence" id_syceron="4100000">
+         <orateurs/>
+         <texte>Présidence de M. Exemple Président</texte>
+         <paragraphe id_acteur="PA100000" code_style="NORMAL" id_syceron="4100001" roledebat="president">
+            <orateurs><orateur><nom>M. le président</nom><id>100000</id><qualite/></orateur></orateurs>
+            <texte stime="877.79">La séance est ouverte.</texte>
+         </paragraphe>
+         <paragraphe code_style="Info Italiques" id_syceron="4100002">
+            <orateurs/>
+            <texte><italique>(La séance est ouverte à quinze heures.)</italique></texte>
+         </paragraphe>
+      </ouvertureSeance>
+      <point nivpoint="1" code_style="Titre" id_syceron="4100003">
+         <orateurs/>
+         <texte>Épargne salariale</texte>
+      </point>
+      <point nivpoint="2" code_style="Sous-tit_info" id_syceron="4100010">
+         <orateurs/>
+         <texte>Discussion générale</texte>
+         <paragraphe id_acteur="PA200000" code_style="NORMAL" id_syceron="4100004">
+            <orateurs><orateur><nom>Mme Alice Exemple</nom><id>200000</id><qualite/></orateur></orateurs>
+            <texte stime="900.00">Monsieur le ministre, nous examinons ce texte.</texte>
+         </paragraphe>
+         <paragraphe id_acteur="PA200000" code_style="NORMAL" id_syceron="4100005">
+            <orateurs><orateur><nom>Mme Alice Exemple</nom><id>200000</id><qualite/></orateur></orateurs>
+            <texte stime="930.50">Il protège les salariés.</texte>
+         </paragraphe>
+         <paragraphe code_style="Info Italiques" id_syceron="4100007">
+            <orateurs/>
+            <texte><italique>(Applaudissements.)</italique></texte>
+         </paragraphe>
+         <paragraphe id_acteur="PA300000" code_style="NORMAL" id_syceron="4100006">
+            <orateurs><orateur><nom>M. Bruno Exemple</nom><id>300000</id><qualite/></orateur></orateurs>
+            <texte stime="1000.00">Nous voterons contre.</texte>
+         </paragraphe>
+      </point>
+   </contenu>
+</compteRendu>

@@ -6,8 +6,8 @@ external video URL per séance:
 
 - **Syceron compte rendu** (per-séance XML) → verbatim text + agenda +
   per-speech ``stime`` offsets + ``id_acteur`` speakers (the merge spine).
-- **interventions-video index → CRV page** → the séance's HLS video URL,
-  resolved via the réunion id shared with the compte rendu.
+- **HTML compte rendu** → the séance's HLS video URL and recording start time
+  (one page per séance, addressed by the same uid).
 - **AMO10 acteurs/organes ⋈ Wikidata** → ``entities.json`` (NEL) +
   ``acteurs.json`` (the député→groupe map the proceedings parser needs).
 
@@ -57,18 +57,26 @@ PARLIAMENT_ID = Path(__file__).parent.name
 
 def _session_in_scope(args, session):
     """Session keys are Syceron uids (``YYYY[OE]NnNNN``). Every key we hold is
-    from the requested legislature's archive, so scope is just key validity plus
-    the ``--limit-session`` filter."""
+    from the requested legislature's archive, so scope is key validity, the
+    ``--limit-session`` filter, and a resolved séance video.
+
+    Sessions are enumerated from the compte-rendu files, but most sittings have
+    no usable video (provisional compte rendu without offsets, recording
+    offline after ~10–11 months, or outside the media resolver's window); the
+    media resolver writes no descriptor for those, and the merger needs one.
+    Merged sittings always have it, so NEL/align/NER are unaffected."""
     try:
         parse_session(session)
     except ValueError:
         return False
     if args.limit_session:
         try:
-            return bool(re.match(args.limit_session, session))
+            if not re.match(args.limit_session, session):
+                return False
         except re.error:
-            return args.limit_session == session
-    return True
+            if args.limit_session != session:
+                return False
+    return Config(args.data_dir).file(session, "media").exists()
 
 
 def _download(config, args):

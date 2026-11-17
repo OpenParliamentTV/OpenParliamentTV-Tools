@@ -18,14 +18,22 @@ rendu and video, so we key on the séance rather than the day.
 ``electoralPeriod.number`` is the legislature (17). Because the séance number
 resets each session-year, ``session.number`` is encoded so it stays unique
 within the legislature — see :func:`session_number_int`.
+
+Clock times: the compte rendu's per-speech ``stime`` counts seconds from the
+start of the séance *recording*, which begins before the sitting opens. The
+recording's start is the local (Europe/Paris) timestamp in its file name
+(``…/hemi_20260529211831.smil/master.m3u8``), see :func:`recording_start`.
 """
 
 import logging
 logger = logging.getLogger(__name__)
 
+import datetime
 import json
 import re
 from pathlib import Path
+from typing import Optional
+from zoneinfo import ZoneInfo
 
 # Re-exported for back-compat with shared callers.
 from optv.shared.publish import (  # noqa: F401
@@ -93,6 +101,53 @@ def session_number_int(session: str) -> int:
     return (year - LEGISLATURE_START_YEAR) * 1000 + type_offset + num
 
 
+PARIS = ZoneInfo("Europe/Paris")
+
+# Séance recordings are named by their local start time: hemi_YYYYMMDDHHMMSS.
+_RECORDING_RE = re.compile(r"(hemi_(\d{14}))")
+
+CR_PAGE_URL = "https://www.assemblee-nationale.fr/dyn/{leg}/comptes-rendus/seance/{uid}"
+
+
+def recording_id(hls_url: str) -> Optional[str]:
+    """``…/hemi_20260529211831.smil/master.m3u8`` → ``hemi_20260529211831``."""
+    m = _RECORDING_RE.search(hls_url or "")
+    return m.group(1) if m else None
+
+
+def recording_start(hls_url: str) -> Optional[datetime.datetime]:
+    """Start of the séance recording as an aware Europe/Paris datetime.
+
+    The file-name timestamp is Paris wall-clock time in both CET and CEST
+    (a 15:00 sitting in November is recorded from ``hemi_…144538``).
+    """
+    m = _RECORDING_RE.search(hls_url or "")
+    if not m:
+        return None
+    try:
+        dt = datetime.datetime.strptime(m.group(2), "%Y%m%d%H%M%S")
+    except ValueError:
+        return None
+    return dt.replace(tzinfo=PARIS)
+
+
+def seance_start(raw: Optional[str]) -> Optional[datetime.datetime]:
+    """Scheduled séance start from ``<dateSeance>`` (``YYYYMMDDHHMMSSmmm``)."""
+    if not raw or len(raw) < 14:
+        return None
+    try:
+        dt = datetime.datetime.strptime(raw[:14], "%Y%m%d%H%M%S")
+    except ValueError:
+        return None
+    return dt.replace(tzinfo=PARIS)
+
+
+def cr_page_url(session: str, legislature: int = 17) -> str:
+    """HTML compte rendu of a séance, addressed by its uid (redirects to the
+    human-readable slug URL)."""
+    return CR_PAGE_URL.format(leg=legislature, uid=session_to_uid(session, legislature))
+
+
 class Config(BaseConfig):
     def __init__(self, data_dir: Path, cache_dir: Path = None):
         data_dir = Path(data_dir)
@@ -128,7 +183,7 @@ class Config(BaseConfig):
         return self.dir('proceedings') / f"{session}-cr.xml"
 
     def raw_event(self, session: str) -> Path:
-        """Resolved video reference (CRV id + HLS master URL) for one séance."""
+        """Resolved video reference (HLS master URL + recording start) for one séance."""
         return self.dir('media') / f"{session}-event.json"
 
     def data(self, session: str, stage: str = 'processed') -> list:

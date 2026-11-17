@@ -21,8 +21,8 @@ default_retry_delay_max: 10
 media:
   default:
     creator: Assemblée nationale
-    license: https://www.assemblee-nationale.fr/
+    license: https://www.assemblee-nationale.fr/dyn/info-site   # legal notice: debates and multimedia
 proceedings:
   default:
     creator: Assemblée nationale
-    license: https://www.assemblee-nationale.fr/
+    license: https://data.assemblee-nationale.fr/licence-ouverte-open-licence   # Licence Ouverte (Etalab)

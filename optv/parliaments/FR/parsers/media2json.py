@@ -2,13 +2,14 @@
 """Normalize the resolved séance video into the intermediate media format.
 
 Input:  ``original/media/{session}-event.json`` (scraper output: the séance's
-        video compte-rendu id + HLS master URL).
+        HLS master URL, recording id and start, and its compte rendu page).
 Output: ``original/media/{session}-media.json``
 
 The Assemblée nationale publishes **one continuous video per séance**, and the
 per-speech offsets come from the proceedings (``<texte stime>``), so there is a
 single media descriptor per session here — the merger applies each speech's
-``stime`` as the ``#t=`` offset against this one HLS master. The HLS master URL
+``stime`` as the ``#t=`` offset against this one HLS master and adds it to the
+recording start for the speech's clock time. The HLS master URL
 carries both video and audio; ``align_prep`` extracts the audio track with
 ffmpeg, so ``audioFileURI`` is the same master playlist.
 """
@@ -26,7 +27,7 @@ from pathlib import Path
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
     sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent))
+    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.FR.parsers"
 
 from optv.parliaments.FR.common import Config
@@ -43,8 +44,9 @@ def parse_media_for_session(config: Config, session: str) -> dict:
     descriptor = {
         "hlsUrl": hls,
         "audioFileURI": hls,            # ffmpeg extracts audio from the master
-        "sourcePage": event.get("sourcePage") or "",
-        "crvId": event.get("crvId") or "",
+        "recordingId": event.get("recordingId") or "",
+        "recordingStart": event.get("recordingStart"),
+        "crPage": event.get("crPage") or "",
         "seanceRef": event.get("seanceRef") or "",
     }
     return {

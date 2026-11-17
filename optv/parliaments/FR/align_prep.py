@@ -39,7 +39,7 @@ def _extract(speech: dict) -> Optional[SpeechAudio]:
     if float(duration) < 0.1:
         speech.setdefault("debug", {})["alignSkip"] = "sub-100ms-duration"
         return None
-    key = addinfo.get("crvId") or media.get("originMediaID") or md5_key(audio_url)
+    key = media.get("originMediaID") or md5_key(audio_url)
     return SpeechAudio(source_url=audio_url, start=float(start_offset),
                        duration=float(duration), session_key=key)
 

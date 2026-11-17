@@ -5,15 +5,24 @@ Two acquisition modes:
 
 * **Targeted** (``--fr-session 2026O1N232``, repeatable): fetch each séance's
   compte rendu directly from the per-document open-data endpoint
-  ``/dyn/opendata/{uid}.xml`` — cheap, incremental.
+  ``/dyn/opendata/{uid}.xml``.
 * **Bulk** (default): download the legislature's
-  ``syceronbrut/syseron.xml.zip`` archive once and extract every
-  ``xml/compteRendu/CRS*.xml`` into ``original/proceedings/{session}-cr.xml``.
+  ``syceronbrut/syseron.xml.zip`` archive (rebuilt daily, ~60 MB) and extract
+  every ``xml/compteRendu/CRS*.xml`` into ``original/proceedings/{session}-cr.xml``.
 
 Both write the modern namespaced Syceron compte-rendu XML (one file per
 séance), which carries per-speech ``stime`` video offsets, ``id_acteur``
-speaker ids and the agenda ``<point>`` structure. Idempotent: existing files
-are kept unless ``--force``.
+speaker ids and the agenda ``<point>`` structure.
+
+The AN republishes a compte rendu several times: the provisional version
+(``<etat>provisoire``) has no ``stime``, the complete version adds them, and
+later versions can correct offsets and text. Both modes therefore compare the
+downloaded document with the local file and rewrite it only when the bytes
+differ; an unchanged file keeps its mtime, so no downstream stage re-runs.
+``--force`` rewrites every file. The open-data daily publication list
+(``/dyn/opendata/list-publication/publication_{YYYY-MM-DD}.csv``) names every
+(re)published document with its time, should a per-document incremental mode
+be needed.
 """
 
 from __future__ import annotations
@@ -24,6 +33,7 @@ import logging
 import re
 import sys
 import zipfile
+from collections import Counter
 from pathlib import Path
 
 if __package__ is None or __package__ == "":
@@ -54,29 +64,42 @@ def _matches_limit(session: str, args) -> bool:
         return limit == session
 
 
-def _fetch_one(config: Config, session: str, args) -> bool:
-    """Fetch a single séance compte rendu directly. Returns True if written."""
-    out = config.raw_cr(session)
-    if out.exists() and not args.force:
-        logger.debug(f"[{session}] compte rendu cached")
-        return False
+def _store(out: Path, payload: bytes, force: bool) -> str:
+    """Write ``payload`` unless ``out`` already holds the same bytes.
+
+    Returns ``"new"``, ``"updated"`` or ``"unchanged"``.
+    """
+    if out.exists():
+        if not force and out.read_bytes() == payload:
+            return "unchanged"
+        state = "updated"
+    else:
+        state = "new"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(payload)
+    return state
+
+
+def _fetch_one(config: Config, session: str, args) -> str:
+    """Fetch a single séance compte rendu directly; return the store state."""
     uid = session_to_uid(session, legislature=args.period)
     url = PER_SEANCE_URL.format(uid=uid)
     logger.info(f"[{session}] fetching {uid}")
     xml = http_get(url, retry_count=args.retry_count,
-                   retry_delay_max=args.retry_delay_max)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(xml, encoding="utf-8")
-    return True
+                   retry_delay_max=args.retry_delay_max, binary=True)
+    state = _store(config.raw_cr(session), xml, bool(args.force))
+    if state != "unchanged":
+        logger.info(f"[{session}] compte rendu {state}")
+    return state
 
 
-def _download_bulk(config: Config, args) -> int:
+def _download_bulk(config: Config, args) -> Counter:
     """Download the legislature archive and extract every séance compte rendu."""
     url = BULK_URL.format(leg=args.period)
     logger.info(f"downloading Syceron bulk archive {url}")
     blob = http_get(url, timeout=300, retry_count=args.retry_count,
                     retry_delay_max=args.retry_delay_max, binary=True)
-    written = 0
+    counts: Counter = Counter()
     with zipfile.ZipFile(io.BytesIO(blob)) as zf:
         for name in zf.namelist():
             m = _ZIP_MEMBER_RE.search(name)
@@ -85,15 +108,13 @@ def _download_bulk(config: Config, args) -> int:
             session = uid_to_session(m.group(1))
             if not _matches_limit(session, args):
                 continue
-            out = config.raw_cr(session)
-            if out.exists() and not args.force:
-                continue
-            out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(zf.read(name))
-            written += 1
-    logger.info(f"extracted {written} compte-rendu file(s) into "
-                f"{config.dir('proceedings')}")
-    return written
+            state = _store(config.raw_cr(session), zf.read(name), bool(args.force))
+            if state == "updated":
+                logger.info(f"[{session}] compte rendu updated")
+            counts[state] += 1
+    logger.info(f"compte rendus in {config.dir('proceedings')}: {counts['new']} new, "
+                f"{counts['updated']} updated, {counts['unchanged']} unchanged")
+    return counts
 
 
 def download_proceedings(config: Config, args) -> None:

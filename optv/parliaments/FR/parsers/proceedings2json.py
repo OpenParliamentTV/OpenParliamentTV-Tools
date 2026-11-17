@@ -5,8 +5,13 @@ Input:  ``original/proceedings/{session}-cr.xml`` (modern namespaced Syceron CR)
 Output: ``original/proceedings/{session}-proceedings.json``
         ``{"meta": {...}, "data": [<speech>, ...]}`` — per-speech entries with
         ``people`` / ``textContents`` / ``agendaItem`` and a per-speech
-        ``debug.stime`` (video offset, seconds). **No ``media``** — the merger
-        grafts the séance video onto each speech using ``stime``.
+        ``debug.stime`` (video offset, seconds). **No ``media`` and no
+        per-speech ``dateStart``** — ``stime`` counts from the start of the
+        séance recording, which only the media side knows, so the merger
+        derives both the video window and the clock time from it.
+        ``meta.dateStart`` is the *scheduled* séance start (``<dateSeance>``),
+        a fallback only; ``meta.crState`` is the compte rendu's ``<etat>``
+        (``provisoire`` versions carry no ``stime``).
 
 Compte-rendu structure (namespace stripped):
 
@@ -39,12 +44,12 @@ from typing import Any, Optional
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
     sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent))
+    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.FR.parsers"
 
 import lxml.etree as ET
 
-from optv.parliaments.FR.common import Config, parse_session
+from optv.parliaments.FR.common import Config, parse_session, seance_start
 from optv.shared.agenda_types import annotate_agenda_item, classify_fr
 from optv.shared.sentence_split import split_long_sentences
 from optv.parliaments import get_rights as _get_rights
@@ -55,7 +60,6 @@ NS = "{http://schemas.assemblee-nationale.fr/referentiel}"
 PARLIAMENT_CODE = "FR"
 SPEECH_CREATOR = _get_rights("FR", stream="proceedings")["creator"]
 SPEECH_LICENSE = _get_rights("FR", stream="proceedings")["license"]
-PARIS_TZ = datetime.timezone(datetime.timedelta(hours=2))  # CEST; séances sit Apr–Jul/Oct
 
 _CIVILITE_RE = re.compile(r"^(?:MM?\.|Mme|Mlle|M\.)\s+", re.I)
 _WS_RE = re.compile(r"\s+")
@@ -209,22 +213,12 @@ def _comment_body(text: str) -> dict:
     return {"type": "comment", "sentences": [{"text": text}]}
 
 
-def _seance_start(root) -> Optional[datetime.datetime]:
-    raw = root.findtext(".//" + NS + "dateSeance")
-    if not raw or len(raw) < 14:
-        return None
-    try:
-        dt = datetime.datetime.strptime(raw[:14], "%Y%m%d%H%M%S")
-    except ValueError:
-        return None
-    return dt.replace(tzinfo=PARIS_TZ)
-
-
 def parse_cr(xml_bytes: bytes, session: str, acteurs: dict[str, dict],
              spacy_model: Optional[str]) -> dict:
     root = ET.fromstring(xml_bytes)
     sentencize = _Sentencizer(spacy_model)
-    seance_start = _seance_start(root)
+    scheduled = seance_start(root.findtext(".//" + NS + "dateSeance"))
+    cr_state = (root.findtext(".//" + NS + "etat") or "").strip() or None
     contenu = root.find(".//" + NS + "contenu")
     if contenu is None:
         contenu = root
@@ -291,27 +285,14 @@ def parse_cr(xml_bytes: bytes, session: str, acteurs: dict[str, dict],
 
     for idx, sp in enumerate(speeches, start=1):
         sp["speechIndex"] = idx
-        if seance_start is not None and sp.get("_stime") is not None:
-            sp["dateStart"] = (seance_start + datetime.timedelta(
-                seconds=sp["_stime"])).isoformat()
-        sp.pop("_stime", None)
-
-    # Prefer the first/last speech offsets (present once the séance video has been
-    # synced and carries stime); otherwise fall back to the séance start so the
-    # session envelope always has a date even for not-yet-synced séances.
-    seance_iso = seance_start.isoformat() if seance_start else None
-    date_start = next((s.get("dateStart") for s in speeches if s.get("dateStart")),
-                      seance_iso)
-    date_end = next((s.get("dateStart") for s in reversed(speeches)
-                     if s.get("dateStart")), date_start)
 
     return {
         "meta": {
             "session": session,
             "sourceLabel": f"Compte rendu {session}",
             "parliament": PARLIAMENT_CODE,
-            "dateStart": date_start,
-            "dateEnd": date_end,
+            "dateStart": scheduled.isoformat() if scheduled else None,
+            "crState": cr_state,
             "processing": {
                 "parse_proceedings": datetime.datetime.utcnow().isoformat(timespec="seconds"),
             },
@@ -357,7 +338,6 @@ def _finalize(c: dict, sentencize) -> dict:
             "idActeur": c["id_acteur"],
             "agendaKey": c["agenda_key"],
         },
-        "_stime": stime_val,
     }
     return record
 
