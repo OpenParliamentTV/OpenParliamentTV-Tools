@@ -290,6 +290,23 @@ def test_text_enrichment_not_kept_when_text_or_media_changed():
     assert "alignDuration" not in new[1]["debug"]
 
 
+def test_text_enrichment_not_kept_when_start_offset_moved():
+    """A speech cut from a session-wide stream: same URL, same text, but a
+    corrected start offset means the published timings describe other audio."""
+    published = [_aligned("A", ["Hallo Welt."]), _aligned("B", ["Servus."])]
+    published[0]["media"]["additionalInformation"] = {"startOffset": 893.15}
+    published[1]["media"]["additionalInformation"] = {"startOffset": 900.0}
+    new = [_tspeech("A", ["Hallo Welt."]), _tspeech("B", ["Servus."])]
+    new[0]["media"] = {"videoFileURI": "https://cdn/a.m3u8",
+                       "additionalInformation": {"startOffset": 891.05}}
+    new[1]["media"] = {"videoFileURI": "https://cdn/a.m3u8",
+                       "additionalInformation": {"startOffset": 900.0}}
+    assert carry_forward_text_enrichment(new, published) == 1
+    assert "timeStart" not in new[0]["textContents"][0]["textBody"][0]["sentences"][0]
+    assert "alignDuration" not in (new[0].get("debug") or {})
+    assert new[1]["textContents"][0]["textBody"][0]["sentences"][0]["timeStart"] == 0.0
+
+
 def test_text_enrichment_never_overwrites_new_values():
     published = [_aligned("A", ["Hallo Welt."])]
     new = [_aligned("A", ["Hallo Welt."])]

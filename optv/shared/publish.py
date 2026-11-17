@@ -355,8 +355,13 @@ def _speech_sentences(speech: dict) -> list:
 
 
 def _speech_media_ref(speech: dict) -> tuple:
+    """The audio a speech was aligned against. Sentence timings count from the
+    start of the speech's audio, so for a speech cut from a session-wide
+    stream the start offset into that stream is part of it."""
     media = speech.get('media') or {}
-    return media.get('videoFileURI'), media.get('audioFileURI')
+    addinfo = media.get('additionalInformation')
+    start_offset = addinfo.get('startOffset') if isinstance(addinfo, dict) else None
+    return media.get('videoFileURI'), media.get('audioFileURI'), start_offset
 
 
 def carry_forward_text_enrichment(new_data: list, published_data: list) -> int:
