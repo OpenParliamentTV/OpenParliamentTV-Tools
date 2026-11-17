@@ -371,11 +371,18 @@ def slice_copy(session_audio: Path, start: float, duration: float, out: Path) ->
 
 def slice_reencode(session_audio: Path, start: float, duration: float, out: Path,
                    *, sample_rate: int = 22050, bitrate: str = "64k") -> None:
-    """Re-encoded slice — exact, decoder-aligned timestamps (HLS-sourced mp3s)."""
+    """Re-encoded slice — exact, decoder-aligned timestamps (HLS-sourced mp3s).
+
+    ``-af aresample`` copies each decoded frame into a freshly padded buffer.
+    Without it, some seek points hand libmp3lame a trimmed first frame whose
+    plane is shorter than it requires, and the encode fails with "inadequate
+    AVFrame plane padding". The output is otherwise byte-identical.
+    """
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = _part_path(out)
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{start}", "-t", f"{duration}",
-           "-i", str(session_audio), "-vn", "-ac", "1", "-ar", str(sample_rate),
+           "-i", str(session_audio), "-vn", "-af", "aresample", "-ac", "1",
+           "-ar", str(sample_rate),
            "-c:a", "libmp3lame", "-b:a", bitrate, "-f", "mp3", str(tmp)]
     res = subprocess.run(cmd, capture_output=True, timeout=300)
     if res.returncode != 0:
