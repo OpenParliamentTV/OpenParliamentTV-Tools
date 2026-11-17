@@ -8,6 +8,7 @@ This pins the SE/NO/FI/FR/EU/PT consolidation and the DE-BY direct path.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -528,3 +529,112 @@ def test_short_download_without_required_duration_is_not_resumed(tmp_path, monke
     with pytest.raises(RuntimeError, match="too short"):
         ap.download_ffmpeg("u", tmp_path / "s.mp3")
     assert starts == [0.0]
+
+
+# --------------------------------------------------------------------------- #
+# HLS gap guard (fake ffmpeg run: its stderr, and an output whose text is its
+# duration in s)
+# --------------------------------------------------------------------------- #
+
+_HLS_HEADER = ("Input #0, hls, from 'u':\n"
+               "  Duration: 01:00:00.00, start: 1.500000, bitrate: N/A\n")
+
+
+def _fake_run(monkeypatch, stderr: str, out_duration: float) -> list:
+    cmds = []
+
+    def run(cmd, **kw):
+        cmds.append(cmd)
+        Path(cmd[-1]).write_text(str(out_duration))
+        return subprocess.CompletedProcess(cmd, 0, b"", stderr.encode())
+
+    monkeypatch.setattr(ap.subprocess, "run", run)
+    monkeypatch.setattr(ap, "_duration_seconds",
+                        lambda path: float(path.read_text()) if path.exists() else 0.0)
+    return cmds
+
+
+def _extract(dest: Path, *, hls: bool = True, start_s: float = 0.0) -> None:
+    ap._ffmpeg_extract("u", dest, hls=hls, sample_rate=22050, bitrate="64k",
+                       reconnect=True, timeout=60, start_s=start_s)
+
+
+def test_hls_fetch_retries_segments_and_logs_the_input_duration(tmp_path, monkeypatch):
+    cmds = _fake_run(monkeypatch, _HLS_HEADER, 3600)
+    _extract(tmp_path / "s.mp3")
+    cmd = cmds[0]
+    assert cmd[cmd.index("-seg_max_retry") + 1] == "5"
+    assert cmd.index("-seg_max_retry") < cmd.index("-i")
+    assert cmd[cmd.index("-loglevel") + 1] == "info"
+
+
+def test_non_hls_fetch_is_not_gap_checked(tmp_path, monkeypatch):
+    cmds = _fake_run(monkeypatch, "", 10)
+    _extract(tmp_path / "s.mp3", hls=False)
+    assert "-seg_max_retry" not in cmds[0]
+    assert (tmp_path / "s.mp3").exists()
+
+
+def test_hls_skipped_segment_raises_and_drops_the_output(tmp_path, monkeypatch):
+    _fake_run(monkeypatch, _HLS_HEADER
+              + "[hls @ 0x1] Failed to open segment 3509 of playlist 0\n"
+              + "[hls @ 0x1] Segment 3509 of playlist 0 failed too many times, skipping\n",
+              3596)
+    dest = tmp_path / "s.mp3"
+    with pytest.raises(ap.HLSGapError, match="first 3509"):
+        _extract(dest)
+    assert not dest.exists()
+
+
+def test_hls_segment_that_opens_on_a_retry_is_accepted(tmp_path, monkeypatch):
+    _fake_run(monkeypatch, _HLS_HEADER
+              + "[hls @ 0x1] Failed to open segment 12 of playlist 0\n", 3599)
+    dest = tmp_path / "s.mp3"
+    _extract(dest)
+    assert dest.exists()
+
+
+def test_hls_result_short_of_the_playlist_raises(tmp_path, monkeypatch):
+    # A segment lost mid-read logs nothing; only the length shows the hole.
+    _fake_run(monkeypatch, _HLS_HEADER, 3290)
+    dest = tmp_path / "s.mp3"
+    with pytest.raises(ap.HLSGapError, match="segments were lost"):
+        _extract(dest)
+    assert not dest.exists()
+
+
+def test_hls_continuation_is_measured_from_its_start(tmp_path, monkeypatch):
+    _fake_run(monkeypatch, _HLS_HEADER, 600)
+    _extract(tmp_path / "s.mp3", start_s=3000.0)
+    assert (tmp_path / "s.mp3").exists()
+
+
+def _gap_extract(monkeypatch) -> list:
+    starts = []
+
+    def extract(url, dest, *, start_s=0.0, **kw):
+        starts.append(start_s)
+        raise ap.HLSGapError("hole")
+
+    monkeypatch.setattr(ap, "_ffmpeg_extract", extract)
+    monkeypatch.setattr(ap, "_duration_seconds",
+                        lambda path: float(path.read_text()) if path.exists() else 0.0)
+    return starts
+
+
+def test_hls_gap_in_a_fresh_download_is_not_resumed(tmp_path, monkeypatch):
+    starts = _gap_extract(monkeypatch)
+    with pytest.raises(ap.HLSGapError):
+        ap.download_ffmpeg("u", tmp_path / "s.mp3", required_duration=10000, hls=True)
+    assert starts == [0.0]
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_hls_gap_in_a_continuation_keeps_the_earlier_progress(tmp_path, monkeypatch):
+    starts = _gap_extract(monkeypatch)
+    target = tmp_path / "s.mp3"
+    ap._part_path(target).write_text("4000")    # left by a killed run
+    with pytest.raises(ap.HLSGapError):
+        ap.download_ffmpeg("u", target, required_duration=10000, hls=True)
+    assert starts == [4000.0]
+    assert float(ap._part_path(target).read_text()) == 4000

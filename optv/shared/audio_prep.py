@@ -191,23 +191,67 @@ def download_http(url: str, target: Path, *, required_duration: float = 0.0) -> 
         raise
 
 
+class HLSGapError(RuntimeError):
+    """An HLS download lost segments, so its audio has a hole."""
+
+
+# ffmpeg's HLS demuxer skips a segment it cannot open once ``seg_max_retry``
+# reloads (default 0) have failed, logs that only as a warning and carries on.
+# The audio after the hole then sits early, and every later slice plays the
+# wrong part of the stream. HLS fetches therefore retry segments, log at info
+# level (the input ``Duration`` header is the playlist length) and are rejected
+# when a segment was skipped or the result is shorter than the playlist.
+_HLS_SEG_MAX_RETRY = 5
+_HLS_SKIPPED_RE = re.compile(r"Segment (\d+) of playlist \d+ failed too many times, skipping")
+_INPUT_DURATION_RE = re.compile(r"Duration: (\d+):(\d\d):(\d\d(?:\.\d+)?)")
+
+
+def _input_duration(stderr: str) -> float:
+    """The first input's ``Duration`` from ffmpeg's info log, 0.0 if absent."""
+    m = _INPUT_DURATION_RE.search(stderr)
+    if not m:
+        return 0.0
+    hours, minutes, seconds = m.groups()
+    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+
+
+def _check_hls_result(stderr: str, dest: Path, url: str, start_s: float) -> None:
+    """Drop ``dest`` and raise :class:`HLSGapError` if the fetch has a hole."""
+    skipped = _HLS_SKIPPED_RE.findall(stderr)
+    if skipped:
+        dest.unlink(missing_ok=True)
+        raise HLSGapError(
+            f"ffmpeg skipped {len(skipped)} HLS segment(s), first {skipped[0]}, of {url}")
+    expected = _input_duration(stderr) - start_s
+    if expected > 0:
+        got = _duration_seconds(dest)
+        if got + _SESSION_AUDIO_TOLERANCE_S < expected:
+            dest.unlink(missing_ok=True)
+            raise HLSGapError(
+                f"HLS fetch of {url} from {start_s:.1f}s holds {got:.1f}s of "
+                f"{expected:.1f}s: segments were lost")
+
+
 def _ffmpeg_extract(url: str, dest: Path, *, hls: bool, sample_rate: int, bitrate: str,
                     reconnect: bool, timeout: int, start_s: float = 0.0) -> None:
-    cmd = ["ffmpeg", "-y", "-loglevel", "error"]
+    cmd = ["ffmpeg", "-y", "-loglevel", "info" if hls else "error"]
     if reconnect:
         cmd += ["-reconnect", "1", "-reconnect_streamed", "1",
                 "-reconnect_delay_max", "30", "-rw_timeout", "60000000"]
     if hls:
-        cmd += ["-protocol_whitelist", "file,http,https,tcp,tls,crypto"]
+        cmd += ["-nostats", "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
+                "-seg_max_retry", str(_HLS_SEG_MAX_RETRY)]
     if start_s > 0:
         cmd += ["-ss", f"{start_s}"]
     cmd += ["-i", url, "-vn", "-ac", "1", "-ar", str(sample_rate),
             "-c:a", "libmp3lame", "-b:a", bitrate, "-f", "mp3", str(dest)]
     res = subprocess.run(cmd, capture_output=True, timeout=timeout)
+    stderr = res.stderr.decode(errors="replace")
     if res.returncode != 0:
         raise RuntimeError(
-            f"ffmpeg extract failed (rc={res.returncode}) for {url}: "
-            f"{res.stderr.decode(errors='replace')[:500]}")
+            f"ffmpeg extract failed (rc={res.returncode}) for {url}: {stderr[-500:]}")
+    if hls:
+        _check_hls_result(stderr, dest, url, start_s)
 
 
 def _concat_mp3(parts: list[Path], out: Path) -> None:
@@ -257,6 +301,11 @@ def download_ffmpeg(url: str, target: Path, *, required_duration: float = 0.0,
     adds no audio). Each continuation is folded into the ``.part.mp3`` at once,
     so a call that still ends short keeps all its progress and the next run
     continues from there.
+
+    An HLS fetch with a hole (see :func:`_check_hls_result`) raises
+    :class:`HLSGapError` and is never resumed: a fresh download leaves no
+    partial file, so the next run starts over; a hole in a continuation drops
+    only that continuation and keeps the earlier, gap-free progress.
     """
     if target.exists() and target.stat().st_size > 0 and _is_complete(
             _duration_seconds(target), required_duration):
