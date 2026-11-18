@@ -11,7 +11,7 @@ Parses parliamentary proceedings and media feeds into a standardized "Stage 2" J
 - Python 3 with the deps in `requirements.txt` (`feedparser`, `lxml`, `spacy`, `spacyfishing`, `aeneas`, `jsonschema`, `pyyaml`, `numpy`).
 - `aeneas` (time alignment) requires ffmpeg + espeak.
 - The NER and alignment stages read locale config from each parliament's `manifest.yaml` (`locale.spacy_model`, `locale.aeneas_language`, `locale.entityfishing_language`); per-parliament `workflow.py` injects these onto `args` via `optv.shared.workflow.inject_locale()` (which reads `optv.parliaments.get_locale()`) before invoking shared stages. NER additionally needs an `entityfishing` API endpoint passed via `--ner-api-endpoint`. For DE the spaCy model is `de_core_news_md`. A manifest's `ner: {corrections: true}` turns on [optv/shared/ner_corrections.py](optv/shared/ner_corrections.py) (stop mentions per language, excluded Wikidata classes, faction/speaker IDs from the entity dump); the lists live in `optv/shared/ner_lists/`, and [docs/NER-CORRECTIONS.md](docs/NER-CORRECTIONS.md) says whether a fix belongs there or in the platform's EntityRemap.
-- Data lives **outside the repo**. The Makefile points at `../../../../OpenParliamentTV-Data-DE` relative to `optv/parliaments/DE/`; the shared `BaseConfig` class in [optv/shared/config.py](optv/shared/config.py) defines the canonical layout (`original/{media,proceedings}`, `cache/{merged,aligned,ner}`, `processed/`, `metadata/`), which each parliament's `common.py` `Config` subclasses (re-exporting `SessionStatus` + publish helpers).
+- Data lives **outside the repo**: each parliament has a sibling data repo (`OpenParliamentTV-Data-<ID>`), passed to the workflow as `<data_dir>`. The shared `BaseConfig` class in [optv/shared/config.py](optv/shared/config.py) defines the canonical layout (`original/{media,proceedings}`, `cache/{merged,aligned,ner}`, `processed/`, `metadata/`), which each parliament's `common.py` `Config` subclasses (re-exporting `SessionStatus` + publish helpers).
 
 ## Running the pipeline
 
@@ -25,10 +25,7 @@ Main entry point — [optv/parliaments/DE/workflow.py](optv/parliaments/DE/workf
 
 Each `--*` step is opt-in; `--force` re-runs an already-completed stage; `--limit-session <regex>` / `--no-limit-to-period` scope the work. A lockfile (`<data_dir>/optv.lock`) blocks concurrent runs unless `--no-single-instance` is passed.
 
-Shortcuts:
-- `optv/parliaments/DE/update <data_dir>` — wrapper baking in `--period=21 --retry-count=20`.
-- `make -C optv/parliaments/DE download` — fetch proceedings + media only.
-- `make -C optv/parliaments/DE` — re-merge everything based on file mtimes.
+`--period` defaults to the newest period in the parliament's `manifest.yaml`, `--retry-count` to its `default_retry_count`.
 
 Individual stage scripts are directly runnable (all use `argparse`):
 - [optv/parliaments/DE/scraper/fetch_proceedings.py](optv/parliaments/DE/scraper/fetch_proceedings.py), `update_media.py`, `fetch_media.py`
@@ -49,7 +46,7 @@ Schema validation is structural; cross-field invariants (date ordering, `speechI
 
 ## Tests
 
-Pytest suite under [tests/](tests/) — flat layout, no config files. Run with `.venv/bin/pytest -q tests` or `make -C optv/parliaments/DE test`. The suite covers pure helpers, the merger contract (the `originID`/`originTextID` regression class), the agenda-type vocabulary, and an end-to-end smoke run on tiny synthetic fixtures in `tests/fixtures/DE/`. Stages requiring external services (aeneas, NER, NEL) are not exercised. Cron does not import pytest, so the Pi is unaffected when tests fail.
+Pytest suite under [tests/](tests/) — flat layout, no config files. Run with `.venv/bin/pytest -q tests`. The suite covers pure helpers, the merger contract (the `originID`/`originTextID` regression class), the agenda-type vocabulary, and an end-to-end smoke run on tiny synthetic fixtures in `tests/fixtures/DE/`. Stages requiring external services (aeneas, NER, NEL) are not exercised. Cron does not import pytest, so the Pi is unaffected when tests fail.
 
 ## Architecture notes
 

@@ -36,9 +36,7 @@ optv/parliaments/<CODE>/
 ├── scraper/             # fetch raw proceedings + media
 ├── parsers/             # parliament's native format → intermediate JSON
 ├── merger/              # join proceedings + media → Stage 2
-├── align_prep.py        # optional — per-speech audio staging for align (adapter over optv.shared.audio_prep); only when the source needs slicing
-├── Makefile             # convenience targets driven by file mtimes
-└── update               # shell wrapper baking in default flags
+└── align_prep.py        # optional — per-speech audio staging for align (adapter over optv.shared.audio_prep); only when the source needs slicing
 ```
 
 The package layout matters: `workflow.py` imports from `optv.shared.*`, and the path bootstrap at the top supports both `python -m` and direct execution. Keep that bootstrap.
@@ -235,8 +233,7 @@ timestamp-window (EU). One paragraph, link the file path.>
 
 ## Running
 
-<The `update` shell wrapper if present, then the bare `workflow.py` invocation
-with the `--period` value and the stage flags. Use the generic `--session`
+<The `workflow.py` invocation with the `--period` value and the stage flags. Use the generic `--session`
 flag to target specific seed sessions; document any parliament-specific flags
 (`--year`, `--kid`, …).>
 

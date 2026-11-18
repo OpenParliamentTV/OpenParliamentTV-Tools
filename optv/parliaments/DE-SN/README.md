@@ -26,10 +26,11 @@ Single-source translation — [merger/merge_session.py](merger/merge_session.py)
 ## Running
 
 ```sh
-# one-shot wrapper (period 8 baked in)
-./update /path/to/OpenParliamentTV-Data-DE-SN
+# Routine run (newest period): download, merge, link entities
+./workflow.py /path/to/OpenParliamentTV-Data-DE-SN \
+    --download-original --merge-speeches --link-entities
 
-# or the explicit workflow (one test session)
+# One test session
 ./workflow.py --period=8 /path/to/OpenParliamentTV-Data-DE-SN \
     --download-original --merge-speeches --link-entities --limit-session '08025'
 

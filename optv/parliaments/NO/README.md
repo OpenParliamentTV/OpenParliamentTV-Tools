@@ -24,9 +24,7 @@ Stortinget's open data API has no auth and the per-sesjon overview is small, so 
 # Wikidata-derived entity dump (no.openparliament.tv doesn't host one yet)
 python3 -m optv.parliaments.NO.scraper.build_entity_dump <data_dir> --period 22
 
-# Full pipeline
-./optv/parliaments/NO/update <data_dir>
-# or, with finer control:
+# Full pipeline for one meeting (drop --meid for every meeting of the period)
 ./optv/parliaments/NO/workflow.py --period=22 <data_dir> \
     --meid 11518 \
     --download-original --merge-speeches \
@@ -34,7 +32,7 @@ python3 -m optv.parliaments.NO.scraper.build_entity_dump <data_dir> --period 22
     --ner-api-endpoint http://localhost:8090/service/
 ```
 
-- `--period` is the OPTV-internal term index: `20` = 2017-2021, `21` = 2021-2025, `22` = 2025-2029 (string ids in the API; see `common.TERM_TO_PERIOD`). `update` and the Makefile run `--period=22`.
+- `--period` is the OPTV-internal term index: `20` = 2017-2021, `21` = 2021-2025, `22` = 2025-2029 (string ids in the API; see `common.TERM_TO_PERIOD`).
 - `--session 2025-2026` limits the sesjon-year(s) within the period (default: all sesjons of the period).
 - `--meid 11518` restricts work to specific meeting IDs.
 - Session keys are `{period}_{moteid}` (e.g. `22_11518`).

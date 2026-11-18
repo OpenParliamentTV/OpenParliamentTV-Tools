@@ -48,16 +48,13 @@ Agenda-item classification (TOP titles → `nativeType` / `type`) uses [`classif
 ## Running
 
 ```bash
-./optv/parliaments/DE-ST/update <data_dir>
-# expands to:
-# python3 workflow.py --period=9 --retry-count=20 \
-#     --limit-session '0900[1-3]' \
-#     --download-original --merge-speeches \
-#     --link-entities --align-sentences --extract-entities \
-#     <data_dir>
+./optv/parliaments/DE-ST/workflow.py --period=9 <data_dir> \
+    --limit-session '0900[1-3]' \
+    --download-original --merge-speeches \
+    --link-entities --align-sentences --extract-entities
 ```
 
-The session regex scopes the media/protocol download and the downstream stages to the sample sittings 1–3; override `--limit-session` to widen. `make download` / `make all` mirror the mtime-driven flow.
+The session regex scopes the media/protocol download and the downstream stages to the sample sittings 1–3; change or drop `--limit-session` to widen.
 
 ## Access notes
 

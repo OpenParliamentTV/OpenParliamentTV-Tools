@@ -68,9 +68,7 @@ without video are dropped.
 `{year}-{number:03d}` (e.g. `2026-058`). `--session YYYY-NNN` (repeatable)
 selects sessions explicitly; without it, the plenary sittings of the term
 years are discovered from the open data API (one aggregation request listing
-every sitting that has speech records). The `update` wrapper bakes in
-`--period=2023` and all stage flags. `make download` / `make merge` are
-convenience targets.
+every sitting that has speech records).
 
 ## Known limitations
 

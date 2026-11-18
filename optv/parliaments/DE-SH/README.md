@@ -46,15 +46,12 @@ discovery.
 ## Running
 
 ```sh
-# convenience wrapper (period=20, retry=20, download + merge + nel)
-./update /path/to/OpenParliamentTV-Data-DE-SH
-
-# explicit
-./workflow.py --period=20 /path/to/OpenParliamentTV-Data-DE-SH \
+# Routine run (newest period): download, merge, link entities
+./workflow.py /path/to/OpenParliamentTV-Data-DE-SH \
     --download-original --merge-speeches --link-entities
 ```
 
-The `update` wrapper leaves out `--align-sentences` and `--extract-entities`; both stages are supported (see [manifest.yaml](manifest.yaml), `supported_stages`) but run on the experimental text path, so they are run explicitly. Pre-NEL the entity dump can be regenerated with:
+The routine run leaves out `--align-sentences` and `--extract-entities`; both stages are supported (see [manifest.yaml](manifest.yaml), `supported_stages`) but run on the experimental text path, so they are run explicitly. Pre-NEL the entity dump can be regenerated with:
 
 ```sh
 python -m optv.parliaments.DE-SH.scraper.build_entity_dump /path/to/OpenParliamentTV-Data-DE-SH

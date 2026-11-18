@@ -11,11 +11,9 @@ Each implemented parliament lives under `optv/parliaments/<CODE>/` and carries i
 ```bash
 python3 -m pip install -r requirements.txt
 
-# fetch + process the current period's data into <data_dir>
-# (example shown for DE — every parliament has the same wrapper shape)
-./optv/parliaments/DE/update <data_dir>
-
-# or run the workflow manually with finer control:
+# fetch + process a period's data into <data_dir>
+# (example shown for DE — every parliament has the same workflow entry point;
+# --period defaults to the newest period in its manifest.yaml)
 ./optv/parliaments/DE/workflow.py --period=21 <data_dir> \
     --download-original --merge-speeches \
     --link-entities --align-sentences --extract-entities
@@ -42,9 +40,7 @@ optv/
 │       ├── scraper/         # fetch raw proceedings + media
 │       ├── parsers/         # native format → intermediate JSON
 │       ├── merger/          # join media + proceedings into Stage 2
-│       ├── align_prep.py    # optional — per-speech audio staging for align (adapter over optv.shared.audio_prep)
-│       ├── update           # shell wrapper with parliament-specific defaults
-│       └── Makefile         # download + merge targets driven by file mtimes
+│       └── align_prep.py    # optional — per-speech audio staging for align (adapter over optv.shared.audio_prep)
 ├── scripts/                # tracked maintenance / backfill / audit scripts, run via `python -m optv.scripts.<name>`
 └── shared/                  # cross-parliament infrastructure
     ├── schema/              # Stage 2 JSON schemas + reference doc
@@ -104,8 +100,6 @@ The publish step also runs validation and logs findings; warnings do not block.
 
 ```bash
 .venv/bin/pytest -q tests
-# or
-make -C optv/parliaments/DE test
 ```
 
 Flat layout under [tests/](tests/), no config files. Covers pure helpers, the merger contract that catches `originID`/`originTextID`-class regressions, the agenda-type vocabulary, and an end-to-end smoke run on tiny synthetic fixtures. Stages that need external data or services (aeneas alignment, the NEL entity dump, entity-fishing NER) are not in the suite. CI runs the same command on every push and PR via [.github/workflows/tests.yml](.github/workflows/tests.yml).

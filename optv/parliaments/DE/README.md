@@ -16,16 +16,14 @@ Two streams, both fetched from public Bundestag sources, joined per session. Pro
 ## Running
 
 ```bash
-./optv/parliaments/DE/update <data_dir>
-# or, for finer control:
 ./optv/parliaments/DE/workflow.py --period=21 <data_dir> \
     --download-original --merge-speeches \
     --link-entities --align-sentences --extract-entities
 ```
 
-`<data_dir>` should be a clone of [OpenParliamentTV-Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE). The `update` wrapper bakes in `--period=21 --retry-count=20`. Each `--*` stage flag is opt-in and idempotent; `--force` re-runs an already-completed stage. A lockfile (`<data_dir>/optv.lock`) blocks concurrent runs. `make download` / `make all` mirror the mtime-driven flow.
+`<data_dir>` should be a clone of [OpenParliamentTV-Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE). `--period` defaults to the newest period and `--retry-count` to 20 (both from [manifest.yaml](manifest.yaml)). Each `--*` stage flag is opt-in and idempotent; `--force` re-runs an already-completed stage. A lockfile (`<data_dir>/optv.lock`) blocks concurrent runs.
 
 ## Known limitations
 
-- **Media-server 503s on older periods.** The Bundestag media server frequently 503s when building responses for archived periods. `--retry-count` (default 20 via the `update` wrapper) retries with random backoff (≤10s); only missing files are re-fetched.
+- **Media-server 503s on older periods.** The Bundestag media server frequently 503s when building responses for archived periods. `--retry-count` (default 20, from the manifest) retries with random backoff (≤10s); only missing files are re-fetched.
 - **NER/NEL externals required.** Alignment needs `ffmpeg` + `espeak`; NER needs the `de_core_news_md` spaCy model and an `entityfishing` API endpoint (`--ner-api-endpoint`).

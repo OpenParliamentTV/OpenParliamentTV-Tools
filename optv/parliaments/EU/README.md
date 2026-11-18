@@ -18,8 +18,7 @@ NEL ([`optv/shared/nel.py`](../../shared/nel.py)) prefers a direct `epId → ent
 ## Running
 
 ```bash
-./optv/parliaments/EU/update <data_dir>
-# or, with an explicit day:
+# One plenary day:
 ./optv/parliaments/EU/workflow.py --period=10 <data_dir> \
     --session 2025-10-08 \
     --download-original --merge-speeches \
@@ -31,7 +30,7 @@ NEL ([`optv/shared/nel.py`](../../shared/nel.py)) prefers a direct `epId → ent
     --link-entities --align-sentences --extract-entities
 ```
 
-The `update` wrapper bakes in `--period=10 --retry-count=10`. Date selection priority: `--session YYYY-MM-DD` (repeatable) > `--year YYYY` (auto-enumerates plenary sittings via `/meetings?year=YYYY`) > `--limit-session YYYYMMDD`. The download stage is a no-op if none of these are provided.
+Date selection priority: `--session YYYY-MM-DD` (repeatable) > `--year YYYY` (auto-enumerates plenary sittings via `/meetings?year=YYYY`) > `--limit-session YYYYMMDD`. The download stage is a no-op if none of these are provided.
 
 ## Access notes
 

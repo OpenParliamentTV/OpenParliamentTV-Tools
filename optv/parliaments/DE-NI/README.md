@@ -29,8 +29,9 @@ No cross-source matching: `merger/merge_session.py` is a single-source translati
 ## Running
 
 ```sh
-# Convenience wrapper (period 19 baked in)
-./update /path/to/OpenParliamentTV-Data-DE-NI
+# Routine run (newest period): download, merge, link entities
+./workflow.py /path/to/OpenParliamentTV-Data-DE-NI \
+    --download-original --merge-speeches --link-entities
 
 # Pre-NEL, (re)generate the local entity dump (Wikidata P39 Q17521638 + WP-18/19 parties):
 python -m optv.parliaments.DE-NI.scraper.build_entity_dump /path/to/OpenParliamentTV-Data-DE-NI

@@ -31,8 +31,9 @@ The protocol's speaker lines are grouped into one text turn per Mediathek speech
 ## Running
 
 ```sh
-# Convenience wrapper (period 18 baked in)
-./update /path/to/OpenParliamentTV-Data-DE-NW
+# Routine run (newest period): download, merge, link entities
+./workflow.py /path/to/OpenParliamentTV-Data-DE-NW \
+    --download-original --merge-speeches --link-entities
 
 # Pre-NEL, (re)generate the local entity dump (Wikidata P39 Q17781726 + WP-18 parties):
 python -m optv.parliaments.DE-NW.scraper.build_entity_dump /path/to/OpenParliamentTV-Data-DE-NW

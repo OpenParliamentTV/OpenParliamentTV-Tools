@@ -30,10 +30,7 @@ The text body lists the speaker's turns as `speech` (`main-speaker`), chair rema
 ## Running
 
 ```
-# Whole legislatura (enumerates reuniões from av.parlamento.pt):
-./optv/parliaments/PT/update ../../../../OpenParliamentTV-Data-PT
-
-# Or explicitly, one or more reuniões, all stages:
+# One or more reuniões, all stages (drop --session to enumerate the whole legislatura from av.parlamento.pt):
 ./optv/parliaments/PT/workflow.py --period=17 <data_dir> \
     --session 17-1-059 \
     --download-original --merge-speeches \

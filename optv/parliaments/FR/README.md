@@ -19,8 +19,7 @@ NEL ([`optv/shared/nel.py`](../../shared/nel.py)) prefers a direct `id_acteur �
 ## Running
 
 ```bash
-./optv/parliaments/FR/update <data_dir>
-# or, with explicit séance keys:
+# Explicit séance keys:
 ./optv/parliaments/FR/workflow.py --period=17 <data_dir> \
     --session 2026O1N254 \
     --download-original --merge-speeches \
@@ -28,7 +27,7 @@ NEL ([`optv/shared/nel.py`](../../shared/nel.py)) prefers a direct `id_acteur �
     --ner-api-endpoint http://localhost:8090/service/
 ```
 
-The `update` wrapper bakes in `--period=17 --retry-count=20` and all stage flags. `--session KEY` (repeatable) targets individual séances via the per-document endpoint; when omitted, the download stage pulls the whole legislature's Syceron bulk archive. `--limit-session <regex>` filters either mode. `--period` is the **legislature**, not a year.
+`--session KEY` (repeatable) targets individual séances via the per-document endpoint; when omitted, the download stage pulls the whole legislature's Syceron bulk archive. `--limit-session <regex>` filters either mode. `--period` is the **legislature**, not a year.
 
 ## Access notes
 

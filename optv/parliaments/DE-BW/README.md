@@ -46,8 +46,9 @@ Speech times come from the protocol: it states the sitting's start (`Beginn: 9:3
 ## Running
 
 ```sh
-# Convenience wrapper (period 18 baked in)
-./update /path/to/OpenParliamentTV-Data-DE-BW
+# Routine run (newest period): download, merge, link entities
+./workflow.py /path/to/OpenParliamentTV-Data-DE-BW \
+    --download-original --merge-speeches --link-entities
 
 # Explicit, single test session (back-fill via --session):
 ./workflow.py --period=17 /path/to/OpenParliamentTV-Data-DE-BW \

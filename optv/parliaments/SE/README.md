@@ -16,18 +16,17 @@ Two streams, both fetched in one walk via [`scraper/fetch_session.py`](scraper/f
 
 ## Running
 
-`--session` is required for downloads (the adapter does not discover protokolls yet, see Known limitations), so the `update` wrapper and `Makefile` cover **post-download** stages only — merge + align + NER over whatever raw files already exist under `original/`:
+`--session` is required for downloads (the adapter does not discover protokolls yet, see Known limitations), so a run without it covers the **post-download** stages only — merge, align and NER over whatever raw files already exist under `original/`:
 
 ```bash
-./optv/parliaments/SE/update <data_dir>
-# or, with finer control / to download a new protokoll:
+# Download and process one protokoll:
 ./optv/parliaments/SE/workflow.py --period=2025 <data_dir> \
     --session HD0991 \
     --download-original --merge-speeches \
     --link-entities --align-sentences --extract-entities
 ```
 
-`--period=2025` means riksmöte 2025/26. Session keys are `{period}-{protokoll_nr:03d}` (e.g. `2025-091`). `--limit-anforanden N` is testing-only (stop the per-anforande walk after N). `make` mirrors the wrapper.
+`--period=2025` means riksmöte 2025/26. Session keys are `{period}-{protokoll_nr:03d}` (e.g. `2025-091`). `--limit-anforanden N` is testing-only (stop the per-anforande walk after N).
 
 ## Known limitations
 

@@ -42,7 +42,7 @@ A few clips per session have no matched text (role-only chair turns, oaths). `Co
     --limit-session '15001'
 ```
 
-`./update <data_dir>` bakes in `--period=15` and the full stage set. `make download && make` mirrors the mtime-driven flow.
+Drop `--limit-session` to process the whole legislature.
 
 ## Access notes
 

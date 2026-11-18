@@ -22,15 +22,16 @@ The **Plenum Online playlists are the spine** — already per-speech with speake
 ## Running
 
 ```sh
-# convenience wrapper (period=19, retry=20, download + merge + nel)
-./update /path/to/OpenParliamentTV-Data-DE-BY
+# Routine run (newest period): download, merge, link entities
+./workflow.py /path/to/OpenParliamentTV-Data-DE-BY \
+    --download-original --merge-speeches --link-entities
 
 # explicit; smoke-test one session
 ./workflow.py --period=19 /path/to/OpenParliamentTV-Data-DE-BY \
     --download-original --merge-speeches --link-entities --limit-session '19054'
 ```
 
-`--align-sentences` and `--extract-entities` are supported (see [manifest.yaml](manifest.yaml) `supported_stages`) but left out of `./update` while the text path is experimental. Pre-NEL the entity dump can be regenerated with:
+`--align-sentences` and `--extract-entities` are supported (see [manifest.yaml](manifest.yaml) `supported_stages`) but left out of the routine run while the text path is experimental. Pre-NEL the entity dump can be regenerated with:
 
 ```sh
 python -m optv.parliaments.DE-BY.scraper.build_entity_dump /path/to/OpenParliamentTV-Data-DE-BY
