@@ -53,6 +53,9 @@ def _seconds(v) -> Optional[float]:
 # person picked first is entered again shortly after the segment's start.
 WRONG_PICK_MAX_S = 30.0
 REPICK_WITHIN_S = 15.0
+# Longest gap to the next entry that still counts as the length of a speech
+# whose own end is missing (the longest speech with an end is about 31 minutes).
+MAX_END_FALLBACK_S = 1800.0
 
 
 def drop_replaced_picks(speakers: list[dict]) -> list[dict]:
@@ -94,14 +97,14 @@ def speaker_media_record(spk: dict, event: dict, session_url: str,
                          next_start: Optional[float] = None) -> Optional[dict]:
     """The media record of one speaker entry of the broadcast event.
 
-    ``next_start`` is the start offset of the entry that follows. An entry without an end of its own ends there, when that is later than its own start; otherwise it has no duration.
+    ``next_start`` is the start offset of the entry that follows. A speech whose end the broadcast system did not record ends there, when that is later than its own start by at most ``MAX_END_FALLBACK_S`` (a longer gap is a break, not a speech); otherwise it has no duration.
     """
     person_number = _int(spk.get("personNumber"))
     start = _seconds(spk.get("time"))
     end = _seconds(spk.get("endTime"))
     if start is None:
         return None
-    if end is None and next_start is not None and next_start > start:
+    if end is None and next_start is not None and 0 < next_start - start <= MAX_END_FALLBACK_S:
         end = next_start
     duration = max(0.0, (end - start)) if end is not None else 0.0
 

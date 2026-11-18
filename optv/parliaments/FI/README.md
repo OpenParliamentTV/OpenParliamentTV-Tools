@@ -17,6 +17,13 @@ Three source streams, joined per session on `personNumber` + speech start time:
   video), `personNumber`, `party`, `topicId` and `onkoVastauspuheenvuoro`
   (reply flag), plus the HLS master playlist URL. `parsers/media2json.py` turns
   each speaker into a per-speech media record. **This is the merge spine.**
+  The `speakers[]` entries are the picks of the live broadcast operator, not a
+  clean list of speeches. Replacing a pick creates a new entry with the same
+  start and leaves the replaced one without an end (`"endTime": "null"`); the
+  parser drops those, and the few-second wrong pick in an "A, B, A again"
+  correction (`drop_replaced_picks`). A speech whose end was simply not recorded
+  ends where the next entry starts, if that is within 30 minutes. Other wrong
+  picks carry no marker and stay as media records without text.
 - **Verbatim text** — `scraper/fetch_proceedings.py` pulls the speech records
   of the sitting from the Eduskunta open data API
   (`POST https://api.eduskunta.fi/api/v1/search`, category `puheenvuoro`;

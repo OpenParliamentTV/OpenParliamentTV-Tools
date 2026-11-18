@@ -133,9 +133,17 @@ def test_speech_without_an_end_time_ends_where_the_next_speaker_starts():
     assert media["videoFileURI"].endswith("playlist.m3u8#t=455,500")
 
 
+@pytest.mark.parametrize("next_start, duration", [(455.0 + 1800, 1800.0), (455.0 + 1801, 0.0), (455.0 + 5767, 0.0)])
+def test_next_speaker_start_counts_only_within_half_an_hour(next_start, duration):
+    """A longer gap to the next entry is a break in the sitting, not the length of the speech."""
+    event = json.loads((FIX / "event-sample.json").read_text())
+    speaker = dict(event["speakers"][0], endTime="null")
+    assert speaker_media_record(speaker, event, "x", next_start=next_start)["media"]["duration"] == duration
+
+
 @pytest.mark.parametrize("next_start", [455.0, 400.0, None])
 def test_next_speaker_start_is_no_end_unless_it_is_later(next_start):
-    """Two entries with the same start: the page lists a speaker it replaced at once, followed by the one who spoke."""
+    """An earlier or equal start is no end either."""
     event = json.loads((FIX / "event-sample.json").read_text())
     speaker = dict(event["speakers"][0], endTime="null")
     media = speaker_media_record(speaker, event, "x", next_start=next_start)["media"]
