@@ -14,6 +14,8 @@ import datetime
 import json
 from pathlib import Path
 
+import pytest
+
 from optv.parliaments.FI.common import (
     parse_session_str, session_number_int, session_str, term_years,
 )
@@ -110,6 +112,24 @@ def test_speaker_media_record_reply_flag():
     event = json.loads((FIX / "event-sample.json").read_text())
     rec = speaker_media_record(event["speakers"][1], event, "x")
     assert rec["isReply"] is True
+
+
+@pytest.mark.parametrize("end_time", ["null", None, ""])
+def test_speaker_media_record_without_an_end_time(end_time):
+    """The broadcast page writes the string "null" for a speech it has no end for; such a speech keeps its start and gets no duration."""
+    event = json.loads((FIX / "event-sample.json").read_text())
+    speaker = dict(event["speakers"][0], endTime=end_time)
+    media = speaker_media_record(speaker, event, "https://verkkolahetys.eduskunta.fi/x")["media"]
+    assert media["duration"] == 0.0
+    assert media["videoFileURI"].endswith("playlist.m3u8#t=455,455")
+    assert media["additionalInformation"]["startOffset"] == 455.0
+
+
+@pytest.mark.parametrize("start_time", ["null", None])
+def test_speaker_media_record_without_a_start_time_is_dropped(start_time):
+    event = json.loads((FIX / "event-sample.json").read_text())
+    speaker = dict(event["speakers"][0], time=start_time)
+    assert speaker_media_record(speaker, event, "x") is None
 
 
 # ---- speech-record parsing ----

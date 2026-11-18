@@ -41,12 +41,18 @@ def _int(v) -> Optional[int]:
         return None
 
 
+def _seconds(v) -> Optional[float]:
+    """A broadcast offset in seconds, or ``None`` when the event has none (absent, or the string ``"null"`` the page writes for a missing ``endTime``)."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
 def speaker_media_record(spk: dict, event: dict, session_url: str) -> Optional[dict]:
     person_number = _int(spk.get("personNumber"))
-    start = spk.get("time")
-    end = spk.get("endTime")
-    start = float(start) if start is not None else None
-    end = float(end) if end is not None else None
+    start = _seconds(spk.get("time"))
+    end = _seconds(spk.get("endTime"))
     if start is None:
         return None
     duration = max(0.0, (end - start)) if end is not None else 0.0
