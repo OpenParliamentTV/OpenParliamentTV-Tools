@@ -19,13 +19,9 @@ and review the resulting diff before committing.
 
 import json
 import os
-from pathlib import Path
 
-from optv.parliaments.DE.merger.merge_session import merge_data
-from optv.parliaments.DE.parsers.media2json import parse_media_data
-from optv.parliaments.DE.parsers.proceedings2json import parse_transcript
+from tests.de_fixtures import FIXTURES, merge_tiny_fixtures
 
-FIXTURES = Path(__file__).resolve().parent / "fixtures" / "DE"
 GOLDEN = FIXTURES / "golden" / "tiny-session.json"
 
 _TS_PLACEHOLDER = "<timestamp>"
@@ -44,24 +40,6 @@ def _normalize(doc: dict) -> dict:
     return doc
 
 
-def _produce_merged() -> dict:
-    proc_speeches = list(parse_transcript(str(FIXTURES / "tiny-proceedings.xml")))
-    first = proc_speeches[0]
-    session_id = f"{first['electoralPeriod']['number']}{str(first['session']['number']).zfill(3)}"
-    proc = {
-        "meta": {
-            "session": session_id,
-            "dateStart": first["session"]["dateStart"],
-            "dateEnd": first["session"]["dateEnd"],
-            "processing": {},
-        },
-        "data": proc_speeches,
-    }
-    media_raw = json.loads((FIXTURES / "tiny-media-input.json").read_text())
-    media = parse_media_data(media_raw)
-    return merge_data(proc, media, options=None)
-
-
 def _serialize(doc: dict) -> str:
     rendered = json.dumps(_normalize(doc), indent=2, ensure_ascii=False)
     # ``sourceURI`` records the absolute path the parser was handed, which is
@@ -71,7 +49,7 @@ def _serialize(doc: dict) -> str:
 
 
 def test_de_merged_output_matches_golden():
-    rendered = _serialize(_produce_merged())
+    rendered = _serialize(merge_tiny_fixtures())
 
     if os.environ.get("UPDATE_GOLDEN") or not GOLDEN.exists():
         GOLDEN.parent.mkdir(parents=True, exist_ok=True)
