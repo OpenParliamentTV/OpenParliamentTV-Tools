@@ -178,7 +178,7 @@ Notes for filling in the hooks:
 - **`_align`** receives `(config, session, args)` and returns the aligned cache file path. There are three established shapes, in increasing factoring:
   - **Per-speech audio already cached** (DE's shape): a hand-written `_align` calling `align_audiofile` is enough — nothing to slice.
   - **Session/debate stream that must be sliced per speech** (SE/EU/FR/FI/NO/PT): put the parliament's field mapping in an `align_prep.py` adapter over `optv.shared.audio_prep` — the shared `prepare_per_speech_audio` driver owns download-once / slice / cache — and build the hook with `make_align_hook(prepare_per_speech_audio)` instead of hand-writing `_align`.
-  - **`#t=start,end` media-fragment family** (the DE state parliaments): the adapter is one line — `prepare_per_speech_audio = make_fragment_prepare(hls=…)` — then `make_align_hook(prepare_per_speech_audio)`.
+  - **`#t=start,end` media-fragment family** (the DE state parliaments): no adapter file is needed — `make_align_hook(make_fragment_prepare(hls=…))` in `workflow.py` is the whole hook.
 - **`session_in_scope=(args, session) -> bool`** is optional; the default is `session.startswith(str(args.period))`. Override only if your session keys don't have that shape; `period_prefix_scope(width=…, sep=…)` covers zero-padded periods (`08025`) and keys with a separator after the period (`22_11518`).
 - **NEL, NER, the publish step, `--update-nel-entities`, the lockfile, validation** — all already shared; you do not re-implement any of them. The publish helper carries already-published wids and per-speech enrichments forward, so a stale worker cannot silently strip data a newer worker had produced.
 

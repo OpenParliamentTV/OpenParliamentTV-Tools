@@ -26,11 +26,10 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = module_dir.name
 
-from optv.shared.audio_prep import make_align_hook
+from optv.shared.audio_prep import make_align_hook, make_fragment_prepare
 from optv.shared.pdf2tei.proceedings_parser import parse_proceedings_directory
 from optv.shared.workflow import WorkflowHooks, adapt_merge, period_prefix_scope, run_main
 
-from .align_prep import prepare_per_speech_audio
 from .common import Config
 from .merger.merge_session import merge_session
 from .parsers.pdf_config import CONFIG as PDF_CONFIG
@@ -77,12 +76,17 @@ _merge = adapt_merge(merge_session)
 _session_in_scope = period_prefix_scope(width=2)
 
 
+# One MP4 per session, a `#t=start,end` fragment per speech: the audio track is
+# downloaded once and sliced per text-bearing speech.
+_align = make_align_hook(make_fragment_prepare(hls=False, reconnect=True))
+
+
 HOOKS = WorkflowHooks(
     parliament_id=PARLIAMENT_ID,
     download_originals=_download,
     parse_originals=_parse,
     merge_session_to_file=_merge,
-    align_session_to_file=make_align_hook(prepare_per_speech_audio),
+    align_session_to_file=_align,
     session_in_scope=_session_in_scope,
 )
 
