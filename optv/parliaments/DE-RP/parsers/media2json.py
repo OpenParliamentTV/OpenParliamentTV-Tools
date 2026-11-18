@@ -9,9 +9,17 @@
 # timing is obtained downstream from aeneas. dateStart/dateEnd at this
 # stage are placeholders read from the proceedings.json sibling (if
 # present) and overwritten by the merger.
+#
+# OPAL's parenthesised value after the speaker is a faction or an office
+# (chair, ministry code, ...): factions go to `people[].faction`, offices to
+# `people[].role`. The server reuses video file names in the next electoral
+# period; a clip whose file was replaced (fingerprint from fetch_media.py)
+# is flagged `debug.mediaReplaced`.
+
+from __future__ import annotations
 
 import argparse
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import json
 import logging
 from pathlib import Path
@@ -22,13 +30,36 @@ if __package__ is None:
     sys.path.insert(0, str(module_dir.parent))
     __package__ = module_dir.name
 
-from .common import fix_faction, fix_fullname, fix_role
+from .common import fix_faction, fix_fullname, fix_role, is_office
 from optv.parliaments import get_rights as _get_rights
 
 logger = logging.getLogger(__name__)
 
 MEDIA_LICENSE = _get_rights("DE-RP", stream="media")["license"]
 MEDIA_CREATOR = _get_rights("DE-RP", stream="media")["creator"]
+
+# Clips are uploaded on the day of the sitting; a file modified this much
+# later most likely holds a speech of a later electoral period.
+REPLACED_AFTER_DAYS = 30
+
+
+def _row_order(row: dict) -> tuple:
+    """Protocol order: N, Na, Nb, …, N+1 (as fetch_media.row_order)."""
+    return row["speech_index_in_session"], row.get("speech_suffix", "")
+
+
+def _replacement_reason(row: dict, session_date: date | None) -> str:
+    """Why the row's video file no longer holds its speech, or ''."""
+    if row.get("video_missing"):
+        return "video file is gone"
+    if row.get("video_replaced"):
+        return "video file changed since it was fingerprinted"
+    lm = row.get("video_last_modified")
+    if lm and session_date:
+        modified = datetime.fromisoformat(lm).date()
+        if modified > session_date + timedelta(days=REPLACED_AFTER_DAYS):
+            return f"video file modified {modified}, sitting was {session_date}"
+    return ""
 
 
 def _session_date_from_proceedings(media_dir: Path, session_id: str) -> tuple[str, str]:
@@ -64,8 +95,10 @@ def parse_media_session(raw_path: Path) -> dict:
     if not dateStart:
         dateStart, dateEnd = _fallback_dates(session_id)
 
-    # Sort by speech-within-session index — this becomes the speechIndex.
-    rows = sorted(rows, key=lambda r: r["speech_index_in_session"])
+    session_date = date.fromisoformat(dateStart[:10]) if dateStart[:4] != "1970" else None
+
+    # Sort by speech-within-session index (+ suffix) — this becomes the speechIndex.
+    rows = sorted(rows, key=_row_order)
 
     # Synthesize per-speech dateStart at one-second offsets so that any
     # downstream sort by dateStart preserves OPAL order. Real per-sentence
@@ -82,11 +115,27 @@ def parse_media_session(raw_path: Path) -> dict:
             "label": speaker_label,
             "context": "main-speaker",
         }
-        if r.get("faction"):
-            person["faction"] = {"label": fix_faction(r["faction"])}
-        if function:
+        party = (r.get("faction") or "").strip()
+        office = party if is_office(party) else ""
+        if party and not office:
+            person["faction"] = {"label": fix_faction(party)}
+        if office:
+            person["role"] = office
+        elif function:
             person["role"] = fix_role(function)
 
+        media = {
+            "videoFileURI": r["video_url"],
+            "sourcePage": r.get("source_page", "https://opal.rlp.de/"),
+            "originMediaID": r["origin_media_id"],
+            "license": MEDIA_LICENSE,
+            "creator": MEDIA_CREATOR,
+        }
+        fingerprint = {key: r[field] for key, field in (("lastModified", "video_last_modified"),
+                                                       ("contentLength", "video_content_length"))
+                       if r.get(field) is not None}
+        if fingerprint:
+            media["additionalInformation"] = fingerprint
         item = {
             "parliament": "DE-RP",
             "electoralPeriod": {"number": period},
@@ -101,13 +150,7 @@ def parse_media_session(raw_path: Path) -> dict:
             },
             "dateStart": item_start.isoformat("T", "seconds"),
             "dateEnd": item_end.isoformat("T", "seconds"),
-            "media": {
-                "videoFileURI": r["video_url"],
-                "sourcePage": r.get("source_page", "https://opal.rlp.de/"),
-                "originMediaID": r["origin_media_id"],
-                "license": MEDIA_LICENSE,
-                "creator": MEDIA_CREATOR,
-            },
+            "media": media,
             "people": [person],
             "documents": [],
             "debug": {
@@ -116,6 +159,11 @@ def parse_media_session(raw_path: Path) -> dict:
                 "function": function,
             },
         }
+        reason = _replacement_reason(r, session_date)
+        if reason:
+            logger.error(f"{session_id} {r['origin_media_id']}: {reason}; "
+                         f"{r['video_url']} no longer plays this speech")
+            item["debug"]["mediaReplaced"] = True
         items.append(item)
 
     return {

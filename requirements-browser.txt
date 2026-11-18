@@ -1,0 +1,5 @@
+# Headless browser — opt-in, not part of the production pipeline.
+# Used by optv/parliaments/DE-RP/scraper/fetch_opal.py (test runs only).
+# Install with:  pip install -r requirements-browser.txt && scrapling install
+
+scrapling[fetchers]

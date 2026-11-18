@@ -66,11 +66,13 @@ def merge_item(mediaitem, proceedingitems):
                         for person in media_people + p.get('people', []) )
 
     # Copy back attributes from media if necessary - they may have
-    # been overwritten (in the general case)
+    # been overwritten (in the general case). The proceedings role (the
+    # spelled-out office, e.g. "Ministerin") wins over OPAL's (a ministry
+    # code such as "MdI", or a function tag such as "Kurzintervention").
     if media_people:
         media_person = media_people[0]
         person = people_dict[remove_accents(media_person['label'])]
-        if media_person.get('role'):
+        if media_person.get('role') and not person.get('role'):
             person['role'] = media_person['role']
         person['context'] = media_person['context']
 
