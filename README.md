@@ -51,15 +51,20 @@ optv/
     ├── workflow.py          # run_main + stage orchestrator + WorkflowHooks + shared argparser
     ├── config.py            # BaseConfig (on-disk layout, status/mtime helpers)
     ├── publish.py           # non-destructive publish helpers (demotion guard, carry-forward)
+    ├── meta.py              # Stage 2 `meta` block builder (build_meta, timestamps, originalLanguage)
     ├── session_status.py    # SessionStatus enum
     ├── speech_id.py         # speech-id model normalizer (originID/originMediaID/originTextID)
     ├── merge_format.py      # generic merge formatting helpers (slug, offsets, name split)
-    ├── sequence_align.py    # generic Needleman-Wunsch (shared by the PT/ES/DE-family mergers)
+    ├── sequence_align.py    # generic Needleman-Wunsch on equal keys (PT and ES mergers, the Landtag spine join)
+    ├── confidence.py        # characters-per-second confidence gate for merged speeches
+    ├── sentence_split.py    # splits over-long sentences before alignment
+    ├── vtt.py               # WebVTT parsing (subtitle text with timings)
     ├── align.py             # forced sentence alignment (aeneas)
     ├── audio_prep.py        # per-speech audio staging for align: download-once/slice driver + align-hook factory
     ├── nel.py               # named-entity linking (Wikidata)
     ├── ner.py               # named-entity recognition (spaCy + entity-fishing)
-    ├── agenda_types.py      # cross-parliament agenda-type vocabulary + classifier registry
+    ├── ner_corrections.py   # opt-in NER fixes (stop mentions, excluded classes); lists in ner_lists/
+    ├── agenda_types.py      # cross-parliament agenda-type vocabulary + per-parliament classifiers
     ├── entity_dump_bootstrap.py  # temporary pre-platform Wikidata entity-dump builder
     ├── whisper_diff.py      # QC: faster-whisper transcription vs proceedings text (opt-in, not in the pipeline)
     └── whisper_qc.py        # QC: faster-whisper + Resemblyzer worker library (used by whisper_diff)

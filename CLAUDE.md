@@ -8,7 +8,7 @@ Parses parliamentary proceedings and media feeds into a standardized "Stage 2" J
 
 ## Environment
 
-- Python 3 with the deps in `requirements.txt` (`feedparser`, `lxml`, `spacy`, `spacyfishing`, `aeneas`, `jsonschema`, `pyyaml`, `numpy`).
+- Python 3 with the deps in `requirements.txt` (`feedparser`, `lxml`, `spacy`, `click`, `spacyfishing`, `numpy`, `aeneas`, `pymupdf`, `pyyaml`, `jsonschema`, `pytest`).
 - `aeneas` (time alignment) requires ffmpeg + espeak.
 - The NER and alignment stages read locale config from each parliament's `manifest.yaml` (`locale.spacy_model`, `locale.aeneas_language`, `locale.entityfishing_language`); per-parliament `workflow.py` injects these onto `args` via `optv.shared.workflow.inject_locale()` (which reads `optv.parliaments.get_locale()`) before invoking shared stages. NER additionally needs an `entityfishing` API endpoint passed via `--ner-api-endpoint`. For DE the spaCy model is `de_core_news_md`. A manifest's `ner: {corrections: true}` turns on [optv/shared/ner_corrections.py](optv/shared/ner_corrections.py) (stop mentions per language, excluded Wikidata classes, faction/speaker IDs from the entity dump); the lists live in `optv/shared/ner_lists/`, and [docs/NER-CORRECTIONS.md](docs/NER-CORRECTIONS.md) says whether a fix belongs there or in the platform's EntityRemap.
 - Data lives **outside the repo**: each parliament has a sibling data repo (`OpenParliamentTV-Data-<ID>`), passed to the workflow as `<data_dir>`. The shared `BaseConfig` class in [optv/shared/config.py](optv/shared/config.py) defines the canonical layout (`original/{media,proceedings}`, `cache/{merged,aligned,ner}`, `processed/`, `metadata/`), which each parliament's `common.py` `Config` subclasses (re-exporting `SessionStatus` + publish helpers).
@@ -46,7 +46,11 @@ Schema validation is structural; cross-field invariants (date ordering, `speechI
 
 ## Tests
 
-Pytest suite under [tests/](tests/) — flat layout, no config files. Run with `.venv/bin/pytest -q tests`. The suite covers pure helpers, the merger contract (the `originID`/`originTextID` regression class), the agenda-type vocabulary, and an end-to-end smoke run on tiny synthetic fixtures in `tests/fixtures/DE/`. Stages requiring external services (aeneas, NER, NEL) are not exercised. Cron does not import pytest, so the Pi is unaffected when tests fail.
+Pytest suite under [tests/](tests/) — flat layout, no config files. Run with `.venv/bin/pytest -q tests`. The suite covers pure helpers, the merger contract (the `originID`/`originTextID` regression class), the agenda-type vocabulary, and an end-to-end smoke run on tiny synthetic fixtures in `tests/fixtures/DE/`. [tests/test_conductor_contract.py](tests/test_conductor_contract.py) pins the surface the Conductor depends on for every parliament (argv, `common.Config`, manifest keys, progress log lines). Stages requiring external services (aeneas, NER, NEL) are not exercised. Cron does not import pytest, so the Pi is unaffected when tests fail.
+
+## Output equivalence
+
+Before merging a refactor of shared or parliament code, prove it leaves output untouched with [optv/scripts/equivalence.py](optv/scripts/equivalence.py): `snapshot` runs each parliament's real workflow (parse, merge, publish) offline on a scratch copy of its sibling data repo and records output digests; take one snapshot with `--tools` on the reference checkout and one on the changed checkout, then `compare`. It does not cover scrapers, alignment, NER or the entity-dump builders.
 
 ## Architecture notes
 
@@ -54,7 +58,7 @@ Pytest suite under [tests/](tests/) — flat layout, no config files. Run with `
 
 **Session state is derived from file contents**, not a separate manifest. `Config.status()` returns a `set[SessionStatus]` computed by peeking at each stage's output (`debug.alignDuration`, `people[].wid`, etc.). When adding a new processing stage, emit a distinguishing `debug.*` key and teach `status()` about it.
 
-**Workflow runner is shared**: per-parliament `workflow.py` is a thin wrapper that defines `WorkflowHooks` (download / parse / merge / align adapters) and calls `optv.shared.workflow.run_main(parliament_id, hooks, description=..., config_cls=Config)`. `run_main` builds the common argparser (incl. shared `--lang`/`--retry-count`/`--retry-delay-max`/`--session`, defaulted from the manifest), sets up logging, injects locale + manifest defaults, acquires the lockfile and drives `run_workflow` (the stage orchestration: merge → NEL → align → NER → publish). Adding a new pipeline-wide stage means editing the shared runner; only genuinely parliament-specific deltas (extra flags via an `add_arguments` callback, the hook bodies) belong in the wrapper.
+**Workflow runner is shared**: per-parliament `workflow.py` is a thin wrapper that defines `WorkflowHooks` (download / parse / merge / align adapters) and calls `optv.shared.workflow.run_main(parliament_id, hooks, description=..., config_cls=Config)`. `run_main` builds the common argparser (incl. shared `--period`/`--lang`/`--retry-count`/`--retry-delay-max`, defaulted from the manifest), sets up logging, injects locale + manifest defaults, acquires the lockfile and drives `run_workflow` (the stage orchestration: merge → NEL → align → NER → publish). A hook set may name a `rebuild_queue` file in the cache directory; the runner then re-runs the sessions listed there with rebuild semantics after the regular stages (DE-HH, TW). Adding a new pipeline-wide stage means editing the shared runner; only genuinely parliament-specific deltas (extra flags via an `add_arguments` callback, the hook bodies) belong in the wrapper.
 
 **Package layout quirk**: `workflow.py` supports both `python -m` and `./workflow.py` invocation via a `sys.path` bootstrap at the top — `optv.shared.*` must resolve in both cases. Keep that bootstrap when adding new entry points that import from `optv.shared`.
 
@@ -62,7 +66,7 @@ Pytest suite under [tests/](tests/) — flat layout, no config files. Run with `
 
 **Faction shape gotcha** (see recent commits `2bcffda`, `db10951`): `people[].faction` is sometimes a string and sometimes a dict `{label, wid, wtype}`. The NEL step in [optv/shared/nel.py](optv/shared/nel.py) normalizes to dict form. Any code reading `faction` must handle both or run post-NEL.
 
-**Stage 2 output** wraps data in `{"meta": {...}, "data": [...]}`. The `meta.processing` sub-dict records stage timestamps; equality checks in `save_if_changed` / `publish_as_processed` use a blake2b signature of the `data` array only so re-running a stage with no content change is a no-op.
+**Stage 2 output** wraps data in `{"meta": {...}, "data": [...]}`. The `meta.processing` sub-dict records stage timestamps; equality checks in `save_if_changed` / `_publish_as_processed` use a blake2b signature of the `data` array only so re-running a stage with no content change is a no-op.
 
 ## Conventions
 

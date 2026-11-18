@@ -161,7 +161,7 @@ def main():
              config_cls=Config)
 ```
 
-`--lang` / `--retry-count` / `--retry-delay-max` / `--session` (seed filter) / `--limit-session` and all stage flags are **shared** (added by `build_common_argparser`, defaulted from the manifest) — do not re-declare them. Add only flags unique to this parliament via `add_arguments`. The path bootstrap at the top of `workflow.py` (for `python -m` + `./workflow.py`) is still required.
+`--period` / `--lang` / `--retry-count` / `--retry-delay-max` / `--limit-session` and all stage flags are **shared** (added by `build_common_argparser`; the first four default from the manifest) — do not re-declare them. Add only flags unique to this parliament via `add_arguments`, e.g. a `--session` flag naming seed sessions for the download. The path bootstrap at the top of `workflow.py` (for `python -m` + `./workflow.py`) is still required.
 
 Then invoking the workflow is unchanged from a user perspective — each `--*` flag enables one stage:
 
@@ -173,7 +173,7 @@ Then invoking the workflow is unchanged from a user perspective — each `--*` f
 
 Notes for filling in the hooks:
 
-- **`_download` and `_parse`** are parliament-specific because every source publishes differently. `_parse` runs unconditionally after `_download`; gate any expensive work on mtime checks inside the hook.
+- **`_download` and `_parse`** are parliament-specific because every source publishes differently. `_parse` runs on `--download-original` and `--merge-speeches` runs (nothing downstream of merge reads its output); gate any expensive work on mtime checks inside the hook.
 - **`_merge`** is the per-session merger call. The shared runner handles the `is_newer` check, the demotion guard, and the publish — your hook just produces the merged cache file and returns its path.
 - **`_align`** receives `(config, session, args)` and returns the aligned cache file path. There are three established shapes, in increasing factoring:
   - **Per-speech audio already cached** (DE's shape): a hand-written `_align` calling `align_audiofile` is enough — nothing to slice.
@@ -185,7 +185,7 @@ Notes for filling in the hooks:
 ## 8. External assets
 
 - **Wikidata entity dump** — JSON file mapping known speaker names + electoral periods to Wikidata QIDs. URL goes in `manifest.yaml` as `entity_dump_url`. The NEL stage reads from this.
-- **Entity-fishing API endpoint** — required by the NER stage. Pass via `--ner-api-endpoint` or set in `manifest.yaml`. Public instances exist; for production, run your own.
+- **Entity-fishing API endpoint** — required by the NER stage. Pass via `--ner-api-endpoint`. Public instances exist; for production, run your own.
 - **`ffmpeg` and `espeak`** — required by the alignment stage (aeneas dependency).
 - **A spaCy model for the parliament's language** — declared in `manifest.locale.spacy_model` (single source of truth). Install via `python -m spacy download <model>`.
 
@@ -201,7 +201,7 @@ Notes for filling in the hooks:
 
 4. Spot-check sentence timings, Wikidata IDs on a known speaker, and entity extraction quality.
 
-There is no automated test suite — validation output is the primary signal.
+Add tests for the parliament's parsers and merger under `tests/` (see the existing `tests/test_<code>*.py` files). `tests/test_conductor_contract.py` picks a new parliament up automatically and checks the surface the Conductor depends on.
 
 ## 10. Write the parliament README
 
@@ -233,9 +233,7 @@ timestamp-window (EU). One paragraph, link the file path.>
 
 ## Running
 
-<The `workflow.py` invocation with the `--period` value and the stage flags. Use the generic `--session`
-flag to target specific seed sessions; document any parliament-specific flags
-(`--year`, `--kid`, …).>
+<The `workflow.py` invocation with the `--period` value and the stage flags. Document the parliament-specific flags (`--session`, `--year`, `--kid`, …).>
 
 ## Access notes (optional)
 
