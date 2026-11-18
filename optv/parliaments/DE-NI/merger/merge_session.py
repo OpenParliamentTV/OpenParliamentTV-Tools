@@ -31,9 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import re
 import sys
-from datetime import datetime
 from pathlib import Path
 
 if __package__ is None or __package__ == "":
@@ -57,8 +55,6 @@ SOURCE_URI = _get_rights("DE-NI", stream="media")["sourceURI"]
 # Plenar-TV subtitles (protocol text, timed per agenda item).
 PROCEEDINGS_CREATOR = _get_rights("DE-NI", stream="proceedings")["creator"]
 PROCEEDINGS_LICENSE = _get_rights("DE-NI", stream="proceedings")["license"]
-
-_SLUG_RE = re.compile(r'[^a-z0-9]+')
 
 
 def _int_or_none(value):

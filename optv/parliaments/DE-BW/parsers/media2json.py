@@ -147,11 +147,6 @@ def _split_meta(meta_raw: str) -> tuple[str, str]:
         return role, faction
     return " ".join(segments).strip(), ""
 
-
-def _offset_clock(seconds: int) -> str:
-    return str(timedelta(seconds=int(seconds)))  # H:MM:SS (no leading zero pad)
-
-
 def _iter_parts(manifest: dict) -> list[dict]:
     """Normalise to a list of parts. Back-compat: a flat ``tops`` manifest
     (no ``parts``) is treated as a single part 1."""

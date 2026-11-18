@@ -38,7 +38,6 @@ import logging
 import re
 import sys
 from collections import deque
-from copy import deepcopy
 from pathlib import Path
 from typing import Any
 

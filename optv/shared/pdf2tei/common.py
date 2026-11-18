@@ -14,9 +14,7 @@ in :mod:`optv.shared.lang.de` (``is_running_header``).
 """
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 
 
 # Soft hyphen (U+00AD) and non-breaking space (U+00A0) appear all over German
@@ -49,15 +47,3 @@ def normalize_ws(text: str) -> str:
 def clean_block_text(raw: str) -> str:
     """Dehyphenate, then flatten to a single normalized line of text."""
     return normalize_ws(dehyphenate(raw))
-
-
-def write_blocks(path: Path, blocks: list[dict]) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(blocks, f, ensure_ascii=False, indent=1)
-
-
-def read_blocks(path: Path) -> list[dict]:
-    with open(path) as f:
-        return json.load(f)

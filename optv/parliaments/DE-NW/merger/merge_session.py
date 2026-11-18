@@ -29,7 +29,6 @@ import json
 import logging
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
 
 if __package__ is None or __package__ == "":

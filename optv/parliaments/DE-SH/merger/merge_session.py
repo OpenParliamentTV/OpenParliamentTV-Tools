@@ -116,11 +116,6 @@ def _split_role_and_name(redner: str) -> tuple[str | None, str]:
     return m.group("role"), m.group("rest").strip()
 
 
-# Honorifics to strip from the name before NEL matches the entity dump.
-# Wikidata MP labels don't carry "Dr."/"Prof." prefixes so leaving them on
-# the person.label costs ~40% of the wid hit rate.
-_HONORIFICS = ("Dr. ", "Prof. ", "Prof. Dr. ", "Dr. Dr. ", "Dr. h. c. ")
-
 
 def _build_person(speech: dict) -> dict:
     role, plain_name = _split_role_and_name(speech.get("redner", ""))

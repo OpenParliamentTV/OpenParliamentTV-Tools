@@ -23,9 +23,6 @@ from the role in the speaker line); other turns carry ``None``.
 """
 from __future__ import annotations
 
-import datetime
-import re
-from pathlib import Path
 from typing import Callable, Optional
 
 from lxml import etree
@@ -163,32 +160,3 @@ def tei_to_turns(data_root, person_root=None, org_root=None, *,
                 })
                 pending_label = None
     return turns
-
-
-def _parse_xml(path: Path):
-    return etree.parse(str(path)).getroot() if Path(path).exists() else None
-
-
-def parse_tei_dir(tei_dir: Path, sid: str, parliament: str, *,
-                  session: Optional[str] = None,
-                  sentencize: Optional[Callable[[str], list[str]]] = None) -> dict:
-    """Read ``<tei_dir>/<sid>-data.xml`` + the listPerson/listOrg registries and
-    return a ``{"meta": …, "data": [turns]}`` proceedings document."""
-    tei_dir = Path(tei_dir)
-    data_root = etree.parse(str(tei_dir / f"{sid}-data.xml")).getroot()
-    person_root = _parse_xml(tei_dir / f"ParlaMint-{parliament}-listPerson.xml") \
-        or _parse_xml(tei_dir / "ParlaMint-DE-listPerson.xml")
-    org_root = _parse_xml(tei_dir / f"ParlaMint-{parliament}-listOrg.xml") \
-        or _parse_xml(tei_dir / "ParlaMint-DE-listOrg.xml")
-    turns = tei_to_turns(data_root, person_root, org_root, sentencize=sentencize)
-    return {
-        "meta": {
-            "session": session or sid,
-            "parliament": parliament,
-            "processing": {
-                "parse_proceedings":
-                    datetime.datetime.utcnow().isoformat(timespec="seconds"),
-            },
-        },
-        "data": turns,
-    }

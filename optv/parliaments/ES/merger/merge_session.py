@@ -18,7 +18,6 @@ logger = logging.getLogger('merge_session' if __name__ == '__main__' else __name
 
 import argparse
 from copy import deepcopy
-from datetime import datetime
 import json
 from pathlib import Path
 import sys

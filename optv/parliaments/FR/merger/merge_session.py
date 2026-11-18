@@ -49,7 +49,7 @@ from optv.parliaments.FR.common import (
 )
 from optv.parliaments import get_rights as _get_rights
 from optv.shared.speech_id import normalize_speech_originid
-from optv.shared.meta import build_meta, now_iso
+from optv.shared.meta import build_meta
 
 logger = logging.getLogger(__name__)
 

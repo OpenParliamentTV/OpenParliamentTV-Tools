@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Optional
 
 from ..sequence_align import align_equal_keys
 

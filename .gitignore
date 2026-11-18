@@ -30,19 +30,3 @@ _planning/
 *.mov
 *.mpg
 *.mp3
-
-# Composer
-composer.phar
-/vendor/
-
-# Language Cache
-langcache/*.php
-
-# Data (but keep raw-*.json files & proceedings xml files)
-parliaments/DE/data/examples
-parliaments/DE/data/media/[0-9]*.json
-parliaments/DE/data/proceedings/*.json
-
-# Commit your application's lock file https://getcomposer.org/doc/01-basic-usage.md#commit-your-composer-lock-file-to-version-control
-# You may choose to ignore a library lock file http://getcomposer.org/doc/02-libraries.md#lock-file
-# composer.lock

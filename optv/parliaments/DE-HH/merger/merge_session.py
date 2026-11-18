@@ -31,9 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import re
 import sys
-from datetime import datetime
 from pathlib import Path
 
 if __package__ is None or __package__ == "":
@@ -60,8 +58,6 @@ PROCEEDINGS_CREATOR = _get_rights("DE-HH", stream="proceedings")["creator"]
 PROCEEDINGS_LICENSE = _get_rights("DE-HH", stream="proceedings")["license"]
 TRANSCRIPT_CREATOR = _get_rights("DE-HH", stream="transcript")["creator"]
 TRANSCRIPT_LICENSE = _get_rights("DE-HH", stream="transcript")["license"]
-
-_SLUG_RE = re.compile(r'[^a-z0-9]+')
 
 
 def _build_person(speech: dict) -> dict:

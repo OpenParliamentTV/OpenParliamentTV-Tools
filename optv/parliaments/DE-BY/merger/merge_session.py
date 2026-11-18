@@ -60,8 +60,6 @@ _NAME_ROLE_RE = re.compile(
     re.UNICODE,
 )
 
-_HONORIFICS = ("Dr. ", "Prof. ", "Prof. Dr. ", "Dr. Dr. ", "Dr. h. c. ")
-
 
 def _split_role_and_name(redner: str) -> tuple[str | None, str]:
     if not redner:

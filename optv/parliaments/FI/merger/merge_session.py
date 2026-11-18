@@ -40,7 +40,7 @@ from optv.parliaments.FI.common import (
 )
 from optv.shared.agenda_types import annotate_agenda_item, classify_fi
 from optv.shared.speech_id import normalize_speech_originid
-from optv.shared.meta import build_meta, now_iso
+from optv.shared.meta import build_meta
 
 logger = logging.getLogger(__name__)
 

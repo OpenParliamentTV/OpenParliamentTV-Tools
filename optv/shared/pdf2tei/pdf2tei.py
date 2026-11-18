@@ -18,7 +18,6 @@ import re
 
 from lxml import etree
 
-from .common import read_blocks
 from ..lang.de import (
     MONTHS, DATE_RE, INCIDENT_KW, TITLE_STOP, HEADING_NOISE,
     pdf_chair_context, faction_slug,
@@ -329,8 +328,3 @@ def build_registries(persons, factions, has_gov):
         if spk.is_gov:
             _sub(p, "affiliation", ref="#government.DE", role="minister")
     return person_root, org_root
-
-
-def write_xml(path, root):
-    etree.ElementTree(root).write(str(path), encoding="utf-8",
-                                  xml_declaration=True, pretty_print=True)
