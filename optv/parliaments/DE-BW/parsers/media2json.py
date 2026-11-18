@@ -31,6 +31,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from optv.parliaments import get_rights as _get_rights
+from optv.shared.lang.de import strip_honorifics as _strip_honorifics
 
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
@@ -48,24 +49,9 @@ MEDIA_CREATOR = _get_rights("DE-BW", stream="media")["creator"]
 # meta carries a title but no party).
 _FACTIONS = {"grüne", "gruene", "cdu", "spd", "fdp/dvp", "fdp", "afd", "fraktionslos"}
 
-_HONORIFICS = ("Dr. ", "Prof. ", "Prof. Dr. ", "Dr. Dr. ", "Dr. h. c. ")
-
 # Lowercase surname particles; trailing ones in the given-name part belong to
 # the surname ("Loga, Cornelia von" → "von Loga").
 _PARTICLES = {"von", "vom", "zu", "zum", "zur", "van", "de", "der", "den", "du"}
-
-
-def _strip_honorifics(name: str) -> str:
-    s = name.strip()
-    changed = True
-    while changed:
-        changed = False
-        for h in _HONORIFICS:
-            if s.startswith(h):
-                s = s[len(h):]
-                changed = True
-                break
-    return s
 
 
 def _move_particles(firstname: str, lastname: str) -> tuple[str, str]:

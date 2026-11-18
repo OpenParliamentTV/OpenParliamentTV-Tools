@@ -27,7 +27,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import re
 import sys
 from pathlib import Path
 
@@ -38,7 +37,7 @@ if __package__ is None or __package__ == "":
     __package__ = "optv.parliaments.DE-NW.merger"
 
 from optv.shared.agenda_types import classify_de_nw
-from optv.shared.merge_format import format_offset as _num
+from optv.shared.merge_format import agenda_id, format_offset as _num
 from optv.shared.lang.de import speaker_context as _speaker_context
 
 from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
@@ -54,18 +53,6 @@ PARLIAMENT_ID = "DE-NW"
 SOURCE_URI = _get_rights("DE-NW", stream="media")["sourceURI"]
 PROCEEDINGS_CREATOR = _get_rights("DE-NW", stream="proceedings")["creator"]
 PROCEEDINGS_LICENSE = _get_rights("DE-NW", stream="proceedings")["license"]
-
-_SLUG_RE = re.compile(r'[^a-z0-9]+')
-
-
-def _agenda_id(top_number: str, title: str) -> str:
-    """``TOP-{n}`` when the item is numbered, else a (length-capped) title slug."""
-    if top_number:
-        return f"TOP-{str(top_number).lower()}"
-    slug = _SLUG_RE.sub("-", (title or "").lower()).strip("-")
-    if len(slug) > 64:
-        slug = slug[:64].rsplit("-", 1)[0]   # cut at a word boundary
-    return slug or "eroeffnung"
 
 
 def _build_person(speech: dict) -> dict:
@@ -95,7 +82,7 @@ def _build_agenda(speech: dict) -> dict:
     out: dict = {
         "officialTitle": official,
         "title": title,
-        "id": _agenda_id(top_number, title),
+        "id": agenda_id(top_number, title, fallback="eroeffnung"),
     }
     native, core = classify_de_nw(title)
     if native:

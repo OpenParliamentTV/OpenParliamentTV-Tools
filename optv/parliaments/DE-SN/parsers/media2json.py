@@ -32,6 +32,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from optv.parliaments import get_rights as _get_rights
+from optv.shared.lang.de import strip_honorifics as _strip_honorifics
 
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
@@ -54,8 +55,6 @@ BERLIN = ZoneInfo("Europe/Berlin")
 _NON_FACTION = {"staatsregierung"}
 _FRAKTIONSLOS = {"fraktionslos", "fraktionslose", "parteilos"}
 
-_HONORIFICS = ("Dr. ", "Prof. ", "Prof. Dr. ", "Dr. Dr. ", "Dr. h. c. ")
-
 # Structural placeholder rows the mediathek lists alongside real Redebeiträge:
 # session-boundary / break / vote-count markers carried in the speaker field or
 # the speech type (e.g. "ENDE der Sitzung - Fragestunde", "Unbekannter Redner -
@@ -77,19 +76,6 @@ def local_iso(date: str, time: str) -> str:
     """``("2026-02-05", "10:04:09")`` → ``"2026-02-05T10:04:09+01:00"``."""
     dt = datetime.strptime(f"{date}T{time}", "%Y-%m-%dT%H:%M:%S").replace(tzinfo=BERLIN)
     return dt.isoformat("T", "seconds")
-
-
-def _strip_honorifics(name: str) -> str:
-    s = name.strip()
-    changed = True
-    while changed:
-        changed = False
-        for h in _HONORIFICS:
-            if s.startswith(h):
-                s = s[len(h):]
-                changed = True
-                break
-    return s
 
 
 def _split_name(speaker_raw: str) -> tuple[str, str, str]:

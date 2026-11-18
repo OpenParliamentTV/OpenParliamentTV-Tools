@@ -11,17 +11,13 @@ import argparse
 from copy import deepcopy
 from optv.shared.speech_id import normalize_speech_originid
 from optv.shared.meta import build_meta, fill_original_language, now_iso
+from optv.shared.nel import remove_accents
 from datetime import datetime
 import itertools
 import json
 from pathlib import Path
 import re
 import sys
-import unicodedata
-
-def remove_accents(input_str):
-    nfkd_form = unicodedata.normalize('NFKD', input_str)
-    return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
 def merge_item(mediaitem, proceedingitems):
     # We have both items - copy proceedings data into media item
