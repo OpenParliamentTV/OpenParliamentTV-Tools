@@ -100,6 +100,16 @@ def get_filename(period, meeting=None):
     else:
         return f"{period}{str(meeting).rjust(3, '0')}-media.json"
 
+def _read_cached(path: Path):
+    """The parsed media file at ``path``, or None if absent or unreadable."""
+    try:
+        cached = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(cached, dict) or not isinstance(cached.get('data'), list):
+        return None
+    return cached
+
 def download_data(period, meeting=None, output=None, save_raw_data=False, force=False):
     """Download data for a given meeting.
 
@@ -111,6 +121,12 @@ def download_data(period, meeting=None, output=None, save_raw_data=False, force=
     You can test for the status of the fetch query by testing
     raw_data['root']['status'] : it is 200 in case of success. The
     server often returns a 503.
+
+    A download with fewer items than the cached file is not saved: the
+    feed occasionally answers 200 with part of the list missing (21062
+    once came back with 1 of 198 clips), while a sitting's list of clips
+    only grows. The cached data is returned instead. To accept a shorter
+    list, delete the cached file.
 
     Returns a tuple (raw_data, parsed_data).
 
@@ -142,6 +158,11 @@ def download_data(period, meeting=None, output=None, save_raw_data=False, force=
         # import IPython; IPython.embed()
 
     if output:
+        cached = _read_cached(output_dir / filename)
+        if cached and len(data['data']) < len(cached['data']):
+            logger.warning(f"{filename}: feed returned {len(data['data'])} item(s), fewer than "
+                           f"the {len(cached['data'])} cached - keeping the cached list")
+            return raw_data, cached
         updated = save_if_changed(data, output_dir / filename)
         if updated:
             logger.warning(f"Saving {len(data['data'])} entries into {filename}")
