@@ -119,6 +119,8 @@ def test_merge_item_debug_records_indexes_and_confidence():
     assert debug["proceedingIndex"] == 1001
     assert debug["proceedingIndexes"] == [1001]
     assert debug["confidence"] == 1
+    # Published DE files carry the integer; 1.0 would rewrite every session.
+    assert type(debug["confidence"]) is int
 
 
 def test_merge_item_main_speaker_first_when_media_provides_one():

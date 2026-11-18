@@ -116,6 +116,7 @@ An opt-in QC toolset cross-checks output without touching pipeline data. It has 
 
 - [`optv/shared/whisper_diff.py`](optv/shared/whisper_diff.py) (`rank` / `transcribe` / `diff`) — transcribes a session's audio with faster-whisper (+ optional Resemblyzer speaker-change detection, via [`whisper_qc.py`](optv/shared/whisper_qc.py)) and reports where it diverges from the proceedings text.
 - [`optv/scripts/merge_audit.py`](optv/scripts/merge_audit.py) — read-only sweep over merger output that flags text-accumulation anomalies (histograms + suspect lists).
+- [`optv/scripts/equivalence.py`](optv/scripts/equivalence.py) (`snapshot` / `compare` / `status-dump`) — proves a code change leaves pipeline output untouched: runs each parliament's workflow (parse, merge, publish) offline on a scratch copy of its data repo and diffs the output digests of two Tools checkouts.
 
 ## Implemented parliaments
 
