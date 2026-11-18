@@ -66,3 +66,11 @@ def test_adapt_merge_reorders_the_arguments():
     hook = wf.adapt_merge(merge_session)
     assert hook("config", "21001", "args") == "merged-path"
     assert calls == [("21001", "config", "args")]
+
+
+@pytest.mark.parametrize("parliament", ["AT", "DE-BW", "DE-BY", "DE-NW", "DE-SH", "DE-SN",
+                                        "EU", "FI", "FR", "NO", "PT", "SE"])
+def test_sliced_audio_parliaments_use_the_shared_align_hook(parliament):
+    """One align hook body for every parliament that slices per-speech audio: it reads the richest available document, so a re-align keeps published entity links and NER."""
+    hooks = importlib.import_module(f"optv.parliaments.{parliament}.workflow").HOOKS
+    assert hooks.align_session_to_file.__qualname__.startswith("make_align_hook.")

@@ -18,7 +18,6 @@ KB (``manifest.locale.entityfishing_language``), as entity-fishing has no
 Norwegian one.
 """
 
-import datetime as _dt
 import json
 import logging
 import os
@@ -32,7 +31,7 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = module_dir.name
 
-from optv.shared.align import align_audio
+from optv.shared.audio_prep import make_align_hook
 from optv.shared.workflow import WorkflowHooks, period_prefix_scope, run_main
 
 from .align_prep import prepare_per_speech_audio
@@ -164,34 +163,8 @@ def _merge(config, session, args):
     return merged_file
 
 
-def _align(config, session, args):
-    """One MP4 per meeting part, sliced into per-speech MP3s for aeneas."""
-    merged_file = config.file(session, "merged")
-    if not merged_file.exists():
-        raise FileNotFoundError(f"[{session}] no merged file - cannot align")
-
-    logger.info(f"[{session}] preparing per-speech audio slices")
-    doc = json.loads(merged_file.read_text())
-    prepare_per_speech_audio(doc["data"], args.cache_dir, force=args.force)
-
-    logger.info(f"[{session}] running aeneas alignment ({args.aeneas_language})")
-    align_audio(
-        doc["data"],
-        language=args.aeneas_language,
-        cachedir=args.cache_dir,
-        force=args.force,
-        timeout=args.align_timeout,
-        max_audio_seconds=args.align_max_audio_seconds,
-    )
-    doc["meta"].setdefault("processing", {})
-    doc["meta"]["processing"]["align"] = _dt.datetime.utcnow().isoformat(timespec="seconds")
-    doc["meta"]["lastProcessing"] = "align"
-    doc["meta"]["lastUpdate"] = _dt.datetime.utcnow().isoformat(timespec="seconds")
-
-    aligned_file = config.file(session, "aligned", create=True)
-    aligned_file.write_text(json.dumps(doc, indent=2, ensure_ascii=False))
-    logger.info(f"[{session}] wrote {aligned_file.name}")
-    return aligned_file
+# One MP4 per meeting part, sliced into per-speech MP3s for aeneas (align_prep).
+_align = make_align_hook(prepare_per_speech_audio)
 
 
 HOOKS = WorkflowHooks(

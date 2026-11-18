@@ -24,8 +24,6 @@ or, when omitted, the whole legislature's Syceron archive.
 
 from __future__ import annotations
 
-import datetime as _dt
-import json
 import logging
 import os
 import re
@@ -38,7 +36,7 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = module_dir.name
 
-from optv.shared.align import align_audio
+from optv.shared.audio_prep import make_align_hook
 from optv.shared.workflow import WorkflowHooks, adapt_merge, run_main
 
 from .align_prep import prepare_per_speech_audio
@@ -98,28 +96,7 @@ def _parse(config, args):
 _merge = adapt_merge(merge_session)
 
 
-def _align(config, session, args):
-    merged_file = config.file(session, "merged")
-    if not merged_file.exists():
-        raise FileNotFoundError(f"[{session}] no merged file — cannot align")
-    doc = json.loads(merged_file.read_text())
-
-    logger.info(f"[{session}] preparing per-speech audio slices")
-    prepare_per_speech_audio(doc["data"], args.cache_dir, force=args.force)
-
-    logger.info(f"[{session}] running aeneas alignment ({args.aeneas_language})")
-    align_audio(doc["data"], language=args.aeneas_language, cachedir=args.cache_dir,
-                force=args.force, timeout=args.align_timeout,
-                max_audio_seconds=args.align_max_audio_seconds)
-    now = _dt.datetime.utcnow().isoformat(timespec="seconds")
-    doc["meta"].setdefault("processing", {})["align"] = now
-    doc["meta"]["lastProcessing"] = "align"
-    doc["meta"]["lastUpdate"] = now
-
-    aligned_file = config.file(session, "aligned", create=True)
-    aligned_file.write_text(json.dumps(doc, indent=2, ensure_ascii=False))
-    logger.info(f"[{session}] wrote {aligned_file.name}")
-    return aligned_file
+_align = make_align_hook(prepare_per_speech_audio)
 
 
 HOOKS = WorkflowHooks(
