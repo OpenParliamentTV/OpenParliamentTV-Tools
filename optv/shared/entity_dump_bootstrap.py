@@ -10,10 +10,12 @@ That builder is configured in the parliament's ``manifest.yaml``::
     entity_bootstrap:
       wikidata_position: Q17481175      # P39 value: member of this parliament
       wikidata_aliases: false           # also take multi-word German aliases of a person
-      parties:
-        - {id: Q49762, label: CDU, aliases: [...]}
+      parties:                          # label and aliases as the source writes them
+        - {party: cdu, label: CDU, aliases: [...]}
       extra_members:                    # persons whose item lacks the P39 statement
         - {id: Q50943765, label: Kristina Herbst}
+
+A party names its Wikidata item by ``party`` (a key of ``GERMAN_PARTIES``, so each item is typed in exactly once) or, for a party not in that table, by ``id``.
 
 Person coverage is as good as Wikidata's P39 statements: members whose item lacks the statement, and government members who hold no seat, stay unlinked.
 """
@@ -34,6 +36,21 @@ logger = logging.getLogger(__name__)
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
               "(+https://github.com/OpenParliamentTV)")
+
+# Wikidata items of the parties sitting in German parliaments, by the key a
+# manifest's ``parties[].party`` names.
+GERMAN_PARTIES = {
+    "afd": "Q6721203",            # Alternative für Deutschland
+    "bsw": "Q123121346",          # Bündnis Sahra Wagenknecht
+    "cdu": "Q49762",              # Christlich Demokratische Union Deutschlands
+    "csu": "Q49763",              # Christlich-Soziale Union in Bayern
+    "fdp": "Q13124",              # Freie Demokratische Partei
+    "freie_waehler": "Q1231839",  # Landesvereinigung Freie Wähler Bayern
+    "gruene": "Q49766",           # Bündnis 90/Die Grünen
+    "linke": "Q49764",            # Die Linke
+    "spd": "Q49768",              # Sozialdemokratische Partei Deutschlands
+    "ssw": "Q161545",             # Südschleswigscher Wählerverband
+}
 
 _P39_MEMBERS = """
 SELECT DISTINCT ?person ?label_de ?label_en ?label_mul WHERE {
@@ -156,10 +173,12 @@ def build_from_manifest(parliament_id: str, metadata_dir: Path) -> Path:
     config = load_manifest(parliament_id).get("entity_bootstrap")
     if not config:
         raise KeyError(f"The {parliament_id} manifest has no 'entity_bootstrap' block")
+    parties = [{**party, "id": party["id"] if "id" in party else GERMAN_PARTIES[party["party"]]}
+               for party in config.get("parties") or []]
     return build_p39_dump(
         metadata_dir,
         position=config["wikidata_position"],
-        parties=config.get("parties") or [],
+        parties=parties,
         with_aliases=bool(config.get("wikidata_aliases")),
         extra_members=config.get("extra_members") or [],
     )

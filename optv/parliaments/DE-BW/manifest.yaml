@@ -36,18 +36,18 @@ proceedings:
 entity_bootstrap:
   wikidata_position: Q17481175   # member of the Landtag of Baden-Württemberg
   parties:
-    - id: Q49766
+    - party: gruene
       label: "GRÜNE"
       aliases: ["BÜNDNIS 90/DIE GRÜNEN", "Bündnis 90/Die Grünen", "Grüne", "B90/Grüne"]
-    - id: Q49762
+    - party: cdu
       label: "CDU"
       aliases: ["Christlich Demokratische Union Deutschlands", "CDU/CSU"]
-    - id: Q49768
+    - party: spd
       label: "SPD"
       aliases: ["Sozialdemokratische Partei Deutschlands"]
-    - id: Q6539
+    - party: fdp
       label: "FDP/DVP"
       aliases: ["FDP", "Freie Demokratische Partei", "FDP/Demokratische Volkspartei"]
-    - id: Q6721203
+    - party: afd
       label: "AfD"
       aliases: ["Alternative für Deutschland"]

@@ -103,3 +103,43 @@ def test_manifest_block_builds_a_dump(parliament, wikidata, tmp_path):
 def test_parliament_without_a_block_is_refused(tmp_path):
     with pytest.raises(KeyError):
         bootstrap.build_from_manifest("DE", tmp_path)
+
+
+def test_party_table_names_each_item_once():
+    ids = list(bootstrap.GERMAN_PARTIES.values())
+    assert len(set(ids)) == len(ids)
+
+
+@pytest.mark.parametrize("parliament", LANDTAGE)
+def test_landtag_parties_come_from_the_party_table(parliament):
+    for party in load_manifest(parliament)["entity_bootstrap"]["parties"]:
+        assert "id" not in party
+        assert party["party"] in bootstrap.GERMAN_PARTIES
+
+
+@pytest.mark.parametrize("parliament, label, qid", [
+    ("DE-BW", "FDP/DVP", "Q13124"),
+    ("DE-BY", "CSU", "Q49763"),
+    ("DE-SH", "SSW", "Q161545"),
+    ("DE-SN", "BSW", "Q123121346"),
+    ("DE-SN", "Die Linke", "Q49764"),
+    ("DE-SN", "BÜNDNISGRÜNE", "Q49766"),
+    ("DE-ST", "FDP", "Q13124"),
+    ("DE-ST", "AfD", "Q6721203"),
+    ("DE-ST", "Die Linke", "Q49764"),
+    ("DE-ST", "BÜNDNIS 90/DIE GRÜNEN", "Q49766"),
+    ("DE-ST", "BSW", "Q123121346"),
+])
+def test_faction_labels_resolve_to_the_party_item(parliament, label, qid, wikidata, tmp_path):
+    out = bootstrap.build_from_manifest(parliament, tmp_path)
+    factions = {e["label"]: e["id"] for e in json.loads(out.read_text())["data"] if e["subType"] == "faction"}
+    assert factions[label] == qid
+
+
+def test_a_party_outside_the_table_names_its_item_directly(wikidata, tmp_path, monkeypatch):
+    block = {"wikidata_position": "Q1", "parties": [{"id": "Q42", "label": "Regionalpartei"},
+                                                    {"party": "spd", "label": "SPD"}]}
+    monkeypatch.setattr("optv.parliaments.load_manifest", lambda pid: {"entity_bootstrap": block})
+    out = bootstrap.build_from_manifest("XX", tmp_path)
+    assert [(e["label"], e["id"]) for e in json.loads(out.read_text())["data"]] == [
+        ("Regionalpartei", "Q42"), ("SPD", "Q49768")]

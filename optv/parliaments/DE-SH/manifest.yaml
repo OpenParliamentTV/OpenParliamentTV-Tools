@@ -34,19 +34,19 @@ proceedings:
 entity_bootstrap:
   wikidata_position: Q18130496   # member of the Landtag of Schleswig-Holstein
   parties:
-    - id: Q49762
+    - party: cdu
       label: "CDU"
       aliases: ["Christlich Demokratische Union Deutschlands"]
-    - id: Q49768
+    - party: spd
       label: "SPD"
       aliases: ["Sozialdemokratische Partei Deutschlands"]
-    - id: Q13124
+    - party: fdp
       label: "FDP"
       aliases: ["Freie Demokratische Partei"]
-    - id: Q49766
+    - party: gruene
       label: "BÜNDNIS 90/DIE GRÜNEN"
       aliases: ["Bündnis 90/Die Grünen", "GRÜNE", "Grüne", "B90/Grüne"]
-    - id: Q161545
+    - party: ssw
       label: "SSW"
       aliases: ["Südschleswigscher Wählerverband", "Sydslesvigsk Vælgerforening"]
   extra_members:   # the item lacks the P39 statement

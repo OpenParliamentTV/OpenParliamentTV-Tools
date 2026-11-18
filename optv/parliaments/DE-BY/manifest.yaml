@@ -36,18 +36,18 @@ proceedings:
 entity_bootstrap:
   wikidata_position: Q17586301   # member of the Landtag of Bavaria
   parties:
-    - id: Q49763
+    - party: csu
       label: "CSU"
       aliases: ["Christlich-Soziale Union in Bayern", "Christlich-Soziale Union"]
-    - id: Q1231839
+    - party: freie_waehler
       label: "FREIE WÄHLER"
       aliases: ["Freie Wähler", "FW", "Landesvereinigung Freie Wähler Bayern"]
-    - id: Q49766
+    - party: gruene
       label: "BÜNDNIS 90/DIE GRÜNEN"
       aliases: ["Bündnis 90/Die Grünen", "GRÜNE", "Grüne", "B90/Grüne"]
-    - id: Q6721203
+    - party: afd
       label: "AfD"
       aliases: ["Alternative für Deutschland"]
-    - id: Q49768
+    - party: spd
       label: "SPD"
       aliases: ["Sozialdemokratische Partei Deutschlands"]

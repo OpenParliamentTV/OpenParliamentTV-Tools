@@ -28,24 +28,24 @@ proceedings:
 entity_bootstrap:
   wikidata_position: Q18559580   # member of the Landtag of Saxony-Anhalt
   parties:
-    - id: Q49762
+    - party: cdu
       label: "CDU"
       aliases: ["Christlich Demokratische Union Deutschlands"]
-    - id: Q49768
+    - party: spd
       label: "SPD"
       aliases: ["Sozialdemokratische Partei Deutschlands"]
-    - id: Q42797
+    - party: fdp
       label: "FDP"
       aliases: ["Freie Demokratische Partei"]
-    - id: Q41304
+    - party: afd
       label: "AfD"
       aliases: ["Alternative für Deutschland"]
-    - id: Q10729
+    - party: linke
       label: "Die Linke"
       aliases: ["DIE LINKE", "Linke", "PDS", "Die Linke.PDS"]
-    - id: Q13313
+    - party: gruene
       label: "BÜNDNIS 90/DIE GRÜNEN"
       aliases: ["Bündnis 90/Die Grünen", "GRÜNE", "Grüne", "B90/Grüne"]
-    - id: Q123121346
+    - party: bsw
       label: "BSW"
       aliases: ["Bündnis Sahra Wagenknecht", "Bündnis Sahra Wagenknecht – Vernunft und Gerechtigkeit"]

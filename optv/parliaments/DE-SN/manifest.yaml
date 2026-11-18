@@ -39,21 +39,21 @@ entity_bootstrap:
   wikidata_position: Q17334379   # member of the Landtag of Saxony
   wikidata_aliases: true   # multi-word German aliases cover name changes
   parties:
-    - id: Q49762
+    - party: cdu
       label: "CDU"
       aliases: ["Christlich Demokratische Union Deutschlands", "CDU/CSU"]
-    - id: Q6721203
+    - party: afd
       label: "AfD"
       aliases: ["Alternative für Deutschland"]
-    - id: Q124680118
+    - party: bsw
       label: "BSW"
       aliases: ["Bündnis Sahra Wagenknecht", "Bündnis Sahra Wagenknecht – Vernunft und Gerechtigkeit"]
-    - id: Q49768
+    - party: spd
       label: "SPD"
       aliases: ["Sozialdemokratische Partei Deutschlands"]
-    - id: Q49766
+    - party: gruene
       label: "BÜNDNISGRÜNE"
       aliases: ["BÜNDNIS 90/DIE GRÜNEN", "Bündnis 90/Die Grünen", "GRÜNE", "Grüne", "B90/Grüne"]
-    - id: Q49696
+    - party: linke
       label: "Die Linke"
       aliases: ["DIE LINKE", "Die Linke.", "PDS"]

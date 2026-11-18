@@ -45,18 +45,18 @@ transcript:
 entity_bootstrap:
   wikidata_position: Q19360355   # member of the Hamburg Parliament
   parties:
-    - id: Q49768
+    - party: spd
       label: "SPD"
       aliases: ["Sozialdemokratische Partei Deutschlands"]
-    - id: Q49766
+    - party: gruene
       label: "GRÜNE"
       aliases: ["BÜNDNIS 90/DIE GRÜNEN", "Bündnis 90/Die Grünen", "Grüne", "B90/Grüne"]
-    - id: Q49762
+    - party: cdu
       label: "CDU"
       aliases: ["Christlich Demokratische Union Deutschlands", "CDU/CSU"]
-    - id: Q49764
+    - party: linke
       label: "Die Linke"
       aliases: ["DIE LINKE", "Linke", "Die Linke."]
-    - id: Q6721203
+    - party: afd
       label: "AfD"
       aliases: ["Alternative für Deutschland"]

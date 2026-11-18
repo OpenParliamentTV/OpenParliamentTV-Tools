@@ -37,18 +37,18 @@ proceedings:
 entity_bootstrap:
   wikidata_position: Q17781726   # member of the Landtag of North Rhine-Westphalia
   parties:
-    - id: Q49762
+    - party: cdu
       label: "CDU"
       aliases: ["Christlich Demokratische Union Deutschlands", "CDU/CSU"]
-    - id: Q49766
+    - party: gruene
       label: "Bündnis 90/Die Grünen"
       aliases: ["BÜNDNIS 90/DIE GRÜNEN", "GRÜNE", "Grüne", "B90/Grüne"]
-    - id: Q49768
+    - party: spd
       label: "SPD"
       aliases: ["Sozialdemokratische Partei Deutschlands"]
-    - id: Q13124
+    - party: fdp
       label: "FDP"
       aliases: ["Freie Demokratische Partei", "F.D.P."]
-    - id: Q6721203
+    - party: afd
       label: "AfD"
       aliases: ["Alternative für Deutschland"]
