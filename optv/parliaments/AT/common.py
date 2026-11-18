@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+
 """AT Nationalrat file-layout config.
 
 Subclasses the shared :class:`optv.shared.config.BaseConfig`. The only
@@ -16,24 +17,9 @@ The default ``status()`` probe is inherited unchanged: the merger stamps
 base probe keys off.
 """
 
-import logging
-from pathlib import Path
-
-# Re-exported for back-compat: callers do
-# ``from .common import SessionStatus, save_if_changed, …``.
-from optv.shared.publish import (  # noqa: F401
-    data_signature,
-    save_if_changed,
-    data_has_timing,
-    data_has_ner,
-    is_demotion,
-    carry_forward_wids,
-    carry_forward_enrichments,
-)
 from optv.shared.config import BaseConfig
+# The Conductor imports SessionStatus from this module in-process.
 from optv.shared.session_status import SessionStatus  # noqa: F401
-
-logger = logging.getLogger(__name__)
 
 
 class Config(BaseConfig):
@@ -43,10 +29,3 @@ class Config(BaseConfig):
     # media-only records with empty textContents; the session is still aligned
     # and NER'd.
     TEXT_PROBE = "any"
-
-
-if __name__ == '__main__':
-    import sys
-    config = Config(Path(sys.argv[1]))
-    import IPython
-    IPython.embed()

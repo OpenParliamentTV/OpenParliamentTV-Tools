@@ -37,7 +37,8 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = "optv.parliaments.AT.merger"
 
-from optv.parliaments.AT.common import Config, save_if_changed
+from optv.parliaments.AT.common import Config
+from optv.shared.publish import save_if_changed
 from optv.parliaments.AT.parsers.media2json import parse_session as parse_media_session
 from optv.parliaments.AT.parsers.proceedings2json import (
     parse_session as parse_proceedings_session, clean_person_name, at_speaker_status)

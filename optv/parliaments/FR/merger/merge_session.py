@@ -44,9 +44,8 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.FR.merger"
 
-from optv.parliaments.FR.common import (
-    PARIS, Config, recording_start, save_if_changed, session_number_int,
-)
+from optv.parliaments.FR.common import PARIS, Config, recording_start, session_number_int
+from optv.shared.publish import save_if_changed
 from optv.parliaments import get_rights as _get_rights
 from optv.shared.speech_id import normalize_speech_originid
 from optv.shared.meta import build_meta

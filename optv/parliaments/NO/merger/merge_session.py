@@ -46,7 +46,8 @@ if __package__ is None or __package__ == "":
     __package__ = "optv.parliaments.NO.merger"
 
 from optv.parliaments import get_rights as _get_rights
-from optv.parliaments.NO.common import Config, save_if_changed
+from optv.parliaments.NO.common import Config
+from optv.shared.publish import save_if_changed
 from optv.shared.speech_id import normalize_speech_originid
 from optv.shared.meta import build_meta, fill_original_language, now_iso
 

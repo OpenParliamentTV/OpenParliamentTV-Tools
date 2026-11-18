@@ -88,7 +88,7 @@ def _parse(config, args):
 
 
 def _merge(config, session, args):
-    from .common import save_if_changed
+    from optv.shared.publish import save_if_changed
     doc = merge_session(config, session, args.period)
     merged_file = config.file(session, "merged", create=True)
     save_if_changed(doc, merged_file)

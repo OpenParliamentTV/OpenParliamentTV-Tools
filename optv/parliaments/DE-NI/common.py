@@ -17,24 +17,8 @@ within a Wahlperiode, so the ``{WP:02d}{Sitzung:03d}`` key stays flat; the
 Tagungsabschnitt is carried in ``meta``/``debug``.
 """
 
-import logging
-logger = logging.getLogger(__name__)
-
-import json
-from pathlib import Path
-
-# Re-exports for back-compat with the shared workflow runner.
 from optv.shared.config import BaseConfig
-
-from optv.shared.publish import (  # noqa: F401
-    data_signature,
-    save_if_changed,
-    data_has_timing,
-    data_has_ner,
-    is_demotion,
-    carry_forward_wids,
-    carry_forward_enrichments,
-)
+# The Conductor imports SessionStatus from this module in-process.
 from optv.shared.session_status import SessionStatus  # noqa: F401
 
 
@@ -42,7 +26,6 @@ class Config(BaseConfig):
     # The Plenar-TV WebVTT subtitles are attached to the video spine by
     # speechIndex, so sessions carry text. Sessions are discovered from bare
     # ``{session}-media.json`` files (BaseConfig defaults).
-    HAS_TEXT = True
     # Media spine: clips without subtitle text keep empty textContents; the
     # session is still aligned and NER'd.
     TEXT_PROBE = "any"
