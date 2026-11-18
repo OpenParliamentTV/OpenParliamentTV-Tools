@@ -537,14 +537,22 @@ def session_bounds(proceedings_meta: dict, media_meta: dict) -> tuple:
     malformed (sitzung-datum="02014", an empty sitzung-ende-uhrzeit).
     Neither is a session bound: each such value falls back to the media's
     first speech start / last speech end.
+
+    A proceedings start on another day than the first speech is not trusted
+    at all: upstream has published the protocol of a different sitting under
+    a session's URL (20001 holds sitting 2) and mistyped sitzung-datum
+    (19220, 20036, 20068), and only the media say which day it was.
     """
     start = proceedings_meta.get('dateStart') or ''
     end = proceedings_meta.get('dateEnd') or ''
-    utc_offset = (media_meta.get('dateStart') or '')[-6:]
+    media_start = media_meta.get('dateStart') or ''
+    utc_offset = media_start[-6:]
     placeholder = start.endswith('T00:00:00') and end.endswith('T23:59:59')
+    trusted = (is_utc_offset(utc_offset) and not placeholder
+               and start[:10] == media_start[:10])
 
     def bound(value, fallback):
-        if is_utc_offset(utc_offset) and not placeholder and NAIVE_TIMESTAMP_RE.match(value):
+        if trusted and NAIVE_TIMESTAMP_RE.match(value):
             return value + utc_offset
         return fallback
 

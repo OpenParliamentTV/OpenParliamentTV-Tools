@@ -16,8 +16,8 @@ MEDIA_META = {"dateStart": "2011-05-26T08:30:03+02:00",
 
 @pytest.mark.parametrize("proceedings,expected", [
     # Official sitting times get the media's UTC offset.
-    ({"dateStart": "2025-06-06T09:00:00", "dateEnd": "2025-06-06T14:42:00"},
-     ("2025-06-06T09:00:00+02:00", "2025-06-06T14:42:00+02:00")),
+    ({"dateStart": "2011-05-26T09:00:00", "dateEnd": "2011-05-26T22:42:00"},
+     ("2011-05-26T09:00:00+02:00", "2011-05-26T22:42:00+02:00")),
     # ParlaMint-DE whole-day placeholder (17111).
     ({"dateStart": "2011-05-26T00:00:00", "dateEnd": "2011-05-26T23:59:59"},
      (MEDIA_META["dateStart"], MEDIA_META["dateEnd"])),
@@ -29,6 +29,11 @@ MEDIA_META = {"dateStart": "2011-05-26T08:30:03+02:00",
      ("2011-05-26T09:00:00+02:00", MEDIA_META["dateEnd"])),
     # No proceedings times at all.
     ({}, (MEDIA_META["dateStart"], MEDIA_META["dateEnd"])),
+    # Protocol of another sitting (20015 holds sitting 28), or a mistyped
+    # sitzung-datum (20036: 08.05. for the 18.05. sitting): the day does not
+    # match the speeches, so neither bound is trusted.
+    ({"dateStart": "2011-04-07T09:00:00", "dateEnd": "2011-04-07T23:29:00"},
+     (MEDIA_META["dateStart"], MEDIA_META["dateEnd"])),
 ])
 def test_session_bounds(proceedings, expected):
     assert session_bounds(proceedings, MEDIA_META) == expected
