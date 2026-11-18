@@ -49,6 +49,47 @@ def _seconds(v) -> Optional[float]:
         return None
 
 
+# A wrong pick that the operator corrects back lasts a few seconds, and the
+# person picked first is entered again shortly after the segment's start.
+WRONG_PICK_MAX_S = 30.0
+REPICK_WITHIN_S = 15.0
+
+
+def drop_replaced_picks(speakers: list[dict]) -> list[dict]:
+    """The speaker entries without the picks the broadcast operator replaced.
+
+    The operator marks who has the floor. Replacing a pick creates a new entry that inherits the start of the running segment and leaves the replaced entry without an end, so an end-less entry followed by an entry with the same start is a replaced pick (several in a row form a chain). Two cases:
+
+    - The first pick was wrong and its successor carries the speech: only the replaced entries go.
+    - The first pick was right, the operator switched to someone else for a few seconds and then entered the first person again: the short successor is a wrong pick too and goes as well, leaving the re-entered speech.
+    """
+    kept: list[dict] = []
+    i, n = 0, len(speakers)
+    while i < n:
+        start = _seconds(speakers[i].get("time"))
+        replaced: list[dict] = []
+        while (start is not None and i + 1 < n
+               and _seconds(speakers[i].get("endTime")) is None
+               and _seconds(speakers[i + 1].get("time")) == start):
+            replaced.append(speakers[i])
+            i += 1
+        entry = speakers[i]
+        i += 1
+        if replaced and i < n:
+            end = _seconds(entry.get("endTime"))
+            again = speakers[i]
+            again_start = _seconds(again.get("time"))
+            again_person = _int(again.get("personNumber"))
+            if (end is not None and end - start <= WRONG_PICK_MAX_S
+                    and again_start is not None and 0 <= again_start - start <= REPICK_WITHIN_S
+                    and again_person is not None
+                    and again_person != _int(entry.get("personNumber"))
+                    and again_person in {_int(r.get("personNumber")) for r in replaced}):
+                continue
+        kept.append(entry)
+    return kept
+
+
 def speaker_media_record(spk: dict, event: dict, session_url: str,
                          next_start: Optional[float] = None) -> Optional[dict]:
     """The media record of one speaker entry of the broadcast event.
@@ -110,7 +151,10 @@ def parse_media_for_session(config: Config, session: str) -> dict:
     year, number = parse_session_str(session)
     session_url = f"{VL_ROOT}/fi/taysistunnot/taysistunto-{number}-{year}"
 
-    speakers = event.get("speakers") or []
+    listed = event.get("speakers") or []
+    speakers = drop_replaced_picks(listed)
+    if len(speakers) != len(listed):
+        logger.info(f"[{session}] dropped {len(listed) - len(speakers)} replaced speaker pick(s)")
     records: list[dict] = []
     for index, spk in enumerate(speakers):
         next_start = _seconds(speakers[index + 1].get("time")) if index + 1 < len(speakers) else None

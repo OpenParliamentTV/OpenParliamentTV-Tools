@@ -20,7 +20,7 @@ from optv.parliaments.FI.common import (
     parse_session_str, session_number_int, session_str, term_years,
 )
 from optv.parliaments.FI.parsers import proceedings2json as p2j
-from optv.parliaments.FI.parsers.media2json import speaker_media_record
+from optv.parliaments.FI.parsers.media2json import drop_replaced_picks, speaker_media_record
 from optv.parliaments.FI.scraper.eduskunta_api import parse_sitting_aggregation
 from optv.parliaments.FI.scraper.fetch_media import _extract_json_value
 from optv.parliaments.FI.scraper.fetch_proceedings import needs_refresh
@@ -148,6 +148,73 @@ def test_a_known_end_time_is_kept_whatever_the_next_speaker_start():
     media = speaker_media_record(event["speakers"][0], event, "x", next_start=470.0)["media"]
     assert media["duration"] == 28.0
     assert media["videoFileURI"].endswith("playlist.m3u8#t=455,483")
+
+
+def _entry(person, time, end="null"):
+    return {"personNumber": person, "time": time, "endTime": end, "lastName": f"P{person}"}
+
+
+def _people(entries):
+    return [(e["personNumber"], e["time"]) for e in entries]
+
+
+def test_replaced_pick_is_dropped_and_its_successor_carries_the_speech():
+    """Lyly picked, replaced at once by Valtonen who speaks for minutes."""
+    speakers = [_entry(1, 0, 60), _entry(2, 100), _entry(3, 100, 447), _entry(4, 445, 700)]
+    assert _people(drop_replaced_picks(speakers)) == [(1, 0), (3, 100), (4, 445)]
+
+
+def test_a_chain_of_replaced_picks_is_dropped_up_to_the_entry_with_an_end():
+    speakers = [_entry(1, 100), _entry(2, 100), _entry(3, 100, 198), _entry(2, 208, 332)]
+    assert _people(drop_replaced_picks(speakers)) == [(3, 100), (2, 208)]
+
+
+def test_a_short_wrong_pick_goes_when_the_first_person_is_entered_again():
+    """Nieminen picked, switched to Niemi for 9 s, Nieminen entered again 2 s after the start."""
+    speakers = [_entry(7, 100), _entry(8, 100, 109), _entry(7, 102, 192), _entry(9, 190, 250)]
+    assert _people(drop_replaced_picks(speakers)) == [(7, 102), (9, 190)]
+
+
+@pytest.mark.parametrize("speakers", [
+    # the successor is long: it is the speech, even though the first person follows shortly
+    [_entry(7, 100), _entry(8, 100, 400), _entry(7, 110, 500)],
+    # the first person comes back, but much later
+    [_entry(7, 100), _entry(8, 100, 109), _entry(7, 130, 200)],
+    # the entry after the successor is somebody else
+    [_entry(7, 100), _entry(8, 100, 109), _entry(9, 102, 200)],
+])
+def test_the_successor_stays_unless_it_is_a_short_pick_corrected_back(speakers):
+    assert _people(drop_replaced_picks(speakers)) == _people(speakers[1:])
+
+
+def test_entries_that_are_not_replaced_picks_stay():
+    speakers = [
+        _entry(1, 100, 150), _entry(2, 100, 160),   # same start, both with an end
+        _entry(3, 200), _entry(4, 290, 400),         # no end, next entry later: a speech missing its end
+        _entry(5, 500),                              # no end, last entry
+    ]
+    assert drop_replaced_picks(speakers) == speakers
+    assert drop_replaced_picks([]) == []
+
+
+def test_session_parse_drops_replaced_picks(tmp_path, caplog):
+    from optv.parliaments.FI.common import Config
+    from optv.parliaments.FI.parsers.media2json import parse_media_for_session
+
+    event = json.loads((FIX / "event-sample.json").read_text())
+    first, second = event["speakers"]
+    replaced = dict(first, personNumber=4242, lastName="Replaced", endTime="null")
+    event["speakers"] = [replaced, first, second]
+    config = Config(tmp_path)
+    config.dir("media", create=True)
+    config.raw_event("2026-058").write_text(json.dumps(event))
+
+    with caplog.at_level("INFO"):
+        records = parse_media_for_session(config, "2026-058")["data"]
+    assert [r["personNumber"] for r in records] == [first["personNumber"], second["personNumber"]]
+    pages = [r["media"]["sourcePage"] for r in records]
+    assert len(set(pages)) == len(pages)
+    assert any("dropped 1 replaced speaker pick" in r.getMessage() for r in caplog.records)
 
 
 def test_session_parse_passes_each_entry_the_next_start(tmp_path):
