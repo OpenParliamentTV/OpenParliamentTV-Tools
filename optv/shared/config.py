@@ -1,27 +1,27 @@
 #! /usr/bin/env python3
 """Shared per-parliament file-layout + session-status base class.
 
-Every parliament's ``optv/parliaments/<CODE>/common.py`` defined an essentially
-identical ``Config`` class: the same ``original/{media,proceedings}`` +
-``cache/{merged,aligned,ner}`` + ``processed/`` + ``metadata/`` layout, and the
-same ``dir`` / ``file`` / ``data`` / ``is_newer`` / ``save_data`` helpers. Those
-move here once as ``BaseConfig``; each parliament subclasses it and overrides
-only what genuinely differs:
+``BaseConfig`` holds the layout every parliament shares
+(``original/{media,proceedings}``, ``cache/{merged,aligned,ner}``,
+``processed/``, ``metadata/``) and the ``dir`` / ``file`` / ``data`` /
+``is_newer`` / ``save_data`` / ``sessions`` / ``status`` helpers. Each
+parliament's ``optv/parliaments/<CODE>/common.py`` subclasses it as ``Config``
+and sets class attributes for what differs:
 
-- ``sessions()`` — parameterized via the ``MEDIA_GLOB_PREFIX`` /
-  ``MEDIA_GLOB_SUFFIX`` / ``SESSION_SOURCE`` class attributes (covers the
-  ``raw-…-media.json`` and the bare ``…-media.json`` families); parliaments
-  whose session discovery is genuinely different (EU's ``cre_`` prefix, the
-  ``…-anforanden.json`` proceedings-keyed discoverers) keep overriding it.
-- ``status()`` — text-bearing parliaments use the full probe (the DE behaviour,
-  verbatim); video-only parliaments set ``HAS_TEXT = False`` to short-circuit to
-  ``no_text`` (no align/ner stages exist for them). Media-spine parliaments,
-  where a few clips per session routinely have no matched text, set
-  ``TEXT_PROBE = "any"`` so such sessions still count as text-bearing.
+- ``sessions()`` — ``SESSION_SOURCE`` / ``MEDIA_GLOB_PREFIX`` /
+  ``MEDIA_GLOB_SUFFIX`` name the raw files a session is discovered from
+  (``raw-…-media.json``, ``…-media.json``, ``…-anforanden.json`` under
+  proceedings, …).
+- ``status()`` — text-bearing parliaments use the full probe; video-only
+  parliaments set ``HAS_TEXT = False`` to short-circuit to ``no_text`` (no
+  align/ner stages exist for them). Media-spine parliaments, where a few clips
+  per session routinely have no matched text, set ``TEXT_PROBE = "any"`` so
+  such sessions still count as text-bearing. ``TEXT_SIGNAL`` says what marks a
+  speech as carrying text.
+- ``EXTRA_DIRS`` — further stage directories beyond the shared layout.
 
-Subclasses keep re-exporting ``SessionStatus`` and the ``optv.shared.publish``
-helpers from their ``common.py`` for back-compat with callers (including the
-Conductor's in-process ``optv.parliaments.<CODE>.common`` import).
+Each ``common.py`` also imports ``SessionStatus``: the Conductor reads it,
+together with ``Config``, from ``optv.parliaments.<CODE>.common`` in-process.
 """
 
 import json
@@ -52,6 +52,12 @@ class BaseConfig:
     # the PDF-tier spine join). "textContents": a non-empty ``textBody`` in any
     # ``textContents`` entry (mergers that graft text without that stamp).
     TEXT_SIGNAL: str = "proceedingIndex"
+    # --- extra stage directories: name -> (base, relative path) ---
+    # ``base`` is "data" or "cache", e.g.
+    # ``{"meetings": ("data", "original/meetings")}``. A name may alias one of
+    # the shared directories, which gives ``file(session, name)`` its own
+    # ``{session}-{name}.json`` there.
+    EXTRA_DIRS: dict = {}
 
     def has_merged_text(self, speech: dict) -> bool:
         """Whether ``speech`` carries merged text, by ``TEXT_SIGNAL``."""
@@ -74,6 +80,8 @@ class BaseConfig:
             'processed': data_dir / "processed",
             'nel_data': data_dir / "metadata",
         }
+        for name, (base, relative) in self.EXTRA_DIRS.items():
+            self._dir[name] = (cache_dir if base == "cache" else data_dir) / relative
 
     def dir(self, stage: str = 'processed', create: bool = False) -> Path:
         d = self._dir[stage]

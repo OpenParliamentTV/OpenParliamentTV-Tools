@@ -16,8 +16,6 @@ hierarchy (Wahlperiode > Sitzung) — there is no intra-term grouping level to
 drop, so there is no ``meta.tagung`` analogue.
 """
 
-from pathlib import Path
-
 from optv.shared.config import BaseConfig
 # The Conductor imports SessionStatus from this module in-process.
 from optv.shared.session_status import SessionStatus  # noqa: F401
@@ -31,7 +29,5 @@ class Config(BaseConfig):
     # Media spine: clips without text keep empty textContents; the session is
     # still aligned and NER'd.
     TEXT_PROBE = "any"
-
-    def __init__(self, data_dir: Path, cache_dir: Path = None):
-        super().__init__(data_dir, cache_dir)
-        self._dir['subtitles'] = Path(data_dir) / "original" / "subtitles"
+    # Per-speech WebVTT files of the mediathek, ``subtitles/{session}/``.
+    EXTRA_DIRS = {"subtitles": ("data", "original/subtitles")}

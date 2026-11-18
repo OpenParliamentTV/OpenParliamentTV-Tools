@@ -21,26 +21,13 @@ integer ``session.number``, so:
 This encoding shares a documented slot-width mismatch with SE.
 """
 
-import json
-import logging
 import re
 from pathlib import Path
 
-# Re-exported for back-compat with the publish helper shape used by the shared
-# workflow runner.
-from optv.shared.publish import (  # noqa: F401
-    data_signature,
-    save_if_changed,
-    data_has_timing,
-    data_has_ner,
-    is_demotion,
-    carry_forward_wids,
-    carry_forward_enrichments,
-)
 from optv.shared.config import BaseConfig
+# The Conductor imports SessionStatus from this module in-process.
 from optv.shared.session_status import SessionStatus  # noqa: F401
 
-logger = logging.getLogger(__name__)
 
 # A Finnish electoral term covers up to five valtiopäivät years (a partial
 # election year at each end). The download stage iterates these to discover
@@ -84,35 +71,10 @@ class Config(BaseConfig):
     # the others.
     TEXT_SIGNAL = "textContents"
     TEXT_PROBE = "any"
-
-    def __init__(self, data_dir: Path, cache_dir: Path = None):
-        data_dir = Path(data_dir)
-        if cache_dir is not None:
-            cache_dir = Path(cache_dir)
-        else:
-            cache_dir = data_dir / "cache"
-        self._dir = {
-            'data': data_dir,
-            'cache': cache_dir,
-            'media': data_dir / "original" / "media",
-            'proceedings': data_dir / "original" / "proceedings",
-            'merged': cache_dir / "merged",
-            'aligned': cache_dir / "aligned",
-            'ner': cache_dir / "ner",
-            'audio': cache_dir / "audio",
-            'audio_session': cache_dir / "audio_session",
-            'processed': data_dir / "processed",
-            'nel_data': data_dir / "metadata",
-        }
-
-    def file(self, session: str, stage: str = 'processed', create: bool = False) -> Path:
-        suffix = stage
-        d = self._dir[stage]
-        if stage == 'processed':
-            suffix = 'session'
-        if create and not d.is_dir():
-            d.mkdir(parents=True)
-        return d / f"{session}-{suffix}.json"
+    # Sessions are discovered from the raw verkkolähetys event files written by
+    # the scraper (``{session}-event.json``); media is the merge spine so a
+    # session is "present" once its video metadata is downloaded.
+    MEDIA_GLOB_SUFFIX = "-event.json"
 
     def raw_speeches(self, session: str) -> Path:
         """Raw speech records of the sitting from the open data API search."""
@@ -121,31 +83,3 @@ class Config(BaseConfig):
     def raw_event(self, session: str) -> Path:
         """Raw verkkolähetys event (speakers[] + media URLs) extracted from the page."""
         return self.dir('media') / f"{session}-event.json"
-
-    def save_data(self, data, session: str, stage: str) -> Path:
-        outfile = self.file(session, stage)
-        if not outfile.parent.is_dir():
-            outfile.parent.mkdir(parents=True)
-        with open(outfile, 'w') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        return outfile
-
-    def sessions(self, prefix: str = ''):
-        """Enumerate sessions present on disk.
-
-        Built from the raw verkkolähetys event files written by the scraper
-        (``{session}-event.json``); media is the merge spine so a session is
-        "present" once its video metadata is downloaded.
-        """
-        suffix = '-event.json'
-        return list(sorted(
-            f.name[:-len(suffix)]
-            for f in self.dir('media').glob(f'{prefix}*{suffix}')
-        ))
-
-
-if __name__ == '__main__':
-    import sys
-    config = Config(Path(sys.argv[1]))
-    import IPython
-    IPython.embed()

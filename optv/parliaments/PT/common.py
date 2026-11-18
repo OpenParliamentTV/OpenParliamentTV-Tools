@@ -21,24 +21,11 @@ dropped intra-term level (sessão legislativa) goes into the ``session.number``
 encoding and ``meta.sourceLabel`` rather than overwriting the term.
 """
 
-import logging
-logger = logging.getLogger(__name__)
-
-import json
 import re
 from pathlib import Path
 
-# Re-exported for back-compat with shared callers.
-from optv.shared.publish import (  # noqa: F401
-    data_signature,
-    save_if_changed,
-    data_has_timing,
-    data_has_ner,
-    is_demotion,
-    carry_forward_wids,
-    carry_forward_enrichments,
-)
 from optv.shared.config import BaseConfig
+# The Conductor imports SessionStatus from this module in-process.
 from optv.shared.session_status import SessionStatus  # noqa: F401
 
 # 17-1-059  →  (17, 1, 59)
@@ -84,37 +71,14 @@ class Config(BaseConfig):
     # when any speech has text; align and NER skip the others.
     TEXT_SIGNAL = "textContents"
     TEXT_PROBE = "any"
-
-    def __init__(self, data_dir: Path, cache_dir: Path = None):
-        data_dir = Path(data_dir)
-        if cache_dir is not None:
-            cache_dir = Path(cache_dir)
-        else:
-            cache_dir = data_dir / "cache"
-        self._dir = {
-            'data': data_dir,
-            'cache': cache_dir,
-            'media': data_dir / "original" / "media",
-            'proceedings': data_dir / "original" / "proceedings",
-            'opendata': data_dir / "original" / "opendata",
-            'opendata_cache': cache_dir / "opendata",
-            'merged': cache_dir / "merged",
-            'aligned': cache_dir / "aligned",
-            'ner': cache_dir / "ner",
-            'audio': cache_dir / "audio",
-            'audio_session': cache_dir / "audio_session",
-            'processed': data_dir / "processed",
-            'nel_data': data_dir / "metadata",
-        }
-
-    def file(self, session: str, stage: str = 'processed', create=False) -> Path:
-        suffix = stage
-        d = self._dir[stage]
-        if stage == 'processed':
-            suffix = 'session'
-        if create and not d.is_dir():
-            d.mkdir(parents=True)
-        return d / f"{session}-{suffix}.json"
+    # Sessions are discovered from the raw av.parlamento.pt JSON files written by
+    # the scraper (``{session}-av.json``); the av interventions are the merge
+    # spine.
+    MEDIA_GLOB_SUFFIX = "-av.json"
+    EXTRA_DIRS = {
+        "opendata": ("data", "original/opendata"),
+        "opendata_cache": ("cache", "opendata"),
+    }
 
     def raw_av(self, session: str) -> Path:
         """Raw av.parlamento.pt per-meeting JSON (media spine) for one reunião."""
@@ -135,32 +99,3 @@ class Config(BaseConfig):
     def raw_dar(self, session: str) -> Path:
         """Raw debates.parlamento.pt full-text (``?sft=true``) HTML for one reunião."""
         return self.dir('proceedings') / f"{session}-dar.html"
-
-    def data(self, session: str, stage: str = 'processed') -> list:
-        filename = self.file(session, stage)
-        if filename.exists():
-            with open(filename) as f:
-                data = json.load(f)
-        else:
-            logger.warning(f"No data for {session}-{stage}")
-            data = []
-        return data
-
-    def sessions(self, prefix: str = ''):
-        """Return the list of currently existing sessions.
-
-        Built from the raw av.parlamento.pt JSON files written by the scraper
-        (``{session}-av.json``); the av interventions are the merge spine.
-        """
-        suffix = '-av.json'
-        return list(sorted(
-            f.name[:-len(suffix)]
-            for f in self.dir('media').glob(f'{prefix}*{suffix}')
-        ))
-
-
-if __name__ == '__main__':
-    import sys
-    config = Config(Path(sys.argv[1]))
-    import IPython
-    IPython.embed()

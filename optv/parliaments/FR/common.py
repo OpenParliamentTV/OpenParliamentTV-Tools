@@ -25,9 +25,6 @@ recording's start is the local (Europe/Paris) timestamp in its file name
 (``…/hemi_20260529211831.smil/master.m3u8``), see :func:`recording_start`.
 """
 
-import logging
-logger = logging.getLogger(__name__)
-
 import datetime
 import json
 import re
@@ -35,17 +32,8 @@ from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-# Re-exported for back-compat with shared callers.
-from optv.shared.publish import (  # noqa: F401
-    data_signature,
-    save_if_changed,
-    data_has_timing,
-    data_has_ner,
-    is_demotion,
-    carry_forward_wids,
-    carry_forward_enrichments,
-)
 from optv.shared.config import BaseConfig
+# The Conductor imports SessionStatus from this module in-process.
 from optv.shared.session_status import SessionStatus  # noqa: F401
 
 # Legislature 17 began with the snap election of July 2024; the first session
@@ -149,34 +137,10 @@ def cr_page_url(session: str, legislature: int = 17) -> str:
 
 
 class Config(BaseConfig):
-    def __init__(self, data_dir: Path, cache_dir: Path = None):
-        data_dir = Path(data_dir)
-        if cache_dir is not None:
-            cache_dir = Path(cache_dir)
-        else:
-            cache_dir = data_dir / "cache"
-        self._dir = {
-            'data': data_dir,
-            'cache': cache_dir,
-            'media': data_dir / "original" / "media",
-            'proceedings': data_dir / "original" / "proceedings",
-            'merged': cache_dir / "merged",
-            'aligned': cache_dir / "aligned",
-            'ner': cache_dir / "ner",
-            'audio': cache_dir / "audio",
-            'audio_session': cache_dir / "audio_session",
-            'processed': data_dir / "processed",
-            'nel_data': data_dir / "metadata",
-        }
-
-    def file(self, session: str, stage: str = 'processed', create=False) -> Path:
-        suffix = stage
-        d = self._dir[stage]
-        if stage == 'processed':
-            suffix = 'session'
-        if create and not d.is_dir():
-            d.mkdir(parents=True)
-        return d / f"{session}-{suffix}.json"
+    # Sessions are discovered from the raw Syceron compte-rendu files written by
+    # the scraper (``{session}-cr.xml``); proceedings are the merge spine.
+    SESSION_SOURCE = "proceedings"
+    MEDIA_GLOB_SUFFIX = "-cr.xml"
 
     def raw_cr(self, session: str) -> Path:
         """Raw Syceron compte-rendu XML for one séance."""
@@ -185,28 +149,6 @@ class Config(BaseConfig):
     def raw_event(self, session: str) -> Path:
         """Resolved video reference (HLS master URL + recording start) for one séance."""
         return self.dir('media') / f"{session}-event.json"
-
-    def data(self, session: str, stage: str = 'processed') -> list:
-        filename = self.file(session, stage)
-        if filename.exists():
-            with open(filename) as f:
-                data = json.load(f)
-        else:
-            logger.warning(f"No data for {session}-{stage}")
-            data = []
-        return data
-
-    def sessions(self, prefix: str = ''):
-        """Return the list of currently existing sessions.
-
-        Built from the raw Syceron compte-rendu files written by the scraper
-        (``{session}-cr.xml``); proceedings are the merge spine.
-        """
-        suffix = '-cr.xml'
-        return list(sorted(
-            f.name[:-len(suffix)]
-            for f in self.dir('proceedings').glob(f'{prefix}*{suffix}')
-        ))
 
     def status(self, session: str) -> set:
         """Return the status for the given session."""
@@ -238,10 +180,3 @@ class Config(BaseConfig):
                 if s.get('debug', {}).get('nerDuration'):
                     status.add(SessionStatus.ner)
         return status
-
-
-if __name__ == '__main__':
-    import sys
-    config = Config(Path(sys.argv[1]))
-    import IPython
-    IPython.embed()

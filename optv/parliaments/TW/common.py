@@ -7,25 +7,12 @@ The fixed-width prefix is what makes ``--period=11`` work via the shared
 ``session.startswith(str(args.period))`` filter.
 """
 
-import logging
-import json
 import re
-from pathlib import Path
 
-# Re-exported for back-compat with the other parliaments' common modules.
-from optv.shared.publish import (  # noqa: F401
-    data_signature,
-    save_if_changed,
-    data_has_timing,
-    data_has_ner,
-    is_demotion,
-    carry_forward_wids,
-    carry_forward_enrichments,
-)
 from optv.shared.config import BaseConfig
+# The Conductor imports SessionStatus from this module in-process.
 from optv.shared.session_status import SessionStatus  # noqa: F401
 
-logger = logging.getLogger(__name__)
 
 # Official per-clip text (gazette record) on the IVOD site; empty until the
 # gazette is published, weeks after the sitting.
@@ -84,68 +71,19 @@ class Config(BaseConfig):
     # speech has text; align and NER skip the others.
     TEXT_SIGNAL = "textContents"
     TEXT_PROBE = "any"
-
-    def __init__(self, data_dir: Path, cache_dir: Path = None):
-        data_dir = Path(data_dir)
-        if cache_dir is not None:
-            cache_dir = Path(cache_dir)
-        else:
-            cache_dir = data_dir / "cache"
-        self._dir = {
-            'data': data_dir,
-            'cache': cache_dir,
-            'media': data_dir / "original" / "media",
-            'proceedings': data_dir / "original" / "proceedings",
-            # Raw downloads share the original/media + original/proceedings
-            # directories but have distinct filename suffixes — see
-            # Config.sessions() docstring.
-            'ivods': data_dir / "original" / "media",
-            'speechkinds': data_dir / "original" / "media",
-            'details': data_dir / "original" / "proceedings",
-            'records': data_dir / "original" / "proceedings",
-            'merged': cache_dir / "merged",
-            'aligned': cache_dir / "aligned",
-            'ner': cache_dir / "ner",
-            'processed': data_dir / "processed",
-            'nel_data': data_dir / "metadata",
-        }
-
-    def file(self, session: str, stage: str = 'processed', create: bool = False) -> Path:
-        suffix = stage
-        d = self._dir[stage]
-        if stage == 'processed':
-            suffix = 'session'
-        if create and not d.is_dir():
-            d.mkdir(parents=True)
-        return d / f"{session}-{suffix}.json"
-
-    def save_data(self, data, session: str, stage: str) -> Path:
-        outfile = self.file(session, stage)
-        if not outfile.parent.is_dir():
-            outfile.parent.mkdir(parents=True)
-        with open(outfile, "w") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        return outfile
-
-    def sessions(self, prefix: str = ''):
-        """Return on-disk session keys, discovered from raw IVOD downloads.
-
-        Raw downloads land at ``original/media/{session}-ivods.json`` (IVOD
-        index) and ``-speechkinds.json`` (dataset-221 speech kinds), and at
-        ``original/proceedings/{session}-details.json`` (IVOD details with the
-        WhisperX transcript) and ``-records.json`` (official per-clip text).
-        The parsed files are ``original/media/{session}-media.json`` and
-        ``original/proceedings/{session}-proceedings.json``.
-        """
-        suffix = '-ivods.json'
-        return list(sorted(
-            f.name[:-len(suffix)]
-            for f in self.dir('media').glob(f'{prefix}*{suffix}')
-        ))
-
-
-if __name__ == '__main__':
-    import sys
-    config = Config(Path(sys.argv[1]))
-    import IPython
-    IPython.embed()
+    # Sessions are discovered from the raw IVOD index downloads. Raw downloads
+    # land at ``original/media/{session}-ivods.json`` (IVOD index) and
+    # ``-speechkinds.json`` (dataset-221 speech kinds), and at
+    # ``original/proceedings/{session}-details.json`` (IVOD details with the
+    # WhisperX transcript) and ``-records.json`` (official per-clip text). The
+    # parsed files are ``original/media/{session}-media.json`` and
+    # ``original/proceedings/{session}-proceedings.json``.
+    MEDIA_GLOB_SUFFIX = "-ivods.json"
+    # The raw downloads share the media and proceedings directories and differ
+    # by filename suffix, so each gets a stage name of its own.
+    EXTRA_DIRS = {
+        "ivods": ("data", "original/media"),
+        "speechkinds": ("data", "original/media"),
+        "details": ("data", "original/proceedings"),
+        "records": ("data", "original/proceedings"),
+    }
