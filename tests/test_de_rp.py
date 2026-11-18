@@ -15,6 +15,7 @@ import importlib
 import json
 import logging
 from pathlib import Path
+from types import SimpleNamespace
 
 from lxml import html as lxml_html
 
@@ -279,3 +280,19 @@ def test_fixture_rows_are_detail_rows():
     root = lxml_html.parse(str(FIXTURE)).getroot()
     rows = [p for p in root.iter("p") if _fetch._is_detail_row(p)]
     assert len(rows) == 23
+
+
+def test_download_ingests_the_data_dir_inbox_unless_told_otherwise(tmp_path, monkeypatch):
+    workflow = importlib.import_module("optv.parliaments.DE-RP.workflow")
+    seen = []
+    monkeypatch.setattr(workflow, "ingest_inbox", lambda inbox, proceedings: seen.append(inbox))
+    monkeypatch.setattr(workflow, "ingest_html_inbox", lambda *a, **k: None)
+    config = workflow.Config(tmp_path)
+    args = SimpleNamespace(inbox_dir=None, media_inbox_dir=None, fetch_opal=None,
+                           fingerprint_media=False, recheck_media=False, period=18)
+
+    workflow._download(config, args)
+    args.inbox_dir = str(tmp_path / "elsewhere")
+    workflow._download(config, args)
+
+    assert seen == [tmp_path / "inbox", tmp_path / "elsewhere"]

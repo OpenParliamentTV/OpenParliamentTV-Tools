@@ -24,17 +24,14 @@ Two streams, both delivered into local inboxes (no live scraper). Proceedings ar
 ## Running
 
 ```bash
-./optv/parliaments/DE-RP/update <data_dir>
-# expands to:
-# python3 workflow.py --period=18 \
-#     --limit-session '1807[7-9]|1808[0-5]' \
-#     --inbox-dir <data_dir>/inbox \
-#     --media-inbox-dir <data_dir>/original/media/inbox \
-#     --fingerprint-media \
-#     <data_dir>
+./optv/parliaments/DE-RP/workflow.py --period=18 <data_dir> \
+    --limit-session '1807[7-9]|1808[0-5]' \
+    --fingerprint-media \
+    --download-original --merge-speeches \
+    --link-entities --align-sentences --extract-entities
 ```
 
-The session regex scopes downstream stages to the WP 18 sessions for which ePP XML has arrived (77, 78, 80–85); extra OPAL media outside that range still lands in `original/media/` but is not published. Update the regex when more proceedings arrive. `make download` / `make all` mirror the mtime-driven flow. The first `--fingerprint-media` run over an inbox HEADs every clip once (about 15 minutes for 800 clips); later runs only HEAD new clips.
+The download stage ingests ePP XML from `<data_dir>/inbox` and OPAL search HTML from `<data_dir>/original/media/inbox` (`--inbox-dir` / `--media-inbox-dir` point elsewhere). `--limit-session` scopes the downstream stages to the sittings for which ePP XML has arrived; OPAL media outside that range still lands in `original/media/` but is not published. The first `--fingerprint-media` run over an inbox HEADs every clip once (about 15 minutes for 800 clips); later runs only HEAD new clips.
 
 For a test run, `--fetch-opal FROM TO` saves OPAL's speech search for `--period` and that date range into the media inbox before ingest (headless browser; install with `pip install -r requirements-browser.txt && scrapling install`):
 

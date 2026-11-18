@@ -39,11 +39,9 @@ PARLIAMENT_ID = Path(__file__).parent.name
 
 def _download(config, args):
     proceedings_dir = config.dir('proceedings', create=True)
-    if args.inbox_dir:
-        logger.info("Ingesting ePP XML proceedings from inbox")
-        ingest_inbox(Path(args.inbox_dir), proceedings_dir)
-    else:
-        logger.info("No --inbox-dir given; skipping ePP ingest")
+    inbox = Path(args.inbox_dir) if args.inbox_dir else config.dir('data') / "inbox"
+    logger.info("Ingesting ePP XML proceedings from inbox")
+    ingest_inbox(inbox, proceedings_dir)
 
     media_dir = config.dir('media', create=True)
     media_inbox = Path(args.media_inbox_dir) if args.media_inbox_dir else (media_dir / "inbox")
