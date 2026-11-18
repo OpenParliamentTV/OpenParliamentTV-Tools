@@ -49,12 +49,19 @@ def _seconds(v) -> Optional[float]:
         return None
 
 
-def speaker_media_record(spk: dict, event: dict, session_url: str) -> Optional[dict]:
+def speaker_media_record(spk: dict, event: dict, session_url: str,
+                         next_start: Optional[float] = None) -> Optional[dict]:
+    """The media record of one speaker entry of the broadcast event.
+
+    ``next_start`` is the start offset of the entry that follows. An entry without an end of its own ends there, when that is later than its own start; otherwise it has no duration.
+    """
     person_number = _int(spk.get("personNumber"))
     start = _seconds(spk.get("time"))
     end = _seconds(spk.get("endTime"))
     if start is None:
         return None
+    if end is None and next_start is not None and next_start > start:
+        end = next_start
     duration = max(0.0, (end - start)) if end is not None else 0.0
 
     hls = event.get("hlsUrl") or ""
@@ -103,9 +110,11 @@ def parse_media_for_session(config: Config, session: str) -> dict:
     year, number = parse_session_str(session)
     session_url = f"{VL_ROOT}/fi/taysistunnot/taysistunto-{number}-{year}"
 
+    speakers = event.get("speakers") or []
     records: list[dict] = []
-    for spk in event.get("speakers") or []:
-        rec = speaker_media_record(spk, event, session_url)
+    for index, spk in enumerate(speakers):
+        next_start = _seconds(speakers[index + 1].get("time")) if index + 1 < len(speakers) else None
+        rec = speaker_media_record(spk, event, session_url, next_start=next_start)
         if rec is not None:
             records.append(rec)
 

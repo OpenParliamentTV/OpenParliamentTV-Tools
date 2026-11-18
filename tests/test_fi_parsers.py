@@ -125,6 +125,46 @@ def test_speaker_media_record_without_an_end_time(end_time):
     assert media["additionalInformation"]["startOffset"] == 455.0
 
 
+def test_speech_without_an_end_time_ends_where_the_next_speaker_starts():
+    event = json.loads((FIX / "event-sample.json").read_text())
+    speaker = dict(event["speakers"][0], endTime="null")
+    media = speaker_media_record(speaker, event, "x", next_start=500.0)["media"]
+    assert media["duration"] == 45.0
+    assert media["videoFileURI"].endswith("playlist.m3u8#t=455,500")
+
+
+@pytest.mark.parametrize("next_start", [455.0, 400.0, None])
+def test_next_speaker_start_is_no_end_unless_it_is_later(next_start):
+    """Two entries with the same start: the page lists a speaker it replaced at once, followed by the one who spoke."""
+    event = json.loads((FIX / "event-sample.json").read_text())
+    speaker = dict(event["speakers"][0], endTime="null")
+    media = speaker_media_record(speaker, event, "x", next_start=next_start)["media"]
+    assert media["duration"] == 0.0
+    assert media["videoFileURI"].endswith("playlist.m3u8#t=455,455")
+
+
+def test_a_known_end_time_is_kept_whatever_the_next_speaker_start():
+    event = json.loads((FIX / "event-sample.json").read_text())
+    media = speaker_media_record(event["speakers"][0], event, "x", next_start=470.0)["media"]
+    assert media["duration"] == 28.0
+    assert media["videoFileURI"].endswith("playlist.m3u8#t=455,483")
+
+
+def test_session_parse_passes_each_entry_the_next_start(tmp_path):
+    from optv.parliaments.FI.common import Config
+    from optv.parliaments.FI.parsers.media2json import parse_media_for_session
+
+    event = json.loads((FIX / "event-sample.json").read_text())
+    first, second = event["speakers"]
+    event["speakers"] = [dict(first, endTime="null"), dict(second, endTime="null")]
+    config = Config(tmp_path)
+    config.dir("media", create=True)
+    config.raw_event("2026-058").write_text(json.dumps(event))
+
+    records = parse_media_for_session(config, "2026-058")["data"]
+    assert [r["media"]["duration"] for r in records] == [22.0, 0.0]   # 455 → 477, then the last entry
+
+
 @pytest.mark.parametrize("start_time", ["null", None])
 def test_speaker_media_record_without_a_start_time_is_dropped(start_time):
     event = json.loads((FIX / "event-sample.json").read_text())
