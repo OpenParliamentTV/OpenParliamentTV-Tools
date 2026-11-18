@@ -14,8 +14,6 @@ in Europe/Berlin with its offset, so ``debug.timesAreVideoRelative`` is false.
 
 from __future__ import annotations
 
-import argparse
-import json
 import logging
 import re
 from datetime import datetime
@@ -29,7 +27,8 @@ from optv.shared.pdf2tei.spine_join import load_turns, join_text_to_spine
 
 from ..parsers.media2json import MEDIA_CREATOR, MEDIA_LICENSE
 from optv.parliaments import get_rights as _get_rights
-from optv.shared.meta import build_meta, now_iso
+from optv.shared.cli import session_cli
+from optv.shared.spine_merger import load_spine, save_merged
 
 logger = logging.getLogger(__name__)
 
@@ -145,18 +144,10 @@ def _build_media(speech: dict) -> dict:
 
 
 def merge_session(session: str, config, options) -> Path:
-    media_path = config.file(session, "media")
-    if not media_path.exists():
-        logger.warning(f"No media file for {session} at {media_path}")
+    spine = load_spine(config, session)
+    if spine is None:
         return config.file(session, "merged", create=True)
-
-    with media_path.open() as f:
-        media_doc = json.load(f)
-
-    speeches = media_doc.get("data", [])
-    if not speeches:
-        logger.warning(f"{session}: media file has no speeches")
-        return config.file(session, "merged", create=True)
+    media_doc, speeches = spine
 
     session_date = media_doc["meta"]["date"]
     wp = int(media_doc["meta"]["wp"])
@@ -218,34 +209,12 @@ def merge_session(session: str, config, options) -> Path:
         logger.info(f"{session}: matched {matched}/{len(merged)} speeches to "
                     f"{len(turns)} proceedings turns")
 
-    doc = {
-        "meta": build_meta(
-            PARLIAMENT_ID,
-            session=session,
-            electoral_period=wp,
-            date_start=earliest,
-            date_end=latest,
-            processing={
-                **media_doc["meta"].get("processing", {}),
-                "merge": now_iso(),
-            },
-            extra={"sourceURI": SOURCE_URI},
-        ),
-        "data": merged,
-    }
-    return config.save_data(doc, session, "merged")
+    return save_merged(
+        config, session, PARLIAMENT_ID, merged, media_doc,
+        electoral_period=wp, date_start=earliest, date_end=latest,
+        extra={"sourceURI": SOURCE_URI},
+    )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("session", help="Session ID e.g. 19054")
-    parser.add_argument("data_dir", type=Path)
-    parser.add_argument("--debug", action="store_true")
-    args = parser.parse_args()
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format="%(asctime)s %(levelname)-8s %(name)s %(message)s",
-    )
-    from ..common import Config
-    config = Config(args.data_dir)
-    merge_session(args.session, config, args)
+    session_cli(PARLIAMENT_ID, merge_session, description=__doc__, example="19054")
