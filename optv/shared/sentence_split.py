@@ -22,8 +22,11 @@ Design:
   preceding neighbour (the following one if it is the first), so a 3-word aside
   rides along with the clause it interrupts instead of becoming its own unit.
 
-Returns the same text content re-segmented; the concatenation of the pieces is
-the original sentence (delimiters normalised to a single space at split points).
+* **Text preserved** — the pieces are consecutive slices of the sentence, each
+  keeping the delimiter it was cut on ("… abzuschöpfen –" | "analog zu 2022."),
+  so joining them with a space gives the original sentence back. The platform
+  renders a transcript from its sentences, so a dropped delimiter would be
+  missing from the displayed text.
 """
 
 from __future__ import annotations
@@ -42,6 +45,9 @@ _DASH_RE = re.compile(r"\s+[–—][\s,]+")
 _SEMI_RE = re.compile(r"\s*;\s+")
 _COLON_RE = re.compile(r"\s*:\s+")
 _COMMA_RE = re.compile(r"\s*,\s+")
+
+# Characters the boundary regexes above (and a language clause_re) consume.
+_DELIMITERS = frozenset(";:,–—")
 
 
 def _wc(s: str) -> int:
@@ -96,6 +102,46 @@ def split_long_sentence(text: str, *, threshold: int = DEFAULT_THRESHOLD,
     resort, so long subordinate-clause / conditional chains break at real clause
     starts rather than on arbitrary commas."""
     text = (text or "").strip()
+    pieces = _split(text, threshold=threshold, hard_cap=hard_cap,
+                    min_words=min_words, clause_re=clause_re)
+    return _with_delimiters(text, pieces) if len(pieces) > 1 else pieces
+
+
+def _with_delimiters(text: str, pieces: list[str]) -> list[str]:
+    """Cut ``text`` where each of ``pieces`` begins, so every piece keeps the
+    delimiter it was split on and the original whitespace.
+
+    ``pieces`` is the segmentation :func:`_split` found, whose boundary regexes
+    consume the delimiter; only the positions are taken from it, so the
+    segmentation itself is unchanged. If the pieces cannot be located in
+    ``text`` (only delimiters and whitespace may lie between them), they are
+    returned as they are."""
+    starts: list[int] = []
+    j = 0
+    for piece in pieces:
+        first = True
+        for c in piece:
+            if c.isspace():
+                continue
+            while j < len(text) and text[j] != c:
+                if not (text[j].isspace() or text[j] in _DELIMITERS):
+                    return pieces
+                j += 1
+            if j == len(text):
+                return pieces
+            if first:
+                starts.append(j)
+                first = False
+            j += 1
+    if any(not (ch.isspace() or ch in _DELIMITERS) for ch in text[j:]):
+        return pieces
+    starts[0] = 0
+    return [text[s:e].strip() for s, e in zip(starts, starts[1:] + [len(text)])]
+
+
+def _split(text: str, *, threshold: int, hard_cap: int, min_words: int,
+           clause_re: "re.Pattern | None") -> list[str]:
+    """The segmentation itself; its pieces lack the delimiters cut on."""
     if not text or _wc(text) <= threshold:
         return [text] if text else []
 
@@ -103,7 +149,7 @@ def split_long_sentence(text: str, *, threshold: int = DEFAULT_THRESHOLD,
         out: list[str] = []
         for p in parts:
             if _wc(p) > threshold:
-                out.extend(split_long_sentence(
+                out.extend(_split(
                     p, threshold=threshold, hard_cap=hard_cap,
                     min_words=min_words, clause_re=clause_re))
             else:
