@@ -14,11 +14,9 @@ import sys
 import time
 
 # Allow relative imports if invoked as a script
-# From https://stackoverflow.com/a/65780624/2870028
-if __package__ is None:
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    __package__ = module_dir.name
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+    __package__ = "optv.parliaments.DE.scraper"
 
 from .fetch_media import download_meeting_data, download_data, get_filename, parse_media_data, save_if_changed
 

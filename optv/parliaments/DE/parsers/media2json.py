@@ -18,21 +18,15 @@ from typing import Optional
 from urllib.parse import urlparse, parse_qs
 import yaml
 
-try:
-    from parsers.common import (fix_faction, fix_fullname, fix_role, fixup_execute,
-                                split_role_faction)
-except ModuleNotFoundError:
-    # Module not found. Tweak the sys.path
-    base_dir = Path(__file__).resolve().parent.parent
-    sys.path.insert(0, str(base_dir))
-    from parsers.common import (fix_faction, fix_fullname, fix_role, fixup_execute,
-                                split_role_faction)
+# Allow relative imports if invoked as a script
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+    __package__ = "optv.parliaments.DE.parsers"
 
-# Ensure optv.shared.* resolves under both `python -m ...` and direct script invocation.
-_repo_root = str(Path(__file__).resolve().parents[4])
-if _repo_root not in sys.path:
-    sys.path.insert(0, _repo_root)
 from optv.shared.agenda_types import annotate_agenda_item, classify_de_native
+
+from .common import (fix_faction, fix_fullname, fix_role, fixup_execute,
+                     split_role_faction)
 
 # Constants used for basic integrity checking: If these values are not
 # present in the source data, then something must have changed and the

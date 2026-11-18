@@ -19,15 +19,14 @@ import json
 from pathlib import Path
 import sys
 
-try:
-    from parsers.media2json import parse_media_data
-except ModuleNotFoundError:
-    # Module not found. Tweak the sys.path
-    base_dir = Path(__file__).resolve().parent.parent
-    sys.path.insert(0, str(base_dir))
-    from parsers.media2json import parse_media_data
-# We know here that we can do package imports
-from common import save_if_changed
+# Allow relative imports if invoked as a script
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+    __package__ = "optv.parliaments.DE.scraper"
+
+from optv.shared.publish import save_if_changed
+
+from ..parsers.media2json import parse_media_data
 
 ROOT_URL = "https://webtv.bundestag.de/player/macros/bttv/podcast/video/plenar.xml"
 SERVER_ROOT = "https://www.bundestag.de"
