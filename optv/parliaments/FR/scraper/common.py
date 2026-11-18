@@ -16,10 +16,10 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from optv.shared.http import USER_AGENT
+
 logger = logging.getLogger(__name__)
 
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 _RETRY_CODES = (429, 500, 502, 503, 504)
 

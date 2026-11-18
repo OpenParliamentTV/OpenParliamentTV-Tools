@@ -31,11 +31,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from optv.shared.http import USER_AGENT
+
 logger = logging.getLogger(__name__)
 
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 # Wikidata items of the parties sitting in German parliaments, by the key a
 # manifest's ``parties[].party`` names.

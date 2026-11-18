@@ -16,10 +16,10 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
+from optv.shared.http import USER_AGENT
+
 logger = logging.getLogger(__name__)
 
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 # Minimum seconds between two requests to the same host.
 MIN_INTERVAL = {

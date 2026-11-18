@@ -44,10 +44,10 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from optv.shared.http import USER_AGENT
+
 logger = logging.getLogger(__name__)
 
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 API_BASE = "https://api.plenartv.de"
 VOD_BASE = "https://vod.plenartv.de"

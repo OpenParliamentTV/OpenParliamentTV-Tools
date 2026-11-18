@@ -29,15 +29,11 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
 from html import unescape
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+
+from optv.shared.http import PoliteHTTP
 
 logger = logging.getLogger(__name__)
-
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 BASE = "https://www.landtag.sachsen.de"
 LIST_URL = (f"{BASE}/de/mediathek-und-publikationen/videos/plenarvideos/"
@@ -52,44 +48,9 @@ PAGE_SIZE = 20
 # the filter. Add the next WP's start date when it is constituted.
 WP_START_DATES = {7: "2019-10-01", 8: "2024-10-01"}
 
-_LAST_FETCH_AT = 0.0
-POLITE_DELAY = 0.5
-
-
-def _request(req: Request, *, retry_count: int, timeout: float,
-             base_delay: float) -> bytes:
-    global _LAST_FETCH_AT
-    delay = base_delay
-    last_err: Exception | None = None
-    for attempt in range(1, max(retry_count, 1) + 1):
-        wait = _LAST_FETCH_AT + POLITE_DELAY - time.monotonic()
-        if wait > 0:
-            time.sleep(wait)
-        try:
-            with urlopen(req, timeout=timeout) as resp:
-                _LAST_FETCH_AT = time.monotonic()
-                return resp.read()
-        except (HTTPError, URLError, TimeoutError) as e:
-            _LAST_FETCH_AT = time.monotonic()
-            last_err = e
-            if attempt >= retry_count:
-                break
-            logger.warning(f"HTTP retry {attempt}/{retry_count} after {delay:.1f}s: {e}")
-            time.sleep(delay)
-            delay = min(delay * 2, 60.0)
-    raise RuntimeError(f"HTTP failed after {retry_count} attempts: {last_err}")
-
-
-def fetch(url: str, *, retry_count: int = 10, timeout: float = 60.0,
-          base_delay: float = 1.0) -> bytes:
-    """GET a URL with retry/backoff."""
-    req = Request(url, headers={"User-Agent": USER_AGENT})
-    return _request(req, retry_count=retry_count, timeout=timeout, base_delay=base_delay)
-
-
-def fetch_text(url: str, *, retry_count: int = 10, timeout: float = 60.0,
-               encoding: str = "utf-8") -> str:
-    return fetch(url, retry_count=retry_count, timeout=timeout).decode(encoding, errors="replace")
+_http = PoliteHTTP(polite_delay=0.5)
+fetch = _http.fetch
+fetch_text = _http.fetch_text
 
 
 def list_page_url(electoral_term_id: str, start: int) -> str:

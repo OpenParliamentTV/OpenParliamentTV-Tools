@@ -43,10 +43,10 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import HTTPCookieProcessor, Request, build_opener
 
+from optv.shared.http import USER_AGENT
+
 logger = logging.getLogger(__name__)
 
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 PLON_BASE = "https://www.bayern.landtag.de/plon2-webanzeige"
 ACCORDION_URL = f"{PLON_BASE}/views/sitzung/sitzungsablauf_accordion.xhtml"

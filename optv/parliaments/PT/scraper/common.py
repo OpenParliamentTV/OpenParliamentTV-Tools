@@ -14,10 +14,9 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-logger = logging.getLogger(__name__)
+from optv.shared.http import USER_AGENT
 
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
+logger = logging.getLogger(__name__)
 
 
 def http_get(url: str, *, timeout: float = 60.0, retry_count: int = 10,

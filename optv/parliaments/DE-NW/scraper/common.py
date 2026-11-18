@@ -39,71 +39,20 @@ from __future__ import annotations
 
 import logging
 import re
-import time
 from html import unescape
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+
+from optv.shared.http import PoliteHTTP
 
 logger = logging.getLogger(__name__)
-
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 BASE = "https://www.landtag.nrw.de"
 
 # The Mediathek speech list (``TEST-REDNER``) starts with sitting 18/67.
 SPEECH_LIST_START = "2024-06-12"
 
-_LAST_FETCH_AT = 0.0
-POLITE_DELAY = 0.5
-
-
-def _request(req: Request, *, retry_count: int, timeout: float,
-             base_delay: float) -> bytes | None:
-    """GET with retry/backoff. Returns ``None`` on a 404 (used by the prober)."""
-    global _LAST_FETCH_AT
-    delay = base_delay
-    last_err: Exception | None = None
-    for attempt in range(1, max(retry_count, 1) + 1):
-        wait = _LAST_FETCH_AT + POLITE_DELAY - time.monotonic()
-        if wait > 0:
-            time.sleep(wait)
-        try:
-            with urlopen(req, timeout=timeout) as resp:
-                _LAST_FETCH_AT = time.monotonic()
-                return resp.read()
-        except HTTPError as e:
-            _LAST_FETCH_AT = time.monotonic()
-            if e.code == 404:
-                return None
-            last_err = e
-            if attempt >= retry_count:
-                break
-            logger.warning(f"HTTP retry {attempt}/{retry_count} after {delay:.1f}s: {e}")
-            time.sleep(delay)
-            delay = min(delay * 2, 60.0)
-        except (URLError, TimeoutError) as e:
-            _LAST_FETCH_AT = time.monotonic()
-            last_err = e
-            if attempt >= retry_count:
-                break
-            logger.warning(f"HTTP retry {attempt}/{retry_count} after {delay:.1f}s: {e}")
-            time.sleep(delay)
-            delay = min(delay * 2, 60.0)
-    raise RuntimeError(f"HTTP failed after {retry_count} attempts: {last_err}")
-
-
-def fetch(url: str, *, retry_count: int = 10, timeout: float = 60.0,
-          base_delay: float = 1.0) -> bytes | None:
-    """GET a URL with retry/backoff. ``None`` on 404."""
-    req = Request(url, headers={"User-Agent": USER_AGENT})
-    return _request(req, retry_count=retry_count, timeout=timeout, base_delay=base_delay)
-
-
-def fetch_text(url: str, *, retry_count: int = 10, timeout: float = 60.0,
-               encoding: str = "utf-8") -> str | None:
-    body = fetch(url, retry_count=retry_count, timeout=timeout)
-    return None if body is None else body.decode(encoding, errors="replace")
+_http = PoliteHTTP(polite_delay=0.5, none_on_404=True)
+fetch = _http.fetch
+fetch_text = _http.fetch_text
 
 
 # ---------------------------------------------------------------------------

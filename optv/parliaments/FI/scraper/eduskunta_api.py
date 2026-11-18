@@ -29,11 +29,11 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from optv.shared.http import USER_AGENT
+
 logger = logging.getLogger(__name__)
 
 API_ROOT = "https://api.eduskunta.fi/api/v1"
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 # Minimum spacing between two requests (the POST limit is 90 per minute).
 MIN_INTERVAL_S = 1.0
