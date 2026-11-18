@@ -32,3 +32,26 @@ proceedings:
   default:
     creator: Landtag Niedersachsen (Plenar-TV)
     license: Plenar-TV (Landtag Niedersachsen)
+
+# Local NEL entity dump, built from Wikidata until the platform serves one:
+#   python -m optv.shared.entity_dump_bootstrap DE-NI <data_dir>
+# Persons are everyone with a P39 statement for the position; the factions are
+# listed here with the label and aliases the source uses for them.
+entity_bootstrap:
+  wikidata_position: Q17521638   # member of the Landtag of Lower Saxony
+  parties:
+    - id: Q49768
+      label: "SPD"
+      aliases: ["Sozialdemokratische Partei Deutschlands"]
+    - id: Q49762
+      label: "CDU"
+      aliases: ["Christlich Demokratische Union Deutschlands", "CDU/CSU"]
+    - id: Q49766
+      label: "Bündnis 90/Die Grünen"
+      aliases: ["BÜNDNIS 90/DIE GRÜNEN", "GRÜNE", "Grüne", "B90/Grüne"]
+    - id: Q6721203
+      label: "AfD"
+      aliases: ["Alternative für Deutschland"]
+    - id: Q13124
+      label: "FDP"
+      aliases: ["Freie Demokratische Partei"]

@@ -28,3 +28,26 @@ proceedings:
   default:
     creator: Landtag von Baden-Württemberg
     license: Amtliches Werk (§ 5 Abs. 2 UrhG)
+
+# Local NEL entity dump, built from Wikidata until the platform serves one:
+#   python -m optv.shared.entity_dump_bootstrap DE-BW <data_dir>
+# Persons are everyone with a P39 statement for the position; the factions are
+# listed here with the label and aliases the source uses for them.
+entity_bootstrap:
+  wikidata_position: Q17481175   # member of the Landtag of Baden-Württemberg
+  parties:
+    - id: Q49766
+      label: "GRÜNE"
+      aliases: ["BÜNDNIS 90/DIE GRÜNEN", "Bündnis 90/Die Grünen", "Grüne", "B90/Grüne"]
+    - id: Q49762
+      label: "CDU"
+      aliases: ["Christlich Demokratische Union Deutschlands", "CDU/CSU"]
+    - id: Q49768
+      label: "SPD"
+      aliases: ["Sozialdemokratische Partei Deutschlands"]
+    - id: Q6539
+      label: "FDP/DVP"
+      aliases: ["FDP", "Freie Demokratische Partei", "FDP/Demokratische Volkspartei"]
+    - id: Q6721203
+      label: "AfD"
+      aliases: ["Alternative für Deutschland"]

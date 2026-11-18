@@ -57,7 +57,7 @@ Speech times come from the protocol: it states the sitting's start (`Beginn: 9:3
     --session 'https://www.landtag-bw.de/de/mediathek/videos/118-sitzung-vom-13-maerz-2025-563198'
 
 # Pre-NEL, regenerate the local entity dump:
-python -m optv.parliaments.DE-BW.scraper.build_entity_dump /path/to/OpenParliamentTV-Data-DE-BW
+python -m optv.shared.entity_dump_bootstrap DE-BW /path/to/OpenParliamentTV-Data-DE-BW
 ```
 
 Session discovery: `fetch_archive` pages the archive newest first (`?offset=N&noStaticItems=true`) and date-scopes to the period; the result is cached in `archive-wp{N}.json`. A fresh build stops at the first page that lies wholly before the period's start (`WP_DATE_RANGE`); every later run refreshes the cache from the newest pages until a page holds only known sittings, so new sittings are found in a request or two. `--force` rebuilds from scratch; `--max-results N` caps the walk at the newest N items. `--session` / `metadata/seed-urls.txt` remain as a manual override for anything pagination misses.

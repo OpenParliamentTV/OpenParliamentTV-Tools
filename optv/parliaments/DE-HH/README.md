@@ -35,7 +35,7 @@ When a protocol arrives for a sitting already published with subtitle text, `scr
     --download-original --merge-speeches --link-entities
 
 # Pre-NEL, (re)generate the local entity dump (Wikidata P39 Q19360355 + WP-23 parties):
-python optv/parliaments/DE-HH/scraper/build_entity_dump.py /path/to/OpenParliamentTV-Data-DE-HH
+python -m optv.shared.entity_dump_bootstrap DE-HH /path/to/OpenParliamentTV-Data-DE-HH
 
 # Explicit, single test session incl. alignment and NER:
 ./workflow.py --period=23 /path/to/OpenParliamentTV-Data-DE-HH \

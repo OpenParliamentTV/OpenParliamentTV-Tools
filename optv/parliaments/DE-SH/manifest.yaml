@@ -26,3 +26,28 @@ proceedings:
   default:
     creator: Schleswig-Holsteinischer Landtag
     license: Amtliches Werk (§ 5 Abs. 2 UrhG)
+
+# Local NEL entity dump, built from Wikidata until the platform serves one:
+#   python -m optv.shared.entity_dump_bootstrap DE-SH <data_dir>
+# Persons are everyone with a P39 statement for the position; the factions are
+# listed here with the label and aliases the source uses for them.
+entity_bootstrap:
+  wikidata_position: Q18130496   # member of the Landtag of Schleswig-Holstein
+  parties:
+    - id: Q49762
+      label: "CDU"
+      aliases: ["Christlich Demokratische Union Deutschlands"]
+    - id: Q49768
+      label: "SPD"
+      aliases: ["Sozialdemokratische Partei Deutschlands"]
+    - id: Q13124
+      label: "FDP"
+      aliases: ["Freie Demokratische Partei"]
+    - id: Q49766
+      label: "BÜNDNIS 90/DIE GRÜNEN"
+      aliases: ["Bündnis 90/Die Grünen", "GRÜNE", "Grüne", "B90/Grüne"]
+    - id: Q161545
+      label: "SSW"
+      aliases: ["Südschleswigscher Wählerverband", "Sydslesvigsk Vælgerforening"]
+  extra_members:   # the item lacks the P39 statement
+    - {id: Q50943765, label: "Kristina Herbst"}   # Landtagspräsidentin, WP 20

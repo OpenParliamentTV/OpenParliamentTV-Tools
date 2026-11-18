@@ -35,7 +35,7 @@ Single-source translation — [merger/merge_session.py](merger/merge_session.py)
     --download-original --merge-speeches --link-entities --limit-session '08025'
 
 # build the local NEL entity dump (until the hosted URL exists)
-python -m optv.parliaments.DE-SN.scraper.build_entity_dump /path/to/OpenParliamentTV-Data-DE-SN
+python -m optv.shared.entity_dump_bootstrap DE-SN /path/to/OpenParliamentTV-Data-DE-SN
 ```
 
 `--limit-session` is an exact id / regex prefix (e.g. `08025`); the scraper pages the WP archive from the highest sitting down and stops once it has paged past the requested Sitzung. `--max-pages` caps the walk.

@@ -28,3 +28,26 @@ proceedings:
   default:
     creator: Bayerischer Landtag
     license: Amtliches Werk (§ 5 Abs. 2 UrhG)
+
+# Local NEL entity dump, built from Wikidata until the platform serves one:
+#   python -m optv.shared.entity_dump_bootstrap DE-BY <data_dir>
+# Persons are everyone with a P39 statement for the position; the factions are
+# listed here with the label and aliases the source uses for them.
+entity_bootstrap:
+  wikidata_position: Q17586301   # member of the Landtag of Bavaria
+  parties:
+    - id: Q49763
+      label: "CSU"
+      aliases: ["Christlich-Soziale Union in Bayern", "Christlich-Soziale Union"]
+    - id: Q1231839
+      label: "FREIE WÄHLER"
+      aliases: ["Freie Wähler", "FW", "Landesvereinigung Freie Wähler Bayern"]
+    - id: Q49766
+      label: "BÜNDNIS 90/DIE GRÜNEN"
+      aliases: ["Bündnis 90/Die Grünen", "GRÜNE", "Grüne", "B90/Grüne"]
+    - id: Q6721203
+      label: "AfD"
+      aliases: ["Alternative für Deutschland"]
+    - id: Q49768
+      label: "SPD"
+      aliases: ["Sozialdemokratische Partei Deutschlands"]

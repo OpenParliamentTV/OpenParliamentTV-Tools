@@ -34,7 +34,7 @@ No cross-source matching: `merger/merge_session.py` is a single-source translati
     --download-original --merge-speeches --link-entities
 
 # Pre-NEL, (re)generate the local entity dump (Wikidata P39 Q17521638 + WP-18/19 parties):
-python -m optv.parliaments.DE-NI.scraper.build_entity_dump /path/to/OpenParliamentTV-Data-DE-NI
+python -m optv.shared.entity_dump_bootstrap DE-NI /path/to/OpenParliamentTV-Data-DE-NI
 
 # Explicit, single test session (WP19 Sitzung 80, 16 Dec 2025):
 ./workflow.py --period=19 /path/to/OpenParliamentTV-Data-DE-NI \

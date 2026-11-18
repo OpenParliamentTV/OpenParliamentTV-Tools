@@ -34,7 +34,7 @@ The **Plenum Online playlists are the spine** — already per-speech with speake
 `--align-sentences` and `--extract-entities` are supported (see [manifest.yaml](manifest.yaml) `supported_stages`) but left out of the routine run while the text path is experimental. Pre-NEL the entity dump can be regenerated with:
 
 ```sh
-python -m optv.parliaments.DE-BY.scraper.build_entity_dump /path/to/OpenParliamentTV-Data-DE-BY
+python -m optv.shared.entity_dump_bootstrap DE-BY /path/to/OpenParliamentTV-Data-DE-BY
 ```
 
 This writes `metadata/entities.json`; the NEL stage falls back to it when the hosted dump at `de-by.openparliament.tv` doesn't exist (it currently doesn't).

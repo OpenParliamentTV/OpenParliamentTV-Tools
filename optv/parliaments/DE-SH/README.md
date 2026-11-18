@@ -54,7 +54,7 @@ discovery.
 The routine run leaves out `--align-sentences` and `--extract-entities`; both stages are supported (see [manifest.yaml](manifest.yaml), `supported_stages`) but run on the experimental text path, so they are run explicitly. Pre-NEL the entity dump can be regenerated with:
 
 ```sh
-python -m optv.parliaments.DE-SH.scraper.build_entity_dump /path/to/OpenParliamentTV-Data-DE-SH
+python -m optv.shared.entity_dump_bootstrap DE-SH /path/to/OpenParliamentTV-Data-DE-SH
 ```
 
 This writes `metadata/entities.json`; the NEL stage falls back to it

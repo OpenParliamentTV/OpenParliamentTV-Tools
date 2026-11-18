@@ -30,3 +30,30 @@ proceedings:
   default:
     creator: Sächsischer Landtag
     license: Amtliches Werk (§ 5 Abs. 2 UrhG)
+
+# Local NEL entity dump, built from Wikidata until the platform serves one:
+#   python -m optv.shared.entity_dump_bootstrap DE-SN <data_dir>
+# Persons are everyone with a P39 statement for the position; the factions are
+# listed here with the label and aliases the source uses for them.
+entity_bootstrap:
+  wikidata_position: Q17334379   # member of the Landtag of Saxony
+  wikidata_aliases: true   # multi-word German aliases cover name changes
+  parties:
+    - id: Q49762
+      label: "CDU"
+      aliases: ["Christlich Demokratische Union Deutschlands", "CDU/CSU"]
+    - id: Q6721203
+      label: "AfD"
+      aliases: ["Alternative für Deutschland"]
+    - id: Q124680118
+      label: "BSW"
+      aliases: ["Bündnis Sahra Wagenknecht", "Bündnis Sahra Wagenknecht – Vernunft und Gerechtigkeit"]
+    - id: Q49768
+      label: "SPD"
+      aliases: ["Sozialdemokratische Partei Deutschlands"]
+    - id: Q49766
+      label: "BÜNDNISGRÜNE"
+      aliases: ["BÜNDNIS 90/DIE GRÜNEN", "Bündnis 90/Die Grünen", "GRÜNE", "Grüne", "B90/Grüne"]
+    - id: Q49696
+      label: "Die Linke"
+      aliases: ["DIE LINKE", "Die Linke.", "PDS"]

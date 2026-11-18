@@ -43,7 +43,7 @@ Agenda-item classification (TOP titles → `nativeType` / `type`) uses [`classif
 
 ## Entity dump
 
-[`scraper/build_entity_dump.py`](scraper/build_entity_dump.py) queries Wikidata for everyone with `P39 wd:Q18559580` ("member of the Landtag of Saxony-Anhalt") and combines with the hand-curated party list of WP 8 and WP 9 (incl. BSW). Writes `<data>/metadata/entities.json` in the format `optv.shared.nel.get_nel_data` expects. The `entity_dump_url` in [`manifest.yaml`](manifest.yaml) is empty; the workflow uses the local file.
+`python -m optv.shared.entity_dump_bootstrap DE-ST <data_dir>` queries Wikidata for everyone with `P39 wd:Q18559580` ("member of the Landtag of Saxony-Anhalt") and combines them with the party list of WP 8 and WP 9 (incl. BSW) in [`manifest.yaml`](manifest.yaml) (`entity_bootstrap`). Writes `<data>/metadata/entities.json` in the format `optv.shared.nel.get_nel_data` expects. The `entity_dump_url` in [`manifest.yaml`](manifest.yaml) is empty; the workflow uses the local file.
 
 ## Running
 
@@ -64,7 +64,7 @@ The portal is plain nginx + TYPO3 with no anti-bot — stdlib `urllib` with a po
 
 - **Only the current electoral period is online.** The WP 8 sample sittings (08105–08107) in the data repository can't be merged again: their MP4 links no longer resolve, and their `textContents[].license` is still `© Landtag von Sachsen-Anhalt — Schriftdolmetschung`.
 - **`sourcePage` is unique within a period only.** Page slugs are reused across periods (`/1-sitzungsperiode` served SP 1 of both WP 8 and WP 9), and the platform's import keys speech identity on the exact `sourcePage`.
-- **`entity_dump_url` is empty.** Point the NEL stage at `<data>/metadata/entities.json` produced by `scraper/build_entity_dump.py`. Non-MP speakers (Landesminister, guests) and members without a Wikidata Landtag statement don't link.
+- **`entity_dump_url` is empty.** Point the NEL stage at `<data>/metadata/entities.json` produced by `optv.shared.entity_dump_bootstrap`. Non-MP speakers (Landesminister, guests) and members without a Wikidata Landtag statement don't link.
 - **Sitzungsperiode dropped from Stage 2.** The portal's URL-grouping unit is recorded only in `meta.sitzungsperiode`. DE-ST is another instance of the three-level temporal pattern (alongside NO/SE) that the current schema flattens.
 - **No live API contract.** Video AJAX (`?videoSessions=videoAjax`) and transcript AJAX (`?transcriptSessions=lsaSessionsAjax`) are undocumented TYPO3 extension endpoints. If the portal is rebuilt, both scrapers will need rework.
 - **VMS MP4 URLs may rotate.** Hash-named MP4 URLs on `app.vms.landtag-lsa.de` are persisted at scrape time; if the Landtag rotates them, alignment will need to refetch via the AJAX endpoint.
