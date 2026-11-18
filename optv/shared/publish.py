@@ -7,7 +7,8 @@ on different machines, in different order, or with a stale Tools checkout:
 * ``carry_forward_wids`` and ``carry_forward_enrichments`` fill missing
   per-speech enrichment fields from the published copy -- a publish can
   only ever add wids / agendaItem types / debug.confidence values, never
-  silently strip ones already produced by a newer worker.
+  silently strip ones already produced by a newer worker. A faction NEL
+  turned into an object stays an object.
 * ``data_signature`` + ``save_if_changed`` skip writes whose ``data``
   payload is byte-equal to what is already on disk (mtime hygiene).
 """
@@ -276,6 +277,8 @@ def carry_forward_wids(new_data: list, published_data: list) -> int:
     out-of-date cache. Mutates new_data; returns the number of wids carried.
 
     A person's wid and its faction's wid are carried independently, so a speaker NEL could not link keeps a linked faction.
+
+    NEL also turns a string faction into a ``{label, wid, wtype}`` object. A string faction whose label matches the published faction object takes that object (wid included, even an empty one), so a publish from a cache that predates NEL (align, NER) keeps the object shape. A string with a different label stays a string for the next NEL pass. Only non-empty wids count towards the return value.
     """
     published_by_key = {}
     for speech in published_data:
@@ -289,7 +292,7 @@ def carry_forward_wids(new_data: list, published_data: list) -> int:
             continue
         prev_people = {p['label']: p
                        for p in (prev.get('people') or [])
-                       if p.get('label') and (p.get('wid') or _faction_wid(p))}
+                       if p.get('label') and (p.get('wid') or isinstance(p.get('faction'), dict))}
         for person in (speech.get('people') or []):
             ref = prev_people.get(person.get('label'))
             if not ref:
@@ -300,18 +303,18 @@ def carry_forward_wids(new_data: list, published_data: list) -> int:
                     person['wtype'] = ref['wtype']
                 carried += 1
             faction, ref_faction = person.get('faction'), ref.get('faction')
-            if (isinstance(faction, dict) and isinstance(ref_faction, dict)
+            if (isinstance(faction, str) and isinstance(ref_faction, dict)
+                    and ref_faction.get('label') == faction):
+                person['faction'] = dict(ref_faction)
+                if ref_faction.get('wid'):
+                    carried += 1
+            elif (isinstance(faction, dict) and isinstance(ref_faction, dict)
                     and not faction.get('wid') and ref_faction.get('wid')):
                 faction['wid'] = ref_faction['wid']
                 if ref_faction.get('wtype'):
                     faction['wtype'] = ref_faction['wtype']
                 carried += 1
     return carried
-
-
-def _faction_wid(person: dict) -> str:
-    faction = person.get('faction')
-    return faction.get('wid', '') if isinstance(faction, dict) else ''
 
 
 def carry_forward_documents(new_data: list, published_data: list) -> int:

@@ -128,6 +128,8 @@ def _publish_as_processed(config, args, session: str, filepath: Path) -> Path:
     # rebuild stage (the bare-merge republish, align, ner) from silently dropping
     # wids the published session already holds. carry_forward_wids is fill-only,
     # so it can never overwrite or resurrect a wid NEL intentionally removed.
+    # It also keeps the faction objects NEL made, so align/ner publishing from a
+    # pre-NEL cache don't turn people[].faction back into strings.
     # (Without this, a --rebuild job that runs merge but not nel strips every
     # committed wid: merge republishes a bare merge and nothing re-links it.)
     carried = carry_forward_wids(new_doc['data'], published_data['data'])

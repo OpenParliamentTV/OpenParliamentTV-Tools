@@ -120,6 +120,38 @@ def test_carry_forward_keeps_faction_wid_of_an_unlinked_speaker():
     assert "wid" not in new[0]["people"][0]
 
 
+def test_carry_forward_keeps_the_faction_object_nel_made():
+    # align/NER publish from a cache that predates NEL, where the merger's
+    # faction is still a string: the published object must survive.
+    published = [_speech("A", people=[{
+        "label": "X", "wid": "Q1",
+        "faction": {"wid": "Q49768", "label": "SPD", "wtype": "ORG"}}])]
+    new = [_speech("A", people=[{"label": "X", "faction": "SPD"}])]
+    assert carry_forward_wids(new, published) == 2
+    assert new[0]["people"][0]["faction"] == {"wid": "Q49768", "label": "SPD", "wtype": "ORG"}
+    # a copy, not the published object itself
+    assert new[0]["people"][0]["faction"] is not published[0]["people"][0]["faction"]
+
+
+def test_carry_forward_keeps_an_unlinked_faction_object():
+    # NEL found no wid for the faction but still made it an object.
+    published = [_speech("A", people=[{
+        "label": "X", "faction": {"wid": "", "label": "fraktionslos", "wtype": "ORG"}}])]
+    new = [_speech("A", people=[{"label": "X", "faction": "fraktionslos"}])]
+    assert carry_forward_wids(new, published) == 0
+    assert new[0]["people"][0]["faction"] == {"wid": "", "label": "fraktionslos", "wtype": "ORG"}
+
+
+def test_carry_forward_leaves_a_changed_faction_string():
+    # The speaker's faction changed since the last NEL pass: carrying the old
+    # object would attach the wrong wid, so the string waits for NEL.
+    published = [_speech("A", people=[{
+        "label": "X", "faction": {"wid": "Q49768", "label": "SPD", "wtype": "ORG"}}])]
+    new = [_speech("A", people=[{"label": "X", "faction": "fraktionslos"}])]
+    assert carry_forward_wids(new, published) == 0
+    assert new[0]["people"][0]["faction"] == "fraktionslos"
+
+
 # carry_forward_enrichments -- per-speech derived fields are monotonic
 # across a publish; stale code can't strip what newer code produced.
 
