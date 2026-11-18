@@ -16,7 +16,6 @@ unvalidated** — no Whisper-QC / text-fidelity audit has cleared it yet.
 
 import logging
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -28,7 +27,7 @@ if __package__ is None or __package__ == "":
     __package__ = module_dir.name
 
 from optv.shared.audio_prep import make_align_hook
-from optv.shared.workflow import WorkflowHooks, run_main
+from optv.shared.workflow import WorkflowHooks, adapt_merge, period_prefix_scope, run_main
 
 from .align_prep import prepare_per_speech_audio
 from .common import Config
@@ -72,23 +71,12 @@ def _parse(config, args):
     parse_proceedings_directory(config, args)
 
 
-def _merge(config, session, args):
-    return merge_session(session, config, args)
+_merge = adapt_merge(merge_session)
 
 
-def _session_in_scope(args, session: str) -> bool:
-    """DE-NW session keys are 5-digit ``{period:02d}{sitzung:03d}`` (e.g. 18117).
-
-    Mirror DE-HH/DE-BW/DE-BY: the shared default
-    ``session.startswith(str(args.period))`` is correct for two-digit periods
-    (18…), but the explicit override keeps a future single-digit term safe via
-    zero-padding.
-    """
-    if args.limit_to_period and not session.startswith(f"{int(args.period):02d}"):
-        return False
-    if args.limit_session and not re.match(args.limit_session, session):
-        return False
-    return True
+# Session keys are 5-digit ``{period:02d}{sitzung:03d}`` (e.g. 18117); the
+# zero-padded prefix also matches single-digit periods.
+_session_in_scope = period_prefix_scope(width=2)
 
 
 HOOKS = WorkflowHooks(

@@ -22,7 +22,6 @@ import datetime as _dt
 import json
 import logging
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -34,7 +33,7 @@ if __package__ is None or __package__ == "":
     __package__ = module_dir.name
 
 from optv.shared.align import align_audio
-from optv.shared.workflow import WorkflowHooks, run_main
+from optv.shared.workflow import WorkflowHooks, period_prefix_scope, run_main
 
 from .align_prep import prepare_per_speech_audio
 from .common import Config, period_to_sesjonider
@@ -50,14 +49,9 @@ logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basen
 PARLIAMENT_ID = Path(__file__).parent.name
 
 
-def _session_in_scope(args, session):
-    """NO sessions are ``{period}_{moteid}``. The underscore avoids matching
-    period=22 against e.g. ``225_…``."""
-    if args.limit_to_period and not session.startswith(f"{args.period}_"):
-        return False
-    if args.limit_session and not re.match(args.limit_session, session):
-        return False
-    return True
+# Sessions are ``{period}_{moteid}``; the underscore avoids matching period 22
+# against e.g. ``225_…``.
+_session_in_scope = period_prefix_scope(sep="_")
 
 
 def _selected_meetings(args, config: Config) -> list[int]:

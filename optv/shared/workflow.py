@@ -230,6 +230,32 @@ def _default_session_in_scope(args, session: str) -> bool:
     return True
 
 
+def period_prefix_scope(width: int = 0, sep: str = "") -> Callable:
+    """Build a ``session_in_scope`` hook for session keys that start with the period.
+
+    ``width`` zero-pads the period (``width=2``: period 8 matches ``08025``,
+    which the default's plain ``startswith("8")`` misses). ``sep`` is a
+    separator that must follow the period (``sep="_"``: period 22 matches
+    ``22_11518`` but not ``225_1``). ``--limit-session`` applies as in the
+    default.
+    """
+    def session_in_scope(args, session: str) -> bool:
+        if args.limit_to_period and not session.startswith(f"{int(args.period):0{width}d}{sep}"):
+            return False
+        if args.limit_session and not re.match(args.limit_session, session):
+            return False
+        return True
+    return session_in_scope
+
+
+def adapt_merge(merge_session: Callable) -> Callable:
+    """Build the ``merge_session_to_file`` hook for a merger with the signature
+    ``merge_session(session, config, args) -> Path``."""
+    def merge_session_to_file(config, session, args):
+        return merge_session(session, config, args)
+    return merge_session_to_file
+
+
 # ---- machine-local per-period stage state (watermarks + NEL dump marker) ----
 #
 # Optimization only: lets a stage skip its (JSON-parsing) worklist scan when no

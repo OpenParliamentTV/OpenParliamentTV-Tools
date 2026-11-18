@@ -22,7 +22,7 @@ if __package__ is None or __package__ == "":
     __package__ = module_dir.name
 
 from optv.shared.align import align_audiofile
-from optv.shared.workflow import WorkflowHooks, run_main
+from optv.shared.workflow import WorkflowHooks, adapt_merge, run_main
 
 from .common import Config
 from .merger.merge_session import merge_session
@@ -61,8 +61,7 @@ def _parse(config, args):
     parse_media_directory(config.dir('media'))
 
 
-def _merge(config, session, args):
-    return merge_session(session, config, args)
+_merge = adapt_merge(merge_session)
 
 
 def _align(config, session, args):

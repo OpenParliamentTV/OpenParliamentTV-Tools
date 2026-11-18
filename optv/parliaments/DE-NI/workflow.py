@@ -18,7 +18,6 @@ before platform integration.
 
 import logging
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -29,7 +28,7 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = module_dir.name
 
-from optv.shared.workflow import WorkflowHooks, run_main
+from optv.shared.workflow import WorkflowHooks, adapt_merge, period_prefix_scope, run_main
 
 from .common import Config
 from .merger.merge_session import merge_session
@@ -65,17 +64,12 @@ def _parse(config, args):
     parse_proceedings_directory(config, args)
 
 
-def _merge(config, session, args):
-    return merge_session(session, config, args)
+_merge = adapt_merge(merge_session)
 
 
-def _session_in_scope(args, session: str) -> bool:
-    """DE-NI session keys are 5-digit ``{period:02d}{sitzung:03d}`` (e.g. 19080)."""
-    if args.limit_to_period and not session.startswith(f"{int(args.period):02d}"):
-        return False
-    if args.limit_session and not re.match(args.limit_session, session):
-        return False
-    return True
+# Session keys are 5-digit ``{period:02d}{sitzung:03d}`` (e.g. 19080); the
+# zero-padded prefix also matches single-digit periods.
+_session_in_scope = period_prefix_scope(width=2)
 
 
 HOOKS = WorkflowHooks(

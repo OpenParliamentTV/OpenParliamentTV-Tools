@@ -46,7 +46,7 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent))
     __package__ = module_dir.name
 
-from optv.shared.workflow import WorkflowHooks, run_main
+from optv.shared.workflow import WorkflowHooks, adapt_merge, run_main
 
 from .common import OFFICIAL_TEXT_UPGRADES_FILE, Config
 from .merger.merge_session import merge_session
@@ -97,8 +97,7 @@ def _parse(config: Config, args):
             logger.info(f"[{session}] wrote {proc_out.name} ({len(doc['data'])} speeches)")
 
 
-def _merge(config: Config, session: str, args):
-    return merge_session(session, config, args)
+_merge = adapt_merge(merge_session)
 
 
 def _align(config: Config, session: str, args):
