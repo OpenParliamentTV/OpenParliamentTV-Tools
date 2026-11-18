@@ -21,8 +21,8 @@ once). Check times live in ``cache/tw-speech-record-checks.json``.
 When official text arrives for a session that is already published, the
 publish guard would refuse the changed transcript (and the merge/align stages
 skip already-aligned sessions), so the session key is appended to
-``cache/tw-official-text-upgrades.txt``; the ``update`` wrapper re-runs those
-sessions with ``--rebuild``.
+``cache/tw-official-text-upgrades.txt``; the workflow re-runs those sessions
+with rebuild semantics after its regular stages (``rebuild_queue``).
 """
 
 from __future__ import annotations

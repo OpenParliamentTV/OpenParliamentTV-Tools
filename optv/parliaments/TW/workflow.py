@@ -20,7 +20,8 @@ Text: each speech carries the official text (``textContents[].type
 "proceedings"``, untimed) once the IVOD site publishes it, plus the WhisperX
 machine transcript (``"generated"``, timed). Official text that arrives for an
 already-published session is queued in ``cache/tw-official-text-upgrades.txt``
-for a ``--rebuild`` pass (the ``update`` wrapper runs it).
+for a rebuild pass, which the shared runner runs after the regular stages
+(``rebuild_queue``).
 
 Alignment is custom: TW skips aeneas entirely. The WhisperX transcript
 attached to each IVOD already has per-segment ``start`` / ``end`` seconds
@@ -47,7 +48,7 @@ if __package__ is None or __package__ == "":
 
 from optv.shared.workflow import WorkflowHooks, run_main
 
-from .common import Config
+from .common import OFFICIAL_TEXT_UPGRADES_FILE, Config
 from .merger.merge_session import merge_session
 from .parsers.media2json import parse_session_media
 from .parsers.proceedings2json import generated_text_content, parse_session_proceedings
@@ -178,6 +179,7 @@ HOOKS = WorkflowHooks(
     parse_originals=_parse,
     merge_session_to_file=_merge,
     align_session_to_file=_align,
+    rebuild_queue=OFFICIAL_TEXT_UPGRADES_FILE,
 )
 
 

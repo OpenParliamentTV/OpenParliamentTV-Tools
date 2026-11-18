@@ -30,8 +30,7 @@ aeneas with espeak's `cmn` voice produces poor-quality Mandarin alignment, and t
 ## Running
 
 ```bash
-./optv/parliaments/TW/update <data_dir>
-# or, with finer control / to download a specific plenary:
+# One plenary (drop --session to discover the last 14 days):
 ./optv/parliaments/TW/workflow.py --period=11 <data_dir> \
     --session 院會-11-5-11 \
     --download-original --merge-speeches \
@@ -41,7 +40,7 @@ aeneas with espeak's `cmn` voice produces poor-quality Mandarin alignment, and t
 
 Without `--session`, `--download-original` discovers plenary meetings with IVODs on any day from `--since YYYY-MM-DD` (default: the last 14 days) to today via `GET /v2/ivods?日期=YYYY-MM-DD`; a backfill passes an early `--since`. `--session <code>` (repeatable) downloads those meetings instead. `--period=11` selects term 11. Session keys are `{屆:02d}{會期:02d}{會次:03d}` (e.g. `1105011` = 院會-11-5-11). `--limit-ivods N` is testing-only.
 
-The `update` wrapper runs two passes. Pass 1 downloads (discovery, speech kinds, details, official text), merges, links entities, applies the WhisperX timings and extracts entities. When official text arrives for a session that is already published, the publish guard refuses the changed transcript and the merge/align stages skip already-aligned sessions, so the download step queues the session in `cache/tw-official-text-upgrades.txt`; pass 2 re-runs exactly those sessions with `--rebuild` and clears the file.
+A run that merges makes two passes. Pass 1 runs the requested stages: download (discovery, speech kinds, details, official text), merge, entity linking, WhisperX timings, entity extraction. When official text arrives for a session that is already published, the publish guard refuses the changed transcript and the merge/align stages skip already-aligned sessions, so the download step queues the session in `cache/tw-official-text-upgrades.txt`; pass 2 re-runs exactly the queued sessions in scope with rebuild semantics and takes them off the queue.
 
 The NEL entity dump is built locally:
 

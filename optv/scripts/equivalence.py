@@ -411,7 +411,7 @@ def main() -> int:
     snap.add_argument("--keep-parsed", action="store_true",
                       help="Keep existing parse outputs instead of regenerating them")
     snap.add_argument("--workflow-args", type=lambda v: v.split(), default=[],
-                      help="Extra workflow flags as one quoted string, e.g. '--link-entities --rebuild'")
+                      help="Extra workflow flags as one string, attached with '=': --workflow-args='--link-entities --rebuild'")
     snap.add_argument("--hashseed", default="0", help="PYTHONHASHSEED for the workflow process")
     snap.add_argument("--jobs", type=int, default=4, help="Parliaments processed in parallel")
     snap.add_argument("--keep", action="store_true", help="Keep the working copies for inspection")

@@ -18,9 +18,9 @@ and unvalidated** — no Whisper-QC / text-fidelity audit has cleared it yet, an
 substantial refinement is still needed before platform integration.
 
 A protocol that arrives for a sitting already published with subtitle text is
-queued in ``cache/de-hh-protocol-upgrades.txt``; the ``update`` wrapper re-runs
-those sittings with ``--rebuild`` (the publish guard refuses a changed transcript
-otherwise).
+queued in ``cache/de-hh-protocol-upgrades.txt``; the shared runner re-runs those
+sittings with rebuild semantics after the regular stages (``rebuild_queue``; the
+publish guard refuses a changed transcript otherwise).
 """
 
 import datetime as _dt
@@ -46,7 +46,7 @@ from .align_prep import prepare_per_speech_audio
 from .common import Config
 from .merger.merge_session import merge_session
 from .parsers.proceedings2json import parse_proceedings_directory
-from .scraper.fetch_proceedings import fetch_proceedings
+from .scraper.fetch_proceedings import UPGRADES_FILE, fetch_proceedings
 from .parsers.media2json import parse_media_directory
 from .scraper.fetch_archive import fetch_archive
 from .scraper.fetch_media import fetch_media_for_archive
@@ -162,6 +162,7 @@ HOOKS = WorkflowHooks(
     merge_session_to_file=_merge,
     align_session_to_file=_align,
     session_in_scope=_session_in_scope,
+    rebuild_queue=UPGRADES_FILE,
 )
 
 

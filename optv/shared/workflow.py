@@ -7,6 +7,7 @@ parsers, merge call shape, align call shape). Each parliament's
 """
 
 import argparse
+import copy
 import json
 import logging
 import os
@@ -53,6 +54,12 @@ class WorkflowHooks:
           Produce the aligned cache file for one session and return its path.
       session_in_scope(args, session) -> bool
           Optional; defaults to ``startswith(str(args.period))`` + ``--limit-session``.
+
+    ``rebuild_queue`` names a file in the cache directory listing sessions (one
+    per line) that the download step found changed at the source in a way the
+    publish guard refuses, e.g. a transcript replacing an earlier one. After
+    the regular stages, ``run_workflow`` re-runs those sessions with rebuild
+    semantics and removes them from the file.
     """
     parliament_id: str
     download_originals: Optional[Callable] = None
@@ -60,6 +67,7 @@ class WorkflowHooks:
     merge_session_to_file: Optional[Callable] = None
     align_session_to_file: Optional[Callable] = None
     session_in_scope: Optional[Callable] = None
+    rebuild_queue: Optional[str] = None
 
 
 # ---- shared internal helpers (kept private; identical across parliaments) ----
@@ -534,9 +542,16 @@ def _run_ner_stage(config, args, in_scope, publish, state, scope_key) -> None:
 def run_workflow(config, args, hooks: WorkflowHooks) -> None:
     """Drive the parliament-agnostic stages, dispatching to hooks for the
     parliament-specific work."""
+    state = _load_state(config)
+    _run_stages(config, args, hooks, state)
+    _save_state(config, state)
+    _run_rebuild_queue(config, args, hooks)
+    logger.info("Workflow done")
+
+
+def _run_stages(config, args, hooks: WorkflowHooks, state: dict) -> None:
     publish = lambda s, f: _publish_as_processed(config, args, s, f)
     in_scope = hooks.session_in_scope or _default_session_in_scope
-    state = _load_state(config)
     scope_key = _scope_key(args)
 
     if args.download_original and hooks.download_originals:
@@ -564,8 +579,43 @@ def run_workflow(config, args, hooks: WorkflowHooks) -> None:
     if args.extract_entities:
         _run_ner_stage(config, args, in_scope, publish, state, scope_key)
 
-    _save_state(config, state)
-    logger.info("Workflow done")
+
+def _run_rebuild_queue(config, args, hooks: WorkflowHooks) -> None:
+    """Re-run the sessions listed in ``hooks.rebuild_queue`` with rebuild semantics.
+
+    Only on runs that merge, and only for queued sessions the run has in scope;
+    the rest stay queued. The second pass runs the same stages as the first,
+    minus download and the entity-dump refresh, limited to exactly the queued
+    sessions. A run that is itself a ``--rebuild`` has already re-derived them,
+    so they are only taken off the queue.
+    """
+    if not hooks.rebuild_queue or not args.merge_speeches:
+        return
+    queue_file = config.dir('cache') / hooks.rebuild_queue
+    if not queue_file.exists():
+        return
+    queued = queue_file.read_text().split()
+    in_scope = hooks.session_in_scope or _default_session_in_scope
+    sessions = [s for s in queued if in_scope(args, s)]
+    if not sessions:
+        return
+    if not getattr(args, 'rebuild', False):
+        logger.info(f"Rebuilding {len(sessions)} queued session(s) from "
+                    f"{queue_file.name}: {', '.join(sessions)}")
+        pass_args = copy.copy(args)
+        pass_args.rebuild = True
+        pass_args.force = True
+        pass_args.download_original = False
+        pass_args.update_nel_entities = False
+        pass_args.limit_session = "^(?:" + "|".join(re.escape(s) for s in sessions) + ")$"
+        # Throwaway state: the watermarks are keyed by period, not by
+        # --limit-session, so this narrowed pass must not record any.
+        _run_stages(config, pass_args, hooks, {})
+    remaining = [s for s in queued if s not in sessions]
+    if remaining:
+        queue_file.write_text("\n".join(remaining) + "\n")
+    else:
+        queue_file.unlink()
 
 
 def build_common_argparser(*, description: str) -> argparse.ArgumentParser:

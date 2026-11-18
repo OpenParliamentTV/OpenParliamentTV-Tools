@@ -11,7 +11,7 @@ PDF and the attempt is repeated on the next run.
 A protocol that arrives for a sitting already published with subtitle text
 (``debug.textSource == "subtitles"``) is appended to
 ``cache/de-hh-protocol-upgrades.txt``: replacing the published transcript needs a
-``--rebuild`` pass, which the ``update`` wrapper runs for the listed sittings.
+rebuild pass, which the workflow runs for the listed sittings (``rebuild_queue``).
 """
 from __future__ import annotations
 

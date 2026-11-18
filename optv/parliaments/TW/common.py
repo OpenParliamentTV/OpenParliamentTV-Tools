@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 SPEECH_RECORD_URL = "https://ivod.ly.gov.tw/Demand/Speech/{ivod_id}"
 
 # Session keys whose already-published file lacks newly arrived official text;
-# the `update` wrapper re-runs them with --rebuild (see scraper/fetch_records.py).
+# the workflow re-runs them with rebuild semantics (see scraper/fetch_records.py).
 OFFICIAL_TEXT_UPGRADES_FILE = "tw-official-text-upgrades.txt"
 
 

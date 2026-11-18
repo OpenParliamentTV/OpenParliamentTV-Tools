@@ -25,13 +25,14 @@ No cross-source matching for the spine: `merger/merge_session.py` is a single-so
 
 Text: when the protocol is parsed, it is joined onto the spine (`join_text_to_spine`, `type = "proceedings"`); otherwise each speech with subtitles gets them as `type = "generated"` text with sentence timings (`debug.textSource = "subtitles"`, `debug.confidence = 1.0`, as the text is cut by the speech's own time range). The align hook in `workflow.py` follows the source: subtitle sittings are only stamped (`debug.alignDuration`, `debug.alignSource = "subtitles"`, `media.aligned`), protocol sittings are aligned with aeneas against each speech clip (`align_prep.py`).
 
-When a protocol arrives for a sitting already published with subtitle text, `scraper/fetch_proceedings.py` queues it in `cache/de-hh-protocol-upgrades.txt`, and the `update` wrapper re-runs the queued sittings with `--rebuild` so the protocol text replaces the subtitles (the publish guard refuses a changed transcript otherwise). The Conductor calls `workflow.py` directly and does not read this queue.
+When a protocol arrives for a sitting already published with subtitle text, `scraper/fetch_proceedings.py` queues it in `cache/de-hh-protocol-upgrades.txt`, and the workflow re-runs the queued sittings with rebuild semantics after its regular stages, so the protocol text replaces the subtitles (the publish guard refuses a changed transcript otherwise). The second pass runs on any run that merges, for the queued sittings in its scope.
 
 ## Running
 
 ```sh
-# Convenience wrapper (period 23 baked in; second --rebuild pass for queued protocol upgrades)
-./update /path/to/OpenParliamentTV-Data-DE-HH
+# Routine run (newest period): download, merge, link entities; queued protocol upgrades are rebuilt
+./workflow.py /path/to/OpenParliamentTV-Data-DE-HH \
+    --download-original --merge-speeches --link-entities
 
 # Pre-NEL, (re)generate the local entity dump (Wikidata P39 Q19360355 + WP-23 parties):
 python optv/parliaments/DE-HH/scraper/build_entity_dump.py /path/to/OpenParliamentTV-Data-DE-HH
