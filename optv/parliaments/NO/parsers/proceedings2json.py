@@ -57,12 +57,6 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.NO.parsers"
-
 import lxml.etree as ET
 
 from optv.parliaments.NO.common import Config, period_to_sesjonider

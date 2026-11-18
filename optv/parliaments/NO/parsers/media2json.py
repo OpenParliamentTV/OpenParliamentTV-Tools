@@ -18,12 +18,6 @@ import os
 import sys
 from pathlib import Path
 
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.NO.parsers"
-
 from optv.parliaments.NO.common import Config
 
 logger = logging.getLogger(__name__ if __name__ != "__main__" else os.path.basename(sys.argv[0]))

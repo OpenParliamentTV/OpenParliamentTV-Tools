@@ -39,7 +39,7 @@ For a test run, `--fetch-opal FROM TO` saves OPAL's speech search for `--period`
 python3 optv/parliaments/DE-RP/workflow.py --period=19 --fetch-opal 2026-09-16 2026-09-17 \
     --download-original <data_dir>
 # or standalone:
-python3 optv/parliaments/DE-RP/scraper/fetch_opal.py --wp 19 --from 2026-09-16 --to 2026-09-17 \
+python3 -m optv.parliaments.DE-RP.scraper.fetch_opal --wp 19 --from 2026-09-16 --to 2026-09-17 \
     --inbox-dir <data_dir>/original/media/inbox
 ```
 

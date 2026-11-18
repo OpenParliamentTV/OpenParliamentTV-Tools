@@ -29,16 +29,9 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 import unicodedata
 from collections import OrderedDict
 from pathlib import Path
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.FI.scraper"
 
 from optv.shared.entity_dump_bootstrap import bind as _bind, sparql_get as _sparql_get
 from optv.parliaments.FI.common import Config

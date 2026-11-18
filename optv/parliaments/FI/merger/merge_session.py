@@ -29,12 +29,6 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Optional
 
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent))
-    __package__ = "optv.parliaments.FI.merger"
-
 from optv.parliaments.FI.common import Config, parse_session_str, session_number_int
 from optv.shared.publish import save_if_changed
 from optv.shared.agenda_types import annotate_agenda_item, classify_fi

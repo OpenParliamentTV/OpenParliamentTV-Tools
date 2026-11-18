@@ -34,12 +34,6 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent))
-    __package__ = "optv.parliaments.SE.merger"
-
 from optv.parliaments.SE.common import Config
 from optv.shared.publish import save_if_changed
 from optv.shared.speech_id import normalize_speech_originid

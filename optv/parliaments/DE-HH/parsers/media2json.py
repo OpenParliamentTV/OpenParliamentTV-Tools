@@ -38,16 +38,9 @@ import argparse
 import json
 import logging
 import re
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from optv.parliaments import get_rights as _get_rights
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.DE-HH.parsers"
 
 from optv.shared.lang.de import spacy_sentencize
 from optv.shared.vtt import cues_to_sentences, parse_vtt

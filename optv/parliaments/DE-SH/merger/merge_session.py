@@ -25,17 +25,10 @@ import argparse
 import json
 import logging
 import re
-import sys
 from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.DE-SH.merger"
 
 from optv.shared.agenda_types import classify_de_sh
 from optv.shared.merge_format import split_first_last as _split_first_last
@@ -114,7 +107,6 @@ def _split_role_and_name(redner: str) -> tuple[str | None, str]:
     if not m:
         return None, redner.strip()
     return m.group("role"), m.group("rest").strip()
-
 
 
 def _build_person(speech: dict) -> dict:

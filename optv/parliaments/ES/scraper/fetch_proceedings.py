@@ -18,11 +18,6 @@ import sys
 import time
 from random import random
 
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    __package__ = module_dir.name
-
 from .common import fetch_url
 
 SEARCH_BASE = "https://www.congreso.es/busqueda-de-intervenciones"

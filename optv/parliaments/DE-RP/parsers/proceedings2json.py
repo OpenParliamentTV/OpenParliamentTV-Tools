@@ -37,12 +37,6 @@ import re
 from spacy.lang.de import German
 import sys
 
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))               # for .common
-    sys.path.insert(0, str(module_dir.parents[3]))           # for optv.shared.*
-    __package__ = module_dir.name
-
 from .common import STATUS_TRANSLATION, fix_faction, fix_fullname
 from optv.shared.agenda_types import classify_de_rp
 from optv.shared.lang.de import split_long_sentences

@@ -31,16 +31,9 @@ import argparse
 import io
 import logging
 import re
-import sys
 import zipfile
 from collections import Counter
 from pathlib import Path
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.FR.scraper"
 
 from optv.parliaments.FR.common import Config, session_to_uid, uid_to_session
 from optv.parliaments.FR.scraper.common import http_get

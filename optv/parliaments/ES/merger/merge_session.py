@@ -26,11 +26,6 @@ from optv.shared.sequence_align import align_equal_keys
 from optv.shared.speech_id import normalize_speech_originid
 from optv.shared.meta import build_meta, fill_original_language, now_iso
 
-if __package__ is None or __package__ == "":
-    _module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(_module_dir.parents[3]))
-    __package__ = _module_dir.name
-
 # Scoring: a surname match is strongly rewarded; a non-match diagonal is made
 # prohibitively expensive so the alignment never pairs different speakers —
 # it gaps them instead (cheap, since unmatched chair turns are expected).

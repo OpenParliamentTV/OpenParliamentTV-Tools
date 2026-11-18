@@ -24,12 +24,6 @@ import os
 import sys
 from pathlib import Path
 
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent))
-    __package__ = "optv.parliaments.AT.parsers"
-
 from optv.parliaments import get_rights
 from optv.parliaments.AT.common import Config
 

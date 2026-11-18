@@ -44,15 +44,8 @@ import argparse
 import datetime
 import json
 import logging
-import sys
 from pathlib import Path
 from typing import Any
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))                          # TW/
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))     # repo root
-    __package__ = "optv.parliaments.TW.parsers"
 
 from optv.parliaments.TW.common import SPEECH_RECORD_URL, Config, decode_session
 from .speech_record import parse_speech_record

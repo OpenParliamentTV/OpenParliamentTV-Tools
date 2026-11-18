@@ -37,17 +37,10 @@ import html as _html
 import json
 import logging
 import re
-import sys
 import time
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urljoin
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.PT.scraper"
 
 from optv.parliaments.PT.common import Config, make_session
 from optv.parliaments.PT.scraper.common import http_get

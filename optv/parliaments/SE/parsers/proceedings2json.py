@@ -29,13 +29,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Allow ./proceedings2json.py and python -m optv.parliaments.SE.parsers.proceedings2json.
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent))
-    __package__ = "optv.parliaments.SE.parsers"
-
 import json
 import lxml.html
 

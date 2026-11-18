@@ -41,12 +41,6 @@ from pathlib import Path
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent))
-    __package__ = "optv.parliaments.FI.parsers"
-
 from optv.parliaments.FI.common import Config, parse_session_str
 from optv.shared.agenda_types import annotate_agenda_item, classify_fi
 from optv.shared.sentence_split import split_long_sentences

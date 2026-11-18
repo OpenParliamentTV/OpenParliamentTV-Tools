@@ -25,11 +25,6 @@ import logging
 from pathlib import Path
 import sys
 
-if __package__ is None:
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    __package__ = module_dir.name
-
 from .common import fix_faction, fix_fullname, fix_role, is_office
 from optv.parliaments import get_rights as _get_rights
 

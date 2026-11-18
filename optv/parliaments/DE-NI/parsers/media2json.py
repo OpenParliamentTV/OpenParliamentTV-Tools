@@ -41,18 +41,11 @@ import argparse
 import json
 import logging
 import statistics
-import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from optv.parliaments import get_rights as _get_rights
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.DE-NI.parsers"
 
 from ..scraper.common import clip_start_secs
 

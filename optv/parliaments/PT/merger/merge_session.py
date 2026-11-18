@@ -55,17 +55,10 @@ import datetime
 import json
 import logging
 import re
-import sys
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent))
-    __package__ = "optv.parliaments.PT.merger"
 
 from optv.parliaments.PT.common import Config, parse_session, session_number_int, source_label
 from optv.shared.publish import save_if_changed

@@ -39,12 +39,6 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))                  # AT/
-    sys.path.insert(0, str(module_dir.parent.parent.parent))    # repo root
-    __package__ = "optv.parliaments.AT.scraper"
-
 from optv.parliaments.AT.common import Config
 
 logger = logging.getLogger(__name__ if __name__ != "__main__" else os.path.basename(sys.argv[0]))

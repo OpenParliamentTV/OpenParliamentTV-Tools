@@ -33,14 +33,7 @@ import argparse
 import json
 import logging
 import re
-import sys
 from pathlib import Path
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.DE-SN.scraper"
 
 from .common import (PAGE_SIZE, WP_START_DATES, fetch_text, last_page_start,
                      list_page_url, parse_list_page)

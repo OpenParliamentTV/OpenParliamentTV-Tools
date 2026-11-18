@@ -26,12 +26,6 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))                          # TW/
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))     # repo root
-    __package__ = "optv.parliaments.TW.merger"
-
 from optv.parliaments.TW.common import Config, decode_session
 from optv.shared.agenda_types import CORE_REGULAR, classify_tw
 from optv.shared.speech_id import normalize_speech_originid

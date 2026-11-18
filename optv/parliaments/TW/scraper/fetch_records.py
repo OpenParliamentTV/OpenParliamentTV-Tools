@@ -30,15 +30,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))                          # TW/
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))     # repo root
-    __package__ = "optv.parliaments.TW.scraper"
 
 from optv.parliaments.TW.common import (
     OFFICIAL_TEXT_UPGRADES_FILE,

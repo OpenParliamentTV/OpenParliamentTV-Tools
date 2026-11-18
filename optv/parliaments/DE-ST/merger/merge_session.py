@@ -31,19 +31,12 @@ import argparse
 import json
 import logging
 import re
-import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from lxml import html as lxml_html
 from spacy.lang.de import German
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.DE-ST.merger"
 
 from ..parsers.common import (
     name_key, normalize_ws, parse_speaker_line, role_to_context, strip_honorifics,

@@ -39,7 +39,7 @@ optv/parliaments/<CODE>/
 └── align_prep.py        # optional — per-speech audio staging for align (adapter over optv.shared.audio_prep); only when the source needs slicing
 ```
 
-The package layout matters: `workflow.py` imports from `optv.shared.*`, and the path bootstrap at the top supports both `python -m` and direct execution. Keep that bootstrap.
+The package layout matters: `workflow.py` imports from `optv.shared.*`, and the path bootstrap at the top supports both `python -m` and direct execution. Keep that bootstrap. Scraper, parser and merger modules need none: give each an `argparse` command line under `if __name__ == "__main__":` and run it as `python -m optv.parliaments.<CODE>.<package>.<module>` to exercise one part of the workflow; `tests/test_stage_cli.py` checks that every such command line starts.
 
 ## 4. Write `manifest.yaml`
 

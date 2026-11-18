@@ -24,15 +24,8 @@ import argparse
 import json
 import logging
 import re
-import sys
 from pathlib import Path
 from urllib.parse import urljoin
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.DE-HH.scraper"
 
 from optv.shared.vtt import merge_segments, write_vtt
 

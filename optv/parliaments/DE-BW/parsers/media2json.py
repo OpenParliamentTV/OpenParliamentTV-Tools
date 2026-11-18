@@ -27,17 +27,10 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from optv.parliaments import get_rights as _get_rights
 from optv.shared.lang.de import strip_honorifics as _strip_honorifics
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.DE-BW.parsers"
 
 logger = logging.getLogger(__name__)
 

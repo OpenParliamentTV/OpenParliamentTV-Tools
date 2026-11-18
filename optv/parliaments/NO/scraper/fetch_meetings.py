@@ -19,14 +19,7 @@ import datetime
 import json
 import logging
 import re
-import sys
 from pathlib import Path
-
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))
-    sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
-    __package__ = "optv.parliaments.NO.scraper"
 
 from optv.parliaments.NO.common import Config
 from optv.parliaments.NO.scraper.http_get import fetch_bytes, strip_bom

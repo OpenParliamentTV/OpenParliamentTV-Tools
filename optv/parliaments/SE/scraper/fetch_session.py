@@ -42,15 +42,6 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-# Allow ``./fetch_session.py`` (script) and ``python -m
-# optv.parliaments.SE.scraper.fetch_session`` (module). Mirrors the bootstrap
-# in optv/parliaments/DE/workflow.py.
-if __package__ is None or __package__ == "":
-    module_dir = Path(__file__).resolve().parent
-    sys.path.insert(0, str(module_dir.parent))                  # SE/
-    sys.path.insert(0, str(module_dir.parent.parent.parent))    # repo root
-    __package__ = "optv.parliaments.SE.scraper"
-
 from optv.parliaments.SE.common import Config
 
 logger = logging.getLogger(__name__ if __name__ != "__main__" else os.path.basename(sys.argv[0]))
