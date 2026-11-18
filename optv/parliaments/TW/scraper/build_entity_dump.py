@@ -27,12 +27,8 @@ import argparse
 import json
 import logging
 import sys
-import time
 from collections import OrderedDict
 from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
@@ -40,14 +36,12 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))     # repo root
     __package__ = "optv.parliaments.TW.scraper"
 
+from optv.shared.entity_dump_bootstrap import bind as _bind, sparql_get
 from optv.parliaments.TW.common import Config
 from .ly_api import LYApiClient
 
 logger = logging.getLogger(__name__)
 
-SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 # Q6310593 = "Member of the Legislative Yuan" (national legislative body of
 # the Republic of China). All people who ever held that position.
@@ -75,35 +69,10 @@ TW_PARTIES: list[dict] = [
 ]
 
 
-def _sparql_get(query: str, *, timeout: float = 90.0) -> dict:
-    url = SPARQL_ENDPOINT + "?" + urlencode({"query": query})
-    req = Request(url, headers={
-        "Accept": "application/sparql-results+json",
-        "User-Agent": USER_AGENT,
-    })
-    delay = 2.0
-    for attempt in range(1, 5):
-        try:
-            with urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read())
-        except (HTTPError, URLError, TimeoutError) as e:
-            if attempt >= 4:
-                raise
-            logger.warning("SPARQL retry %d after %.1fs: %s", attempt, delay, e)
-            time.sleep(delay)
-            delay *= 2
-    raise RuntimeError("unreachable")
-
-
-def _bind(binding: dict, key: str) -> str | None:
-    v = binding.get(key)
-    return v.get("value") if isinstance(v, dict) else None
-
-
 def fetch_wikidata_ly_members() -> list[dict]:
     """Query Wikidata for all known holders of P39=Q6310593."""
     logger.info("Querying Wikidata for LY members…")
-    payload = _sparql_get(SPARQL_LY_MEMBERS)
+    payload = sparql_get(SPARQL_LY_MEMBERS, timeout=90.0)
     bindings = (payload.get("results") or {}).get("bindings") or []
     members: dict[str, dict] = OrderedDict()
     for b in bindings:

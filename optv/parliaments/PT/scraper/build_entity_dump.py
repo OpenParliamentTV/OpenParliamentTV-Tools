@@ -25,13 +25,9 @@ import argparse
 import json
 import logging
 import sys
-import time
 import unicodedata
 from collections import OrderedDict
 from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
@@ -39,12 +35,11 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.PT.scraper"
 
+from optv.shared.entity_dump_bootstrap import bind as _bind, sparql_get
 from optv.parliaments.PT.common import Config
-from optv.parliaments.PT.scraper.common import USER_AGENT
 
 logger = logging.getLogger(__name__)
 
-SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 
 # P39 wd:Q19953703 = "member of the Assembly of the Republic" (Portugal). p:/ps:
 # so former memberships are followed too — once an MP, always a former MP.
@@ -97,27 +92,9 @@ def _clean(s: str) -> str:
     return " ".join(s.lower().replace("-", " ").split())
 
 
-def _sparql_get(query: str, *, timeout: float = 120.0) -> dict:
-    url = SPARQL_ENDPOINT + "?" + urlencode({"query": query})
-    req = Request(url, headers={"Accept": "application/sparql-results+json",
-                                "User-Agent": USER_AGENT})
-    delay = 5.0
-    for attempt in range(1, 7):
-        try:
-            with urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read())
-        except (HTTPError, URLError, TimeoutError) as e:
-            if attempt >= 6:
-                raise
-            logger.warning(f"SPARQL retry {attempt} after {delay:.0f}s: {e}")
-            time.sleep(delay)
-            delay = min(delay * 2, 70)
-    raise RuntimeError("unreachable")
-
-
-def _bind(b: dict, key: str) -> str | None:
-    v = b.get(key)
-    return v.get("value") if isinstance(v, dict) else None
+def _sparql_get(query: str) -> dict:
+    # WDQS is slow on these queries and throttles repeats: more attempts, longer waits.
+    return sparql_get(query, attempts=6, first_delay=5.0, max_delay=70.0)
 
 
 def fetch_members() -> "OrderedDict[str, dict]":

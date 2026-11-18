@@ -76,24 +76,28 @@ GROUP BY ?person ?label_de ?label_en ?label_mul
 """
 
 
-def sparql_get(query: str, *, timeout: float = 120.0) -> dict:
-    """Run a SPARQL query against Wikidata; retry with backoff on transport errors."""
+def sparql_get(query: str, *, timeout: float = 120.0, attempts: int = 4,
+               first_delay: float = 2.0, max_delay: float | None = None) -> dict:
+    """Run a SPARQL query against Wikidata; retry on transport errors.
+
+    The delay doubles after each failed attempt, from ``first_delay`` up to ``max_delay`` (uncapped when ``None``); the last attempt's error is raised.
+    """
     url = SPARQL_ENDPOINT + "?" + urlencode({"query": query})
     req = Request(url, headers={
         "Accept": "application/sparql-results+json",
         "User-Agent": USER_AGENT,
     })
-    delay = 2.0
-    for attempt in range(1, 5):
+    delay = first_delay
+    for attempt in range(1, attempts + 1):
         try:
             with urlopen(req, timeout=timeout) as resp:
                 return json.loads(resp.read())
         except (HTTPError, URLError, TimeoutError) as e:
-            if attempt >= 4:
+            if attempt >= attempts:
                 raise
             logger.warning(f"SPARQL retry {attempt} after {delay:.1f}s: {e}")
             time.sleep(delay)
-            delay *= 2
+            delay = delay * 2 if max_delay is None else min(delay * 2, max_delay)
     raise RuntimeError("unreachable")
 
 

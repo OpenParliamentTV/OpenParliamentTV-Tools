@@ -105,6 +105,26 @@ def test_parliament_without_a_block_is_refused(tmp_path):
         bootstrap.build_from_manifest("DE", tmp_path)
 
 
+@pytest.mark.parametrize("kwargs, attempts, sleeps", [
+    ({}, 4, [2.0, 4.0, 8.0]),
+    ({"attempts": 6, "first_delay": 5.0, "max_delay": 70.0}, 6, [5.0, 10.0, 20.0, 40.0, 70.0]),
+])
+def test_sparql_get_backs_off_and_raises_the_last_error(kwargs, attempts, sleeps, monkeypatch):
+    from urllib.error import URLError
+    calls, slept = [], []
+
+    def urlopen(request, timeout):
+        calls.append(timeout)
+        raise URLError("down")
+
+    monkeypatch.setattr(bootstrap, "urlopen", urlopen)
+    monkeypatch.setattr(bootstrap.time, "sleep", slept.append)
+    with pytest.raises(URLError):
+        bootstrap.sparql_get("SELECT 1", timeout=9.0, **kwargs)
+    assert calls == [9.0] * attempts
+    assert slept == sleeps
+
+
 def test_party_table_names_each_item_once():
     ids = list(bootstrap.GERMAN_PARTIES.values())
     assert len(set(ids)) == len(ids)

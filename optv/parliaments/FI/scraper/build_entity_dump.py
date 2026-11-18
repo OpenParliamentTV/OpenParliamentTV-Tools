@@ -30,13 +30,9 @@ import argparse
 import json
 import logging
 import sys
-import time
 import unicodedata
 from collections import OrderedDict
 from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
 if __package__ is None or __package__ == "":
     module_dir = Path(__file__).resolve().parent
@@ -44,14 +40,12 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(module_dir.parent.parent.parent.parent))
     __package__ = "optv.parliaments.FI.scraper"
 
+from optv.shared.entity_dump_bootstrap import bind as _bind, sparql_get as _sparql_get
 from optv.parliaments.FI.common import Config
 from optv.parliaments.FI.scraper.eduskunta_api import fetch_mp_reference
 
 logger = logging.getLogger(__name__)
 
-SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
-USER_AGENT = ("OpenParliamentTV-Tools/0.1 "
-              "(+https://github.com/OpenParliamentTV)")
 
 # P39 wd:Q17592486 = "member of the Parliament of Finland". p:/ps: (not wdt:)
 # so deprecated-rank membership statements (e.g. people who later joined the
@@ -88,29 +82,6 @@ def _clean(s: str) -> str:
     s = unicodedata.normalize("NFKD", s or "")
     s = "".join(c for c in s if not unicodedata.combining(c))
     return " ".join(s.lower().split())
-
-
-def _sparql_get(query: str, *, timeout: float = 120.0) -> dict:
-    url = SPARQL_ENDPOINT + "?" + urlencode({"query": query})
-    req = Request(url, headers={"Accept": "application/sparql-results+json",
-                                "User-Agent": USER_AGENT})
-    delay = 2.0
-    for attempt in range(1, 5):
-        try:
-            with urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read())
-        except (HTTPError, URLError, TimeoutError) as e:
-            if attempt >= 4:
-                raise
-            logger.warning(f"SPARQL retry {attempt} after {delay:.1f}s: {e}")
-            time.sleep(delay)
-            delay *= 2
-    raise RuntimeError("unreachable")
-
-
-def _bind(b: dict, key: str) -> str | None:
-    v = b.get(key)
-    return v.get("value") if isinstance(v, dict) else None
 
 
 _LABEL_KEYS = ("label_fi", "label_sv", "label_en", "label_mul")
