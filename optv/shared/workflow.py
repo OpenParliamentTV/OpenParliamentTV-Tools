@@ -574,16 +574,16 @@ def build_common_argparser(*, description: str) -> argparse.ArgumentParser:
     Parliament-specific flags (``--lang``, ``--inbox-dir``, ``--protokoll``,
     ...) are added by the per-parliament wrapper after this returns.
 
-    ``--period`` is required for all parliaments; per-parliament wrapper
-    scripts (e.g. DE-RP/update, DE/update) bake in the value when running.
+    ``--period``, ``--lang``, ``--retry-count`` and ``--retry-delay-max``
+    default from the manifest in ``run_main`` when not passed.
     """
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("data_dir", type=str, nargs='?',
                         help="Data directory - mandatory")
     parser.add_argument("--debug", action="store_true", default=False,
                         help="Display debug messages")
-    parser.add_argument("--period", type=int, required=True,
-                        help="Period to fetch/consider (mandatory)")
+    parser.add_argument("--period", type=int, default=None,
+                        help="Period to fetch/consider (default: the newest of the manifest's periods)")
     parser.add_argument("--force", action="store_true", default=False,
                         help="Force re-running stages even if outputs already exist")
     parser.add_argument("--rebuild", action="store_true", default=False,
@@ -613,7 +613,7 @@ def build_common_argparser(*, description: str) -> argparse.ArgumentParser:
                         help="Override NEL entity dump URL (defaults to entity_dump_url from manifest.yaml)")
     # Shared across all parliaments (the Conductor passes all three to every
     # workflow). Defaults are filled from the manifest in run_main when unset,
-    # so an explicit value (Conductor cron / update scripts) always wins.
+    # so an explicit value always wins.
     parser.add_argument("--lang", type=str, default=None,
                         help="Language override (default: manifest locale.aeneas_language)")
     parser.add_argument("--retry-count", type=int, default=None,
@@ -641,8 +641,8 @@ def build_common_argparser(*, description: str) -> argparse.ArgumentParser:
 
 
 def _apply_manifest_defaults(args, parliament_id: str) -> None:
-    """Fill ``--retry-count`` / ``--retry-delay-max`` / ``--lang`` from the
-    manifest when the caller did not pass them explicitly, and set
+    """Fill ``--period`` / ``--retry-count`` / ``--retry-delay-max`` / ``--lang``
+    from the manifest when the caller did not pass them explicitly, and set
     ``args.ner_corrections`` from the manifest's ``ner.corrections``."""
     try:
         from optv.parliaments import load_manifest
@@ -650,6 +650,8 @@ def _apply_manifest_defaults(args, parliament_id: str) -> None:
     except Exception as e:  # pragma: no cover - manifest always present in practice
         logger.warning(f"Cannot read manifest for {parliament_id}: {type(e).__name__}: {e}")
         manifest = {}
+    if getattr(args, "period", None) is None and manifest.get("periods"):
+        args.period = max(manifest["periods"])
     if getattr(args, "retry_count", None) is None:
         args.retry_count = manifest.get("default_retry_count", 0)
     if getattr(args, "retry_delay_max", None) is None:
@@ -686,6 +688,8 @@ def run_main(parliament_id: str, hooks: WorkflowHooks, *, description: str,
     setup_logging(args.debug)
     inject_locale(args, parliament_id)
     _apply_manifest_defaults(args, parliament_id)
+    if args.period is None:
+        parser.error(f"--period is required: the {parliament_id} manifest lists no periods")
     args.data_dir = Path(args.data_dir)
     args.cache_dir = Path(args.cache_dir) if args.cache_dir else args.data_dir / "cache"
     with acquire_lockfile(args):

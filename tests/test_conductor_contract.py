@@ -139,6 +139,16 @@ def test_workflow_accepts_the_conductor_argv(parliament, job, tmp_path, monkeypa
         assert getattr(args, name)
 
 
+@pytest.mark.parametrize("parliament", PARLIAMENTS)
+def test_period_defaults_to_the_newest_manifest_period(parliament, tmp_path, monkeypatch):
+    captured = {}
+    monkeypatch.setattr(shared_workflow, "run_workflow",
+                        lambda config, args, hooks: captured.update(args=args))
+    monkeypatch.setattr(sys, "argv", ["workflow", str(tmp_path), "--no-single-instance"])
+    importlib.import_module(f"optv.parliaments.{parliament}.workflow").main()
+    assert captured["args"].period == max(load_manifest(parliament)["periods"])
+
+
 def test_workflow_modules_exist_for_every_manifest():
     for parliament in PARLIAMENTS:
         package = Path(importlib.import_module(f"optv.parliaments.{parliament}").__file__).parent
