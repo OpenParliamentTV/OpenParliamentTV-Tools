@@ -27,12 +27,13 @@ if __package__ is None or __package__ == "":
     __package__ = module_dir.name
 
 from optv.shared.audio_prep import make_align_hook
+from optv.shared.pdf2tei.proceedings_parser import parse_proceedings_directory
 from optv.shared.workflow import WorkflowHooks, adapt_merge, period_prefix_scope, run_main
 
 from .align_prep import prepare_per_speech_audio
 from .common import Config
 from .merger.merge_session import merge_session
-from .parsers.proceedings2json import parse_proceedings_directory
+from .parsers.pdf_config import CONFIG as PDF_CONFIG
 from .scraper.fetch_proceedings import fetch_proceedings
 from .parsers.media2json import parse_media_directory
 from .scraper.fetch_media import fetch_media
@@ -56,7 +57,7 @@ def _download(config, args):
 
 def _parse(config, args):
     parse_media_directory(config.dir('media'))
-    parse_proceedings_directory(config, args)
+    parse_proceedings_directory(config, PDF_CONFIG, args)
 
 
 _merge = adapt_merge(merge_session)

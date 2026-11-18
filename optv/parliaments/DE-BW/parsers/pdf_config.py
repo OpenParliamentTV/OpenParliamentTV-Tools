@@ -37,4 +37,5 @@ CONFIG = ParliamentConfig(
         re.IGNORECASE),
     merge_chain=True,   # spine keeps the whole exchange in one clip
     merge_K=2,
+    sitting_times=True,  # the merger derives wall-clock speech times from them
 )

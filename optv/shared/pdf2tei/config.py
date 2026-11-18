@@ -53,6 +53,10 @@ class ParliamentConfig:
     # and its last path segment as ``personId``, which the spine join prefers
     # over the surname. None: no person links.
     person_link: re.Pattern | None = None
+    # Record the sitting's start, end and breaks from the protocol as
+    # ``meta.sittingTimes`` (the merger anchors video parts to them for
+    # wall-clock speech times).
+    sitting_times: bool = False
 
 
 def load_config(parliament_id: str) -> ParliamentConfig:
