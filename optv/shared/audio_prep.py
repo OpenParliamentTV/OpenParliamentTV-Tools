@@ -233,8 +233,13 @@ def _check_hls_result(stderr: str, dest: Path, url: str, start_s: float) -> None
 
 
 def _ffmpeg_extract(url: str, dest: Path, *, hls: bool, sample_rate: int, bitrate: str,
-                    reconnect: bool, timeout: int, start_s: float = 0.0) -> None:
+                    reconnect: bool, timeout: int, start_s: float = 0.0,
+                    readrate: Optional[float] = None) -> None:
     cmd = ["ffmpeg", "-y", "-loglevel", "info" if hls else "error"]
+    if readrate:
+        # Read the input at this multiple of playback speed instead of as fast
+        # as the server answers, so that a long stream is not one burst of requests.
+        cmd += ["-readrate", f"{readrate:g}"]
     if reconnect:
         cmd += ["-reconnect", "1", "-reconnect_streamed", "1",
                 "-reconnect_delay_max", "30", "-rw_timeout", "60000000"]
@@ -286,7 +291,8 @@ def _fold_into_part(part: Path, extra: list[Path], target: Path) -> None:
 
 def download_ffmpeg(url: str, target: Path, *, required_duration: float = 0.0,
                     hls: bool = False, sample_rate: int = 22050, bitrate: str = "64k",
-                    reconnect: bool = False, timeout: int = 3600) -> None:
+                    reconnect: bool = False, timeout: int = 3600,
+                    readrate: Optional[float] = None) -> None:
     """ffmpeg download → mono mp3, with resume + truncation guard.
 
     Promoted from the former FR-only implementation so every parliament shares
@@ -302,6 +308,9 @@ def download_ffmpeg(url: str, target: Path, *, required_duration: float = 0.0,
     so a call that still ends short keeps all its progress and the next run
     continues from there.
 
+    ``readrate`` paces the fetch to that multiple of playback speed (ffmpeg's
+    ``-readrate``); without it ffmpeg reads as fast as the server answers.
+
     An HLS fetch with a hole (see :func:`_check_hls_result`) raises
     :class:`HLSGapError` and is never resumed: a fresh download leaves no
     partial file, so the next run starts over; a hole in a continuation drops
@@ -314,7 +323,7 @@ def download_ffmpeg(url: str, target: Path, *, required_duration: float = 0.0,
     _migrate_legacy_part_names(target)
     part = _part_path(target)
     opts = dict(hls=hls, sample_rate=sample_rate, bitrate=bitrate,
-                reconnect=reconnect, timeout=timeout)
+                reconnect=reconnect, timeout=timeout, readrate=readrate)
 
     if part.exists() and part.stat().st_size > 0:
         # Continuation segments an interrupted earlier run left beside the part.

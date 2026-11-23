@@ -562,6 +562,32 @@ def _extract(dest: Path, *, hls: bool = True, start_s: float = 0.0) -> None:
                        reconnect=True, timeout=60, start_s=start_s)
 
 
+def test_fetch_is_paced_only_when_a_readrate_is_given(tmp_path, monkeypatch):
+    cmds = _fake_run(monkeypatch, _HLS_HEADER, 3600)
+    _extract(tmp_path / "a.mp3")
+    ap._ffmpeg_extract("u", tmp_path / "b.mp3", hls=True, sample_rate=22050, bitrate="64k",
+                       reconnect=True, timeout=60, readrate=10)
+    assert "-readrate" not in cmds[0]
+    paced = cmds[1]
+    assert paced[paced.index("-readrate") + 1] == "10"
+    assert paced.index("-readrate") < paced.index("-i")          # an input option
+
+
+def test_download_ffmpeg_passes_the_readrate_on(tmp_path, monkeypatch):
+    seen = {}
+
+    def extract(url, dest, **opts):
+        seen.update(opts)
+        dest.write_text("x")
+
+    monkeypatch.setattr(ap, "_ffmpeg_extract", extract)
+    monkeypatch.setattr(ap, "_duration_seconds", lambda path: 60.0)
+    ap.download_ffmpeg("u", tmp_path / "t.mp3", hls=True, readrate=10)
+    assert seen["readrate"] == 10
+    ap.download_ffmpeg("u", tmp_path / "t2.mp3", hls=True)
+    assert seen["readrate"] is None
+
+
 def test_hls_fetch_retries_segments_and_logs_the_input_duration(tmp_path, monkeypatch):
     cmds = _fake_run(monkeypatch, _HLS_HEADER, 3600)
     _extract(tmp_path / "s.mp3")
