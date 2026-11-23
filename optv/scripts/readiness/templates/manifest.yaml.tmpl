@@ -1,0 +1,28 @@
+name: $name_yaml
+language: $language                    # ISO 639-3 (locale stack)
+language_code: "$language_code"        # ISO 639-1 lowercase, the Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: $spacy_model
+  aeneas_language: $aeneas_language
+  entityfishing_language: $entityfishing_language
+periods: [$periods]
+# Remove the stages that do not apply, e.g. align when the source text comes with times.
+supported_stages: [download, parse, merge, nel, align, ner]
+entity_dump_url: ""
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# Rights metadata emitted into Stage 2 (resolved by optv.parliaments.get_rights).
+media:
+  default:
+    creator: $name_yaml
+    license: $media_license_yaml
+proceedings:
+  default:
+    creator: $name_yaml
+    license: $proceedings_license_yaml
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions: []

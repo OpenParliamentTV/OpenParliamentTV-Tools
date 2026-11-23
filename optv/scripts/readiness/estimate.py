@@ -1,6 +1,8 @@
 """Plan the outstanding Whisper work of the sample sessions and estimate how long it takes.
 
 A plan lists one ``transcribe`` and one ``diff`` step per session that still has clips without a transcript. It only ever covers audio the align stage already cached: nothing is downloaded. The plan is the unit a person confirms; ``jobs.start`` runs exactly the steps it lists and only when handed the token of the plan as estimated.
+
+A sample-run plan is the other kind: it runs a parliament's own workflow for its sample sessions, with the arguments its manifest declares for that (``readiness.sample_run``). That is the one thing here that downloads.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from hashlib import blake2b
 from pathlib import Path
 
 from . import config as cfg
-from .criteria import SampleData
+from .criteria import SampleData, missing_stages
 from .scorecard import _load_json, _session_qc, build_context
 from .speeches import clip_path, has_text, speech_duration
 
@@ -29,6 +31,10 @@ RANGE = (0.85, 1.3)
 CALIBRATION_MIN_AUDIO_SECONDS = 3600
 CALIBRATION_BOUNDS = (0.3, 2.0)
 PLAN_MAX_AGE_HOURS = 24
+# The stages of a sample run and the workflow flag of each.
+STAGE_FLAGS = (("download", "--download-original"), ("merge", "--merge-speeches"),
+               ("nel", "--link-entities"), ("align", "--align-sentences"),
+               ("ner", "--extract-entities"))
 
 
 class ScopeError(ValueError):
@@ -183,23 +189,102 @@ def build_plan(codes: list[str], sessions: dict[str, list[str]] | None = None, *
             steps += session_steps
             if reason:
                 skipped.append(reason)
+    label = "-".join(codes) if len(codes) <= 3 else f"{len(codes)}-parliaments"
+    return _plan(now, label, {"kind": "whisper", "codes": list(codes), "sessions": sessions or {}},
+                 steps, skipped, calibration=calibration)
+
+
+def _plan(now: datetime.datetime, label: str, request: dict, steps: list, skipped: list,
+          **extra) -> dict:
     expected = sum(step["expected_seconds"] for step in steps)
     plan = {
         "schema": PLAN_SCHEMA,
-        "id": f"{now:%Y%m%d-%H%M%S}-{'-'.join(codes) if len(codes) <= 3 else f'{len(codes)}-parliaments'}",
+        "id": f"{now:%Y%m%d-%H%M%S}-{label}",
         "created": now.isoformat(timespec="seconds"),
-        "request": {"codes": list(codes), "sessions": sessions or {}},
+        "request": request,
         "tools": str(cfg.tools_root()),
         "python": sys.executable,
         "steps": steps,
         "skipped": skipped,
-        "calibration": calibration,
+        **extra,
         "expected_seconds": expected,
         "low_seconds": round(expected * RANGE[0]),
         "high_seconds": round(expected * RANGE[1]),
     }
     plan["inputs"] = inputs_fingerprint(plan)
     return plan
+
+
+def rebuild(plan: dict) -> dict:
+    """The plan its request yields now, to tell whether the data moved since the estimate."""
+    request = plan["request"]
+    if request.get("kind") == "sample-run":
+        return build_sample_run_plan(request["codes"][0], ner_endpoint=request.get("ner_endpoint"))
+    return build_plan(request["codes"], request.get("sessions") or None)
+
+
+def recorded_workflow_seconds(code: str) -> tuple[float, str] | None:
+    """Seconds per session that finished sample runs on record took, and whose: this parliament's, else any. ``None`` without a record."""
+    from .runner import read_json
+    own, other = [], []
+    directory = cfg.state_dir() / "jobs"
+    for path in sorted(directory.iterdir()) if directory.is_dir() else []:
+        plan, state = read_json(path / "plan.json"), read_json(path / "state.json")
+        if not plan or not state:
+            continue
+        for step, record in zip(plan.get("steps") or [], state.get("steps") or []):
+            if step.get("kind") != "workflow" or record.get("status") != "done" or not record.get("seconds"):
+                continue
+            per_session = record["seconds"] / max(len(step.get("sessions") or []), 1)
+            (own if step.get("parliament") == code else other).append(per_session)
+    for values, basis in ((own, f"earlier sample runs of {code}"), (other, "sample runs of other parliaments")):
+        if values:
+            return sorted(values)[len(values) // 2], basis
+    return None
+
+
+def build_sample_run_plan(code: str, *, ner_endpoint: str | None = None,
+                          now: datetime.datetime | None = None) -> dict:
+    """Plan the workflow runs that take a parliament's sample sessions through its stages.
+
+    Each ``readiness.sample_run`` entry of the manifest becomes one step, unless its sessions are complete already. Without such an entry there is no plan: the tooling does not guess how a parliament's downloads are confined.
+    """
+    now = now or datetime.datetime.now()
+    ctx = build_context(code)
+    if not ctx.declaration.sample_runs:
+        raise ScopeError(f"{code} declares no readiness.sample_run in its manifest; "
+                         "the workflow is only run with the arguments declared there")
+    if ctx.config is None:
+        raise ScopeError(f"no data repository for {code} on this machine")
+    data_dir = ctx.config.dir("data")
+    supported = ctx.manifest.get("supported_stages") or []
+    stages = [stage for stage, _ in STAGE_FLAGS
+              if stage in supported and (stage != "ner" or ner_endpoint)]
+    skipped = []
+    if "ner" in supported and not ner_endpoint:
+        skipped.append({"parliament": code, "reason": "NER is left out: no --ner-api-endpoint given"})
+    by_id = {s.sample.id: s for s in ctx.samples}
+    recorded = recorded_workflow_seconds(code)
+    steps = []
+    for run in ctx.declaration.sample_runs:
+        pending = [sid for sid in run.sessions
+                   if by_id[sid].doc is None or missing_stages(by_id[sid], set(stages))]
+        if not pending:
+            continue
+        step = {"kind": "workflow", "parliament": code, "session": ",".join(run.sessions),
+                "sessions": list(run.sessions), "pending": pending, "data_dir": str(data_dir),
+                "args": list(run.args), "stages": stages, "speeches": len(run.sessions)}
+        if "ner" in stages:
+            step["ner_endpoint"] = ner_endpoint
+        if recorded:
+            step["expected_seconds"] = round(recorded[0] * len(pending))
+            step["basis"] = recorded[1]
+        else:
+            step["expected_seconds"] = 0
+            step["unestimated"] = True
+        steps.append(step)
+    return _plan(now, f"{code}-samples",
+                 {"kind": "sample-run", "codes": [code], "ner_endpoint": ner_endpoint}, steps, skipped)
 
 
 def inputs_fingerprint(plan: dict) -> str:
@@ -223,13 +308,16 @@ def _hours(seconds: float) -> str:
 
 
 def render_plan(plan: dict, *, now: datetime.datetime | None = None) -> str:
+    steps = plan["steps"]
+    sample_run = plan["request"].get("kind") == "sample-run"
     lines = []
-    if not plan["steps"]:
-        lines.append("Nothing to transcribe: every cached clip of the requested sessions has a transcript.")
+    if not steps:
+        lines.append("Nothing to run: the sample sessions went through every stage already." if sample_run
+                     else "Nothing to transcribe: every cached clip of the requested sessions has a transcript.")
     else:
         lines.append(f"Job {plan['id']}")
         lines.append(f"{'STEP':<34} {'SPEECHES':>8} {'AUDIO':>8} {'EXPECTED':>9}  RANGE")
-        for step in plan["steps"]:
+        for step in steps:
             name = f"{step['kind']} {step['parliament']} {step['session']}"
             if step["kind"] == "transcribe":
                 span = (f"{_hours(step['expected_seconds'] * RANGE[0])} to "
@@ -237,23 +325,41 @@ def render_plan(plan: dict, *, now: datetime.datetime | None = None) -> str:
                 note = " (durations partly guessed)" if step.get("duration_guessed") else ""
                 lines.append(f"{name:<34} {step['speeches']:>8} {_hours(step['audio_seconds']):>8} "
                              f"{_hours(step['expected_seconds']):>9}  {span}{note}")
+            elif step["kind"] == "workflow":
+                expected = "unknown" if step.get("unestimated") else _hours(step["expected_seconds"])
+                lines.append(f"{name}")
+                lines.append(f"    stages: {', '.join(step['stages'])}; still to do: {', '.join(step['pending'])}; "
+                             f"expected: {expected}" + (f" (from {step['basis']})" if step.get("basis") else ""))
+                lines.append(f"    runs: python -m optv.parliaments.{step['parliament']}.workflow "
+                             f"<data_dir> {' '.join(step['args'])}")
             else:
                 lines.append(f"{name:<34} {step['speeches']:>8} {'-':>8} {_hours(step['expected_seconds']):>9}")
-        end = (now or datetime.datetime.now()) + datetime.timedelta(seconds=plan["expected_seconds"])
         lines.append("")
-        lines.append(f"Total: {_hours(plan['expected_seconds'])} expected "
-                     f"({_hours(plan['low_seconds'])} to {_hours(plan['high_seconds'])}); "
-                     f"started now it ends around {end:%a %d %b %H:%M}.")
-        lines.append("The job transcribes audio clips that are already cached, downloads nothing, and writes "
-                     "only transcripts, reports and QC figures to cache/whisper/ of each data repository.")
-        partial = [f"{s['parliament']} {s['session']}: {s['without_clip']}" for s in plan["steps"]
+        unestimated = sum(1 for step in steps if step.get("unestimated"))
+        if unestimated == len(steps):
+            lines.append("Total: unknown. No sample run is on record to estimate from; "
+                         "this run's duration is recorded for the next estimate.")
+        else:
+            end = (now or datetime.datetime.now()) + datetime.timedelta(seconds=plan["expected_seconds"])
+            more = f", plus {unestimated} step(s) without an estimate" if unestimated else ""
+            lines.append(f"Total: {_hours(plan['expected_seconds'])} expected "
+                         f"({_hours(plan['low_seconds'])} to {_hours(plan['high_seconds'])}){more}; "
+                         f"started now it ends around {end:%a %d %b %H:%M}.")
+        if sample_run:
+            lines.append("The job runs the parliament's workflow for the sessions named and no others. "
+                         "It DOWNLOADS from the parliament's servers where the download stage is listed, "
+                         "and writes to original/, cache/ and processed/ of the data repository.")
+        else:
+            lines.append("The job transcribes audio clips that are already cached, downloads nothing, and writes "
+                         "only transcripts, reports and QC figures to cache/whisper/ of each data repository.")
+        partial = [f"{s['parliament']} {s['session']}: {s['without_clip']}" for s in steps
                    if s.get("without_clip")]
         if partial:
             lines.append(f"Text speeches without a cached clip, left out: {'; '.join(partial)}.")
     for entry in plan["skipped"]:
         session = f" {entry['session']}" if entry.get("session") else ""
         lines.append(f"Not planned: {entry['parliament']}{session}: {entry['reason']}.")
-    if plan["steps"]:
+    if steps:
         lines.append("")
         lines.append(f"To start: python -m optv.scripts.readiness start {plan['id']} "
                      f"--confirm {plan_token(plan)}")

@@ -61,7 +61,14 @@ def step_name(step: dict) -> str:
 
 
 def step_command(plan: dict, step: dict) -> list[str]:
-    """The command of a step. A plan names what to do, never how: the runner knows two commands."""
+    """The command of a step. A plan names what to do, never how: the runner knows three commands."""
+    if step["kind"] == "workflow":
+        from .estimate import STAGE_FLAGS
+        flags = [flag for stage, flag in STAGE_FLAGS if stage in step["stages"]]
+        if step.get("ner_endpoint"):
+            flags += ["--ner-api-endpoint", step["ner_endpoint"]]
+        return [plan["python"], "-m", f"optv.parliaments.{step['parliament']}.workflow",
+                step["data_dir"], *step["args"], *flags]
     base = [plan["python"], "-m", "optv.shared.whisper_diff", step["kind"],
             "--data-dir", step["data_dir"], "--session", step["session"]]
     if step["kind"] == "transcribe":
@@ -84,8 +91,29 @@ def transcription_progress(step: dict) -> tuple[int, int]:
     return sum(1 for index in clips if index in transcribed), len(clips)
 
 
+def _sample_run_result(step: dict) -> tuple[bool, str]:
+    from .criteria import missing_stages
+    from .scorecard import build_context
+    ctx = build_context(step["parliament"], data_dir=Path(step["data_dir"]))
+    by_id = {s.sample.id: s for s in ctx.samples}
+    problems = []
+    for sid in step["sessions"]:
+        sample = by_id.get(sid)
+        if sample is None or sample.doc is None:
+            problems.append(f"{sid}: not published")
+            continue
+        missing = missing_stages(sample, set(step["stages"]))
+        if missing:
+            problems.append(f"{sid}: no {'/'.join(missing)}")
+    done = len(step["sessions"]) - len(problems)
+    summary = f"{done} of {len(step['sessions'])} sessions complete"
+    return not problems, summary + (f" ({'; '.join(problems)})" if problems else "")
+
+
 def postcondition(step: dict) -> tuple[bool, str]:
     """Whether a step's result is on disk, and a line saying what is there."""
+    if step["kind"] == "workflow":
+        return _sample_run_result(step)
     if step["kind"] == "transcribe":
         done, clips = transcription_progress(step)
         return clips > 0 and done == clips, f"{done} of {clips} clips transcribed"
@@ -131,11 +159,26 @@ class Runner:
     def on_cancel(self, signum, frame) -> None:
         self.cancelled = True
         self.cancelled_at = time.monotonic()
+        self.signal_step(signal.SIGINT)
+
+    def signal_step(self, signum) -> None:
         if self.child is not None and self.child.poll() is None:
             try:
-                os.killpg(self.child.pid, signal.SIGTERM)
+                os.killpg(self.child.pid, signum)
             except ProcessLookupError:
                 pass
+
+    def release_workflow_lock(self, step: dict, pid: int) -> str:
+        """Remove the workflow's lockfile if the step left it behind, and say when another run holds it."""
+        lock = Path(step["data_dir"]) / "optv.lock"
+        try:
+            holder = lock.read_text().strip()
+        except OSError:
+            return ""
+        if holder == str(pid):
+            lock.unlink(missing_ok=True)
+            return ""
+        return f"; optv.lock is held by another workflow run (process {holder})"
 
     def run_step(self, index: int, step: dict, record: dict) -> None:
         log_path = self.dir / "steps" / f"{index + 1:02d}-{step['kind']}-{step['parliament']}-{step['session']}.log"
@@ -155,20 +198,26 @@ class Runner:
             record.update(status=RUNNING, started=_now(), pid=self.child.pid, log=str(log_path))
             record.pop("finished", None)
             self.save()
+            pid = self.child.pid
             while True:
                 try:
-                    exit_code = self.child.wait(timeout=5)
+                    exit_code = self.child.wait(timeout=2)
                     break
                 except subprocess.TimeoutExpired:
-                    if self.cancelled and time.monotonic() - self.cancelled_at > CANCEL_GRACE:
-                        try:
-                            os.killpg(self.child.pid, signal.SIGKILL)
-                        except ProcessLookupError:
-                            pass
+                    if not self.cancelled:
+                        continue
+                    # An interrupt lets the step clean up; then insist.
+                    waited = time.monotonic() - self.cancelled_at
+                    if waited > CANCEL_GRACE:
+                        self.signal_step(signal.SIGKILL)
+                    elif waited > CANCEL_GRACE / 2:
+                        self.signal_step(signal.SIGTERM)
         self.child = None
         satisfied, detail = postcondition(step)
         if not satisfied and step["kind"] == "transcribe" and exit_code == EXIT_OUTDATED_CLIPS:
             detail = "the cached audio no longer matches the speeches; it has to be staged again"
+        if step["kind"] == "workflow":
+            detail += self.release_workflow_lock(step, pid)
         record.update(status=DONE if satisfied else FAILED, finished=_now(), exit_code=exit_code,
                       seconds=round(time.monotonic() - started), detail=detail)
         record.pop("pid", None)

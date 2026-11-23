@@ -9,8 +9,9 @@ import time
 
 import pytest
 
+from optv.scripts.readiness import config as readiness_config
 from optv.scripts.readiness import estimate, jobs, runner
-from optv.scripts.readiness.config import load_declaration
+from optv.scripts.readiness.config import load_declaration, parse_declaration
 from optv.shared.whisper_diff import qc_path, write_session_qc
 from tests.readiness_fixtures import (clean_session, clip, stage_clips, write_session,
                                       write_transcripts)
@@ -352,3 +353,108 @@ def test_estimates_never_started_are_dropped_after_a_day(data_dir, docs):
     fresh = _planned()
     assert [job["id"] for job in jobs.list_jobs()] == sorted([started["id"], fresh["id"]])
     assert not runner.job_dir(old["id"]).exists()
+
+
+# ---- sample runs: the parliament's own workflow, confined to its sample sessions ----
+
+@pytest.fixture
+def sample_run(data_dir, monkeypatch):
+    """Declare how DE-NW's sample sessions are run: two workflow invocations."""
+    declaration = parse_declaration({"sample_sessions": [S1, S2, S3], "sample_run": [
+        {"sessions": [S1, S2], "args": ["--period=18", "--limit-session", "^(A|B)$"]},
+        {"sessions": [S3], "args": ["--period=18", "--limit-session", "^C$"]}]})
+    assert declaration.errors == []
+    monkeypatch.setattr(readiness_config, "load_declaration", lambda code: declaration)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return declaration
+
+
+def test_without_a_declared_sample_run_the_workflow_is_never_planned(data_dir, docs):
+    with pytest.raises(estimate.ScopeError, match="declares no readiness.sample_run"):
+        estimate.build_sample_run_plan(CODE)
+
+
+def test_a_sample_run_plan_names_the_command_and_has_no_made_up_estimate(sample_run, data_dir):
+    plan = estimate.build_sample_run_plan(CODE, ner_endpoint="http://localhost:8090/service")
+    assert [(step["kind"], step["sessions"], step["pending"]) for step in plan["steps"]] == [
+        ("workflow", [S1, S2], [S1, S2]), ("workflow", [S3], [S3])]
+    assert plan["steps"][0]["stages"] == ["download", "merge", "nel", "align", "ner"]
+    assert all(step["unestimated"] and step["expected_seconds"] == 0 for step in plan["steps"])
+    assert runner.step_command(plan, plan["steps"][0]) == [
+        plan["python"], "-m", "optv.parliaments.DE-NW.workflow", str(data_dir),
+        "--period=18", "--limit-session", "^(A|B)$",
+        "--download-original", "--merge-speeches", "--link-entities", "--align-sentences",
+        "--extract-entities", "--ner-api-endpoint", "http://localhost:8090/service"]
+    text = estimate.render_plan(plan)
+    assert "Total: unknown. No sample run is on record to estimate from" in text
+    assert "DOWNLOADS from the parliament's servers" in text
+    assert "--period=18 --limit-session ^(A|B)$" in text
+
+
+def test_a_sample_run_leaves_ner_out_without_an_endpoint(sample_run):
+    plan = estimate.build_sample_run_plan(CODE)
+    assert plan["steps"][0]["stages"] == ["download", "merge", "nel", "align"]
+    assert "--extract-entities" not in runner.step_command(plan, plan["steps"][0])
+    assert plan["skipped"] == [{"parliament": CODE, "reason": "NER is left out: no --ner-api-endpoint given"}]
+
+
+def test_sample_sessions_that_went_through_every_stage_are_not_run_again(sample_run, data_dir, docs):
+    plan = estimate.build_sample_run_plan(CODE, ner_endpoint="http://localhost:8090/service")
+    assert plan["steps"] == []
+    assert "Nothing to run" in estimate.render_plan(plan)
+    # Without NER the third session is taken through the stages again.
+    stripped = clean_session(S3, 117, ner=False)
+    write_session(data_dir, S3, stripped)
+    plan = estimate.build_sample_run_plan(CODE, ner_endpoint="http://localhost:8090/service")
+    assert [(step["sessions"], step["pending"]) for step in plan["steps"]] == [([S3], [S3])]
+
+
+def test_a_sample_run_is_done_when_its_sessions_are_published_and_estimates_the_next(sample_run, data_dir,
+                                                                                      monkeypatch):
+    plan = estimate.build_sample_run_plan(CODE, ner_endpoint="http://localhost:8090/service")
+    jobs.save_plan(plan)
+    published = {S1: clean_session(S1, 115), S2: clean_session(S2, 116), S3: clean_session(S3, 117)}
+
+    def workflow(plan, step):
+        """Stands in for the workflow: publishes the step's sessions, but only the first step's."""
+        if step["sessions"] == [S3]:
+            return [sys.executable, "-c", "pass"]
+        script = "import json, pathlib, sys; d = pathlib.Path(sys.argv[1]) / 'processed'; d.mkdir(exist_ok=True)\n"
+        script += "for name, doc in json.loads(sys.argv[2]).items(): (d / f'{name}-session.json').write_text(json.dumps(doc))\n"
+        return [sys.executable, "-c", script, str(data_dir),
+                json.dumps({sid: published[sid] for sid in step["sessions"]})]
+
+    monkeypatch.setattr(runner, "step_command", workflow)
+    monkeypatch.setattr(runner.shutil, "which", lambda name: None)
+    handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)}
+    try:
+        assert runner.Runner(plan["id"]).run() == 0
+    finally:
+        for sig, handler in handlers.items():
+            signal.signal(sig, handler)
+    state = json.loads((runner.job_dir(plan["id"]) / "state.json").read_text())
+    assert state["status"] == "done_with_failures"
+    assert [(step["status"], step["detail"]) for step in state["steps"]] == [
+        ("done", "2 of 2 sessions complete"),
+        ("failed", f"0 of 1 sessions complete ({S3}: not published)")]
+
+    # The finished step is on record now, so the next plan carries an estimate.
+    state["steps"][0]["seconds"] = 1200
+    runner.write_json(runner.job_dir(plan["id"]) / "state.json", state)
+    again = estimate.build_sample_run_plan(CODE, ner_endpoint="http://localhost:8090/service")
+    assert [(step["sessions"], step["expected_seconds"], step["basis"]) for step in again["steps"]] == [
+        ([S3], 600, f"earlier sample runs of {CODE}")]
+    assert "unestimated" not in again["steps"][0]
+    assert estimate.rebuild(again)["inputs"] == again["inputs"]
+
+
+def test_a_workflow_lock_left_behind_by_a_step_is_removed(sample_run, data_dir):
+    step = {"data_dir": str(data_dir)}
+    lock = data_dir / "optv.lock"
+    lock.write_text("4242")
+    job = runner.Runner("20260101-000000-XX")
+    assert job.release_workflow_lock(step, 4242) == ""
+    assert not lock.exists()
+    lock.write_text("777")
+    assert job.release_workflow_lock(step, 4242) == "; optv.lock is held by another workflow run (process 777)"
+    assert lock.exists()

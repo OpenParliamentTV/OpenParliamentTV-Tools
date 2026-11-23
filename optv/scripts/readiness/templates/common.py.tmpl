@@ -1,0 +1,13 @@
+#! /usr/bin/env python3
+
+from optv.shared.config import BaseConfig
+# The Conductor imports SessionStatus from this module in-process.
+from optv.shared.session_status import SessionStatus  # noqa: F401
+
+
+class Config(BaseConfig):
+    # Sessions are discovered from ``original/media/{session}-media.json``. Set
+    # SESSION_SOURCE / MEDIA_GLOB_PREFIX / MEDIA_GLOB_SUFFIX when the raw files
+    # are named differently, and HAS_TEXT / TEXT_PROBE / TEXT_SIGNAL to say how
+    # a session's text shows in the published file (optv/shared/config.py).
+    pass

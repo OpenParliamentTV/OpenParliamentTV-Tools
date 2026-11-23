@@ -200,25 +200,31 @@ def _samples_declared(ctx: Context) -> Result:
     return Result(PASS, metrics)
 
 
+def missing_stages(sample: SampleData, stages: set) -> list[str]:
+    """What a published sample session lacks of the ``stages`` it should have gone through."""
+    missing = [stage for stage, flag in (("nel", SessionStatus.linked),)
+               if stage in stages and flag not in sample.status]
+    if SessionStatus.empty in sample.status:
+        missing.append("speeches")
+    if sample.sample.expect_text:
+        if SessionStatus.no_text in sample.status:
+            missing.append("text")
+        else:
+            missing += [stage for stage, flag in (("align", SessionStatus.aligned),
+                                                  ("ner", SessionStatus.ner))
+                        if stage in stages and flag not in sample.status]
+    return missing
+
+
 def _samples_stages(ctx: Context) -> Result:
     if ctx.config is None:
         return _no_data()
     if not ctx.published:
         return _unpublished()
     stages = set(ctx.manifest.get("supported_stages") or [])
-    required = [("nel", SessionStatus.linked)]
-    text_required = [("align", SessionStatus.aligned), ("ner", SessionStatus.ner)]
     problems = []
     for s in ctx.published:
-        missing = [stage for stage, flag in required if stage in stages and flag not in s.status]
-        if SessionStatus.empty in s.status:
-            missing.append("speeches")
-        if s.sample.expect_text:
-            if SessionStatus.no_text in s.status:
-                missing.append("text")
-            else:
-                missing += [stage for stage, flag in text_required
-                            if stage in stages and flag not in s.status]
+        missing = missing_stages(s, stages)
         if missing:
             problems.append(f"{s.sample.id}: no {'/'.join(missing)}")
     metrics = {"complete": len(ctx.published) - len(problems), "sessions": len(ctx.published)}

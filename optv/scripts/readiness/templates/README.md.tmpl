@@ -1,0 +1,24 @@
+# $name ($code)
+
+TODO One or two sentences on what this directory implements. Repo-wide context is in [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md); how this parliament's data shape fits the cross-parliament model is in [DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
+
+## Data model
+
+TODO The two input streams: scraper module, parser module and on-disk location of each, and which stream is the spine.
+
+## Merge strategy
+
+TODO The merger algorithm and its join key, with the file path.
+
+## Running
+
+```
+python -m optv.parliaments.$code.workflow <data_dir> --period=$newest_period \
+    --download-original --merge-speeches --link-entities --align-sentences --extract-entities
+```
+
+TODO The flags of this parliament's own, and how a run is confined to a few sessions.
+
+## Known limitations
+
+- Not ready for platform integration: the scraper, parsers and merger are not implemented yet.

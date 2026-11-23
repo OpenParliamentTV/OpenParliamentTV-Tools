@@ -15,6 +15,11 @@ The ``readiness`` block of a ``manifest.yaml``::
       thresholds:                 # per-parliament override of a default, with its reason
         speaker_wid_share: {value: 0.90, reason: "..."}
       whisper: {language: "no"}   # Whisper language, when the speeches' own code does not fit
+      sample_run:                 # how to process the sample sessions and nothing else
+        - sessions: ["19078", "19079", "19080"]
+          args: ["--period=19", "--limit-session", "^1907[89]$|^19080$"]
+
+``sample_run`` lists workflow invocations: the sample sessions each one covers and the arguments that confine it to them, downloads included. Whoever declares one has read the parliament's download hook and knows the arguments hold there. Without it the tooling never runs the workflow. The stages are added by the tooling; an entry names none, and neither ``--force`` nor ``--rebuild``.
 """
 
 from __future__ import annotations
@@ -32,6 +37,14 @@ STATUS_PRODUCTION = "production"
 STATUS_DEVELOPMENT = "in development"
 
 ATTESTATIONS = ("qc_reviewed", "licence_cleared", "platform_ready", "backfilled", "live")
+
+# Workflow arguments that confine a run to named sessions. A sample run carries one of them.
+SCOPE_FLAGS = ("--limit-session", "--session", "--sitting", "--kid")
+# Arguments a sample run never takes from a manifest: the tooling sets the stages, and a
+# forced or rebuilding run is a deliberate act by hand.
+RESERVED_FLAGS = ("--download-original", "--merge-speeches", "--link-entities", "--align-sentences",
+                  "--extract-entities", "--update-nel-entities", "--force", "--rebuild",
+                  "--single-instance", "--no-single-instance")
 
 DEFAULT_THRESHOLDS = {
     # Fewest sample sessions a parliament declares.
@@ -91,9 +104,16 @@ class Sample:
     note: str = ""
 
 
+@dataclass(frozen=True)
+class SampleRun:
+    sessions: tuple
+    args: tuple
+
+
 @dataclass
 class Declaration:
     samples: list[Sample] = field(default_factory=list)
+    sample_runs: list[SampleRun] = field(default_factory=list)
     attestations: dict = field(default_factory=dict)
     thresholds: dict = field(default_factory=lambda: dict(DEFAULT_THRESHOLDS))
     overrides: dict = field(default_factory=dict)
@@ -118,7 +138,8 @@ def parse_declaration(block) -> Declaration:
     if not isinstance(block, dict):
         decl.errors.append("readiness is not a mapping")
         return decl
-    unknown = sorted(set(block) - {"sample_sessions", "attestations", "thresholds", "whisper"})
+    unknown = sorted(set(block) - {"sample_sessions", "attestations", "thresholds", "whisper",
+                                   "sample_run"})
     if unknown:
         decl.errors.append(f"unknown keys: {', '.join(unknown)}")
 
@@ -173,6 +194,17 @@ def parse_declaration(block) -> Declaration:
             decl.thresholds[name] = value["value"]
             decl.overrides[name] = {"value": value["value"], "reason": value["reason"]}
 
+    runs = block.get("sample_run") or []
+    if not isinstance(runs, list):
+        decl.errors.append("sample_run is not a list")
+        runs = []
+    for number, entry in enumerate(runs, start=1):
+        problem = _sample_run_problem(entry, seen)
+        if problem:
+            decl.errors.append(f"sample_run {number}: {problem}")
+        else:
+            decl.sample_runs.append(SampleRun(tuple(entry["sessions"]), tuple(entry["args"])))
+
     whisper = block.get("whisper") or {}
     if not isinstance(whisper, dict) or set(whisper) - {"language"}:
         decl.errors.append("whisper takes only a language")
@@ -182,6 +214,30 @@ def parse_declaration(block) -> Declaration:
         else:
             decl.errors.append("whisper.language is not a string")
     return decl
+
+
+def _flag(argument: str) -> str:
+    return argument.split("=", 1)[0]
+
+
+def _sample_run_problem(entry, samples: set) -> str | None:
+    """What is wrong with one ``sample_run`` entry, if anything."""
+    if not isinstance(entry, dict) or set(entry) != {"sessions", "args"}:
+        return "takes sessions and args"
+    sessions, args = entry["sessions"], entry["args"]
+    if not (isinstance(sessions, list) and sessions and all(isinstance(s, str) for s in sessions)):
+        return "sessions is a list of quoted session keys"
+    if not (isinstance(args, list) and args and all(isinstance(a, str) for a in args)):
+        return "args is a list of strings"
+    outside = [s for s in sessions if s not in samples]
+    if outside:
+        return f"{', '.join(outside)} is not a sample session"
+    if not any(_flag(a) in SCOPE_FLAGS for a in args):
+        return f"no argument confines the run to sessions ({', '.join(SCOPE_FLAGS)})"
+    reserved = [a for a in args if _flag(a) in RESERVED_FLAGS]
+    if reserved:
+        return f"{', '.join(reserved)} is not for a manifest to set"
+    return None
 
 
 def load_declaration(code: str) -> Declaration:

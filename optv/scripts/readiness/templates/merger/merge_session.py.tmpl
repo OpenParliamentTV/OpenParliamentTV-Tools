@@ -1,0 +1,31 @@
+"""Merge the media and the proceedings of one $code session into Stage 2.
+
+Run for one session: ``python -m optv.parliaments.$code.merger.merge_session <session> <data_dir>``.
+"""
+
+import logging
+from pathlib import Path
+
+from optv.shared.cli import session_cli
+
+logger = logging.getLogger(__name__)
+
+PARLIAMENT_ID = Path(__file__).resolve().parents[1].name
+
+
+def merge_session(session: str, config, options=None) -> Path:
+    """Write ``cache/merged/{session}-merged.json`` and return its path.
+
+    One record per speech in the Stage 2 shape: ``optv.shared.meta.build_meta``
+    for the document head, ``optv.shared.speech_id.normalize_speech_originid``
+    on every speech, and ``optv.shared.confidence.compute_confidence`` to mark
+    a speech whose text cannot belong to its clip. Save with
+    ``optv.shared.publish.save_if_changed`` so that an unchanged merge leaves
+    the file, and with it every later stage, untouched. A merger that hangs
+    text onto a list of clips starts from ``optv.shared.spine_merger``.
+    """
+    raise NotImplementedError("$code: merging a session is not implemented yet")
+
+
+if __name__ == "__main__":
+    session_cli(PARLIAMENT_ID, merge_session, description=__doc__, example="<session>")

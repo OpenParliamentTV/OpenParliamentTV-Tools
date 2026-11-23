@@ -90,10 +90,13 @@ def cmd_estimate(args) -> int:
         for code in codes:
             print(estimate.render_backtest(code, estimate.backtest(code)))
         return 0
-    if args.session and len(codes) != 1:
-        raise SystemExit("--session needs exactly one parliament")
+    if (args.session or args.sample_run) and len(codes) != 1:
+        raise SystemExit("--session and --sample-run need exactly one parliament")
     try:
-        plan = estimate.build_plan(codes, sessions={codes[0]: args.session} if args.session else None)
+        if args.sample_run:
+            plan = estimate.build_sample_run_plan(codes[0], ner_endpoint=args.ner_api_endpoint)
+        else:
+            plan = estimate.build_plan(codes, sessions={codes[0]: args.session} if args.session else None)
     except estimate.ScopeError as error:
         logger.error(str(error))
         return 2
@@ -148,6 +151,51 @@ def cmd_jobs(args) -> int:
     return 0
 
 
+def cmd_sync(args) -> int:
+    from . import sync
+
+    found = sync.findings()
+    if not found:
+        print("the README table, the data repository READMEs and the Research profiles agree with the scorecards")
+        return 0
+    if args.apply:
+        left = sync.apply(found)
+        for finding in found:
+            if finding.fixable:
+                print(f"set {finding.path}: {finding.found!r} -> {finding.expected!r}")
+        for finding in left:
+            print(f"left for a person: {finding.describe()} ({finding.path})")
+        return 1 if left else 0
+    for finding in found:
+        print(finding.describe())
+    print("`sync --apply` rewrites the differing values; the files stay uncommitted")
+    return 1
+
+
+def cmd_scaffold(args) -> int:
+    from . import scaffold
+
+    try:
+        report = scaffold.scaffold(
+            args.code, name=args.name, parliament_type=args.type, language=args.language,
+            language_code=args.language_code,
+            spacy_model=args.spacy_model, periods=args.period, media_license=args.media_license,
+            proceedings_license=args.proceedings_license, aeneas_language=args.aeneas_language,
+            entityfishing_language=args.entityfishing_language, dry_run=args.dry_run)
+    except scaffold.ScaffoldError as error:
+        logger.error(str(error))
+        return 2
+    print(scaffold.render_report(report))
+    if not args.dry_run:
+        # A parliament is tracked from the moment its directory exists.
+        from . import overview, scorecard
+        card = scorecard.evaluate(args.code)
+        scorecard.write_if_changed(card)
+        overview.write()
+        print(f"\nScored: level {card['level']} ({card['level_name']}); docs/READINESS.md lists it now.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m optv.scripts.readiness",
@@ -179,6 +227,11 @@ def build_parser() -> argparse.ArgumentParser:
     estimate = sub.add_parser("estimate", help="plan the outstanding transcriptions and estimate their duration")
     estimate.add_argument("codes", nargs="+", metavar="CODE")
     estimate.add_argument("--session", action="append", help="one sample session of a single parliament; repeatable")
+    estimate.add_argument("--sample-run", action="store_true",
+                          help="plan the workflow runs that process the sample sessions, as the "
+                               "manifest declares them under readiness.sample_run; this downloads")
+    estimate.add_argument("--ner-api-endpoint", default=None, metavar="URL",
+                          help="entity-fishing endpoint for the NER stage of a sample run")
     estimate.add_argument("--json", action="store_true")
     estimate.add_argument("--backtest", action="store_true",
                           help="compare the cost model with the recorded transcription times")
@@ -197,6 +250,30 @@ def build_parser() -> argparse.ArgumentParser:
     jobs.add_argument("--lines", type=int, default=40, help="log lines to show")
     jobs.add_argument("--json", action="store_true")
     jobs.set_defaults(func=cmd_jobs)
+
+    sync = sub.add_parser("sync", help="compare the status in the README table, the data repository "
+                                       "READMEs and the Research profiles with the scorecards")
+    sync.add_argument("--apply", action="store_true", help="rewrite the differing values")
+    sync.set_defaults(func=cmd_sync)
+
+    scaffold = sub.add_parser("scaffold", help="lay out a new parliament directory and its local data repository")
+    scaffold.add_argument("code", metavar="CODE", help="shortcode, e.g. DK or DE-HE")
+    scaffold.add_argument("--name", required=True, help="the parliament's name, e.g. 'Folketinget'")
+    scaffold.add_argument("--type", required=True, choices=["national", "regional", "supranational"],
+                          help="for the table of implemented parliaments in the README")
+    scaffold.add_argument("--language", required=True, help="ISO 639-3 code, e.g. dan")
+    scaffold.add_argument("--language-code", required=True, help="ISO 639-1 code, e.g. da")
+    scaffold.add_argument("--spacy-model", required=True, help="spaCy model id, e.g. da_core_news_md")
+    scaffold.add_argument("--period", type=int, action="append", required=True,
+                          help="a legislative term covered; repeatable")
+    scaffold.add_argument("--media-license", required=True,
+                          help="terms of use of the video recordings: their wording or the address of the page")
+    scaffold.add_argument("--proceedings-license", default="",
+                          help="terms of use of the proceedings; may be filled in later")
+    scaffold.add_argument("--aeneas-language", default=None, help="default: the ISO 639-3 code")
+    scaffold.add_argument("--entityfishing-language", default=None, help="default: the ISO 639-1 code")
+    scaffold.add_argument("--dry-run", action="store_true", help="show what would be created")
+    scaffold.set_defaults(func=cmd_scaffold)
     return parser
 
 

@@ -108,8 +108,9 @@ def preflight(plan: dict) -> None:
             raise JobError("faster-whisper is not installed; `pip install -r requirements-qc.txt`")
         if not (_hf_cache() / WHISPER_MODEL_DIR).is_dir():
             raise JobError(f"the Whisper model is not in {_hf_cache()}; jobs run offline and do not fetch it")
-    for directory in sorted({Path(step["data_dir"]) / "cache" / "whisper" for step in plan["steps"]}
-                            | {job_dir(plan["id"])}):
+    targets = {Path(step["data_dir"]) if step["kind"] == "workflow"
+               else Path(step["data_dir"]) / "cache" / "whisper" for step in plan["steps"]}
+    for directory in sorted(targets | {job_dir(plan["id"])}):
         try:
             _probe_writable(directory)
         except OSError as error:
@@ -135,7 +136,7 @@ def _leftover_step(state: dict) -> int | None:
         if not pid or not _alive(pid):
             continue
         cp = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True, text=True)
-        if "whisper_diff" in cp.stdout:
+        if "whisper_diff" in cp.stdout or ".workflow" in cp.stdout:
             return int(pid)
     return None
 
@@ -175,8 +176,7 @@ def start(job_id: str, token: str) -> int:
     age = datetime.datetime.now() - datetime.datetime.fromisoformat(plan["created"])
     if age > datetime.timedelta(hours=estimate.PLAN_MAX_AGE_HOURS):
         raise JobError(f"the estimate is older than {estimate.PLAN_MAX_AGE_HOURS} h; run `estimate` again")
-    request = plan["request"]
-    current = estimate.build_plan(request["codes"], request["sessions"] or None)
+    current = estimate.rebuild(plan)
     if current["inputs"] != plan["inputs"]:
         raise JobError("the data changed since the estimate; run `estimate` again")
     return _launch(job_id, plan)
@@ -228,6 +228,8 @@ def describe(job_id: str) -> dict:
         record = records[index] if index < len(records) else {}
         entry = {"name": step_name(step), "status": record.get("status", "pending"),
                  "expected_seconds": step["expected_seconds"]}
+        if step.get("unestimated"):
+            entry["unestimated"] = True
         for key in ("seconds", "detail", "started", "finished", "log"):
             if key in record:
                 entry[key] = record[key]
@@ -298,7 +300,8 @@ def render_job(job: dict) -> str:
     for step in job["steps"]:
         took = f", took {estimate._hours(step['seconds'])}" if "seconds" in step else ""
         note = step.get("progress") or step.get("detail") or ""
-        lines.append(f"  {step['status']:<8} {step['name']:<34} expected {estimate._hours(step['expected_seconds'])}"
+        expected = "unknown" if step.get("unestimated") else estimate._hours(step["expected_seconds"])
+        lines.append(f"  {step['status']:<8} {step['name']:<34} expected {expected}"
                      f"{took}{'  ' + note if note else ''}")
     lines.append(f"files: {job['directory']}")
     return "\n".join(lines)

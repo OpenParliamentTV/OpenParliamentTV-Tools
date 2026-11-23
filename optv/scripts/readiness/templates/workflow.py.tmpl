@@ -1,0 +1,77 @@
+#! /usr/bin/env python3
+"""$code $name workflow.
+
+Fetches the media and the proceedings, parses and merges them per session, then
+optionally links entities, aligns sentences and extracts entities. Stage
+orchestration is shared via ``optv.shared.workflow``.
+"""
+
+import logging
+import os
+import sys
+from pathlib import Path
+
+# Allow ./workflow.py and `python -m optv.parliaments.$code.workflow`.
+if __package__ is None or __package__ == "":
+    module_dir = Path(__file__).resolve().parent
+    sys.path.insert(0, str(module_dir.parent))
+    sys.path.insert(0, str(module_dir.parent.parent.parent))
+    __package__ = module_dir.name
+
+from optv.shared.align import align_audiofile
+from optv.shared.workflow import WorkflowHooks, adapt_merge, run_main
+
+from .common import Config
+from .merger.merge_session import merge_session
+from .parsers.media2json import parse_media
+from .parsers.proceedings2json import parse_proceedings
+from .scraper.fetch import fetch_originals
+
+logger = logging.getLogger(__name__ if __name__ != '__main__' else os.path.basename(sys.argv[0]))
+
+PARLIAMENT_ID = Path(__file__).parent.name
+
+
+def _download(config, args):
+    fetch_originals(config, args)
+
+
+def _parse(config, args):
+    parse_media(config, args)
+    parse_proceedings(config, args)
+
+
+_merge = adapt_merge(merge_session)
+
+
+def _align(config, session, args):
+    # One audio file per speech at media.audioFileURI. A source that needs its
+    # audio cut from a session stream stages it with optv.shared.audio_prep
+    # instead (see docs/ADDING-A-PARLIAMENT.md, "Wire the workflow").
+    merged_file = config.file(session, 'merged')
+    aligned_file = config.file(session, 'aligned', create=True)
+    align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir,
+                    timeout=args.align_timeout,
+                    max_audio_seconds=args.align_max_audio_seconds)
+    return aligned_file
+
+
+HOOKS = WorkflowHooks(
+    parliament_id=PARLIAMENT_ID,
+    download_originals=_download,
+    parse_originals=_parse,
+    merge_session_to_file=_merge,
+    align_session_to_file=_align,
+)
+
+
+def main():
+    run_main(
+        PARLIAMENT_ID, HOOKS,
+        description="$code workflow.",
+        config_cls=Config,
+    )
+
+
+if __name__ == "__main__":
+    main()
