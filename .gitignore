@@ -19,7 +19,8 @@ pids
 __pycache__
 _planning/
 .cursor/
-.claude/
+.claude/*
+!.claude/skills/
 .venv/
 .venv-*/
 
