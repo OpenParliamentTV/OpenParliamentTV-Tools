@@ -1,20 +1,34 @@
 ---
 name: add-parliament
 description: Onboard a new parliament into Open Parliament TV, from its Research profile to three sample sessions scored by the readiness tooling. Scaffolds the implementation and a local data repository, guides the scraper, parsers and merger through checkpoints, and stops before anything leaves the machine.
-argument-hint: "<CODE>"
+argument-hint: "<CODE> | next"
 disable-model-invocation: true
-allowed-tools: Bash(.venv/bin/python -m optv.scripts.readiness scaffold * --dry-run), Bash(.venv/bin/python -m optv.scripts.readiness check *), Bash(.venv/bin/python -m optv.scripts.readiness estimate *), Bash(.venv/bin/python -m optv.scripts.readiness sync), Bash(.venv/bin/python -m optv.scripts.readiness jobs), Bash(.venv/bin/python -m optv.scripts.readiness jobs list*), Bash(.venv/bin/python -m optv.scripts.readiness jobs show *), Bash(.venv/bin/python -m optv.shared.validators.cli *), Bash(.venv/bin/pytest *), Bash(git status *), Bash(git diff *)
+allowed-tools: Bash(.venv/bin/python -m optv.scripts.readiness next), Bash(.venv/bin/python -m optv.scripts.readiness next *), Bash(.venv/bin/python -m optv.scripts.readiness scaffold * --dry-run), Bash(.venv/bin/python -m optv.scripts.readiness check *), Bash(.venv/bin/python -m optv.scripts.readiness estimate *), Bash(.venv/bin/python -m optv.scripts.readiness sync), Bash(.venv/bin/python -m optv.scripts.readiness jobs), Bash(.venv/bin/python -m optv.scripts.readiness jobs list*), Bash(.venv/bin/python -m optv.scripts.readiness jobs show *), Bash(.venv/bin/python -m optv.shared.validators.cli *), Bash(.venv/bin/pytest *), Bash(git status *), Bash(git diff *)
 ---
 
 # Add a parliament
 
-`$ARGUMENTS` is the shortcode of the parliament to add, for example `DK` or `DE-HE`. The work ends when three sample sessions of it are processed end to end and scored, and the user holds a list of what is left for them to do. [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) is the reference for every step; read it before starting. This skill adds the order of work, the checkpoints, and the limits.
+`$ARGUMENTS` is the shortcode of the parliament to add, for example `DK` or `DE-HE`, or the word `next` to have the most feasible parliament without an implementation chosen (section 0). The work ends when three sample sessions of it are processed end to end and scored, and the user holds a list of what is left for them to do. [docs/ADDING-A-PARLIAMENT.md](../../../docs/ADDING-A-PARLIAMENT.md) is the reference for every step; read it before starting. This skill adds the order of work, the checkpoints, and the limits.
 
 Three limits shape everything below.
 
 - **Sample sessions only.** A parliament that is not live is processed for three sample sessions. Fetching, aligning or transcribing a whole period takes days and thousands of requests; it is never started here and not proposed as a next step.
 - **Requests are counted before they are sent.** A parliament's servers are someone else's. Before any run that talks to them, say how many requests it will make and to which host, and get the user's go-ahead for anything beyond a handful. A burst of requests has had the user's address blocked before.
 - **Nothing leaves the machine.** No GitHub repository is created, nothing is committed or pushed. Those steps are listed for the user at the end.
+
+## 0. When the argument is `next`
+
+```
+.venv/bin/python -m optv.scripts.readiness next
+```
+
+It reads the Research repository's overview, which lists every surveyed parliament by feasibility score, highest first, and leaves out the ones implemented here. The first line is the candidate; the lines after it are the runners-up. Parliaments that were looked into and set aside are named separately and not offered.
+
+- If it says profiles changed since the overview was generated, regenerate the overview first (`python3 scripts/update_overview.py` in the Research repository; a generated file there, left uncommitted) and run the command again. A stale overview can rank a parliament by a score its profile no longer has.
+- Read the candidate's profile before proposing it, above all its blockers, its terms of use and when it was last verified. The score says how good the sources look on paper. A blocker the score does not weigh, terms that forbid republishing, or a profile verified long ago are reasons to say so and to look at the runner-up as well.
+- Tell the user which parliament came out, its score with the three parts, the runners-up, and anything from the profile that speaks against it. Then ask which one to add. Adding a parliament is days of work, so the choice is theirs to confirm, and they may pick another. With equal scores the order is alphabetical by code, which is no reason to prefer one.
+
+Continue with the confirmed shortcode. The scores and the ranking stay in the conversation; they are not written into this repository.
 
 ## 1. Check what exists
 

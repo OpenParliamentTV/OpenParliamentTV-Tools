@@ -172,6 +172,21 @@ def cmd_sync(args) -> int:
     return 1
 
 
+def cmd_next(args) -> int:
+    from . import candidates
+
+    try:
+        result = candidates.candidates(include_deferred=args.include_deferred)
+    except candidates.CandidatesError as error:
+        logger.error(str(error))
+        return 2
+    if args.json:
+        print(json.dumps(dict(result, candidates=result["candidates"][:args.limit]), indent=2, ensure_ascii=False))
+    else:
+        print(candidates.render(result, limit=args.limit))
+    return 0
+
+
 def cmd_scaffold(args) -> int:
     from . import scaffold
 
@@ -255,6 +270,13 @@ def build_parser() -> argparse.ArgumentParser:
                                        "READMEs and the Research profiles with the scorecards")
     sync.add_argument("--apply", action="store_true", help="rewrite the differing values")
     sync.set_defaults(func=cmd_sync)
+
+    upcoming = sub.add_parser("next", help="the most feasible surveyed parliament that has no implementation yet")
+    upcoming.add_argument("--limit", type=int, default=5, help="how many candidates to show")
+    upcoming.add_argument("--include-deferred", action="store_true",
+                          help="also list parliaments that were looked into and set aside")
+    upcoming.add_argument("--json", action="store_true")
+    upcoming.set_defaults(func=cmd_next)
 
     scaffold = sub.add_parser("scaffold", help="lay out a new parliament directory and its local data repository")
     scaffold.add_argument("code", metavar="CODE", help="shortcode, e.g. DK or DE-HE")

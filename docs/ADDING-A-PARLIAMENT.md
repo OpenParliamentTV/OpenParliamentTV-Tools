@@ -14,6 +14,8 @@ The shortcode becomes the directory name (`optv/parliaments/<CODE>/`) and the da
 
 ## 2. Survey the source data
 
+Which parliament to add is a question of how good its sources are. Where the project's survey of parliaments is on the machine, `python -m optv.scripts.readiness next` names the most feasible one that has no implementation yet.
+
 Before writing any code, confirm the parliament publishes the four things the pipeline needs:
 
 - **Video** for every speech, fetchable by URL. Either per-speech files or a session video plus per-speech timecodes. Without accessible video, the parliament is not a viable target.
