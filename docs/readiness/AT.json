@@ -1,0 +1,202 @@
+{
+  "schema": 1,
+  "parliament": "AT",
+  "name": "Österreichischer Nationalrat",
+  "level": 2,
+  "level_name": "samples pass",
+  "blocking": [
+    "qc.fidelity",
+    "qc.reviewed",
+    "release.licence",
+    "release.platform"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "27144": {
+      "speeches": 1,
+      "text_speeches": 1,
+      "audio_seconds": 51,
+      "text": "ddea3cb3613f51b9"
+    },
+    "27200": {
+      "speeches": 49,
+      "text_speeches": 48,
+      "audio_seconds": 35043,
+      "text": "6cad859a8a4cea46"
+    },
+    "27257": {
+      "speeches": 154,
+      "text_speeches": 154,
+      "audio_seconds": 34251,
+      "text": "8cd60a012eaa8c8f"
+    }
+  },
+  "qc_evidence": "b8eeec6222e5bb53",
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 2
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 3,
+        "published": 3,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "complete": 3,
+        "sessions": 3
+      }
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 39
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 204,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "mode": "gated",
+        "text_speeches": 203,
+        "importable_share": 0.995
+      }
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 0.956,
+        "with_wid": 195,
+        "speeches": 204,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 0.991,
+        "timed": 9385,
+        "sentences": 9475,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "checked": 149,
+        "implausible": 0
+      }
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 204,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "share": 1.0,
+        "transcribed": 203,
+        "expected": 203,
+        "threshold": 0.95
+      }
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "fail",
+      "metrics": {
+        "median_similarity": 0.841,
+        "sessions": {
+          "27144": 0.135,
+          "27200": 0.832,
+          "27257": 0.846
+        },
+        "speeches": 192,
+        "threshold": 0.8,
+        "session_threshold": 0.7
+      },
+      "detail": "sessions below 0.7: 27144: 0.135"
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "share": 0.047,
+        "mismatched": 9,
+        "speeches": 192,
+        "threshold": 0.05
+      }
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "ba12a7f"
+  }
+}

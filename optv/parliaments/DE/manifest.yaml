@@ -27,3 +27,21 @@ proceedings:
       creator: "PolMine ParlaMint-DE_beta"
       license: "CC-BY-4.0"
       source: "parlamint-de-beta"
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "17033"
+    - "17052"
+    - "17108"
+    - "17126"
+    - "17145"
+    - "21070"
+    - "21071"
+    - "21072"
+  attestations:
+    backfilled:
+      periods: [17, 18, 19, 20, 21]
+    live:
+      url: https://de.openparliament.tv

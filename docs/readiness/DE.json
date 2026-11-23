@@ -1,0 +1,236 @@
+{
+  "schema": 1,
+  "parliament": "DE",
+  "name": "Deutscher Bundestag",
+  "level": 5,
+  "level_name": "live",
+  "blocking": [],
+  "regressions": [
+    "qc.whisper_coverage"
+  ],
+  "unverified": [
+    "qc.reviewed",
+    "release.licence",
+    "release.platform"
+  ],
+  "status": "production",
+  "samples": {
+    "17033": {
+      "speeches": 55,
+      "text_speeches": 55,
+      "audio_seconds": 14758,
+      "text": "ef9d98defc267332"
+    },
+    "17052": {
+      "speeches": 40,
+      "text_speeches": 40,
+      "audio_seconds": 13388,
+      "text": "3f56d894da9ad771"
+    },
+    "17108": {
+      "speeches": 132,
+      "text_speeches": 132,
+      "audio_seconds": 42843,
+      "text": "d50e05c818dc85ab"
+    },
+    "17126": {
+      "speeches": 129,
+      "text_speeches": 129,
+      "audio_seconds": 35116,
+      "text": "e81de7f865ca00ba"
+    },
+    "17145": {
+      "speeches": 57,
+      "text_speeches": 57,
+      "audio_seconds": 14172,
+      "text": "634d6560dbcce01d"
+    },
+    "21070": {
+      "speeches": 66,
+      "text_speeches": 66,
+      "audio_seconds": 19188,
+      "text": "aaf0519d0756a218"
+    },
+    "21071": {
+      "speeches": 164,
+      "text_speeches": 164,
+      "audio_seconds": 34725,
+      "text": "98811f080e5aebd9"
+    },
+    "21072": {
+      "speeches": 75,
+      "text_speeches": 75,
+      "audio_seconds": 17163,
+      "text": "b94a267c6df27552"
+    }
+  },
+  "qc_evidence": "fb32a450ac258e4a",
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 7
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 8,
+        "published": 8,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "complete": 8,
+        "sessions": 8
+      }
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 71
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 718,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "mode": "gated",
+        "text_speeches": 718,
+        "importable_share": 0.684
+      }
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 1.0,
+        "with_wid": 718,
+        "speeches": 718,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 0.98,
+        "timed": 44228,
+        "sentences": 45111,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "checked": 450,
+        "implausible": 0
+      }
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 718,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "fail",
+      "metrics": {
+        "share": 0.829,
+        "transcribed": 595,
+        "expected": 718,
+        "threshold": 0.95
+      },
+      "detail": "17033: 54 of 55, 17052: 37 of 40, 17108: 131 of 132, 17126: 124 of 129, 17145: 54 of 57 and 2 more"
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "median_similarity": 0.844,
+        "sessions": {
+          "17033": 0.753,
+          "17052": 0.817,
+          "17108": 0.822,
+          "17126": 0.808,
+          "17145": 0.777,
+          "21070": 0.859,
+          "21071": 0.883,
+          "21072": 0.897
+        },
+        "speeches": 377,
+        "threshold": 0.8,
+        "session_threshold": 0.7
+      }
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "share": 0.011,
+        "mismatched": 4,
+        "speeches": 377,
+        "threshold": 0.05
+      }
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "pass"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "pass"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "ba12a7f"
+  }
+}

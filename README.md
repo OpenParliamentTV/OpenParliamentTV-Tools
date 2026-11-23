@@ -116,10 +116,11 @@ An opt-in QC toolset cross-checks output without touching pipeline data. It has 
 - [`optv/shared/whisper_diff.py`](optv/shared/whisper_diff.py) (`rank` / `transcribe` / `diff`) — transcribes a session's audio with faster-whisper (+ optional Resemblyzer speaker-change detection, via [`whisper_qc.py`](optv/shared/whisper_qc.py)) and reports where it diverges from the proceedings text.
 - [`optv/scripts/merge_audit.py`](optv/scripts/merge_audit.py) — read-only sweep over merger output that flags text-accumulation anomalies (histograms + suspect lists).
 - [`optv/scripts/equivalence.py`](optv/scripts/equivalence.py) (`snapshot` / `compare` / `status-dump`) — proves a code change leaves pipeline output untouched: runs each parliament's workflow (parse, merge, publish) offline on a scratch copy of its data repo and diffs the output digests of two Tools checkouts.
+- [`optv/scripts/readiness/`](optv/scripts/readiness/) (`check` / `qc` / `estimate` / `start` / `jobs`) — scores every parliament's implementation and sample sessions against the readiness criteria and writes [docs/READINESS.md](docs/READINESS.md); plans the Whisper transcription that evidence needs, estimates its duration and runs it as a detached job.
 
 ## Implemented parliaments
 
-`DE` (Deutscher Bundestag) is the reference implementation and the only parliament in production; the others are in development. For how their data structures differ, see [DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
+`DE` (Deutscher Bundestag) is the reference implementation and the only parliament in production; the others are in development. [docs/READINESS.md](docs/READINESS.md) shows how far each one is and what keeps it from the next level. For how their data structures differ, see [DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md).
 
 | Parliament | Name | Type | Data Repository | Status |
 |------------|------|------|------|--------|

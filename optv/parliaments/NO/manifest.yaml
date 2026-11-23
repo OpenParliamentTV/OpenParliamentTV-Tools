@@ -20,3 +20,11 @@ proceedings:
   default:
     creator: Stortinget
     license: https://data.stortinget.no/om-datatjenesten/bruksvilkar/
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "22_11517"
+    - "22_11518"
+    - "22_11519"

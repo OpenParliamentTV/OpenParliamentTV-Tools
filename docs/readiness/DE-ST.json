@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "parliament": "DE-ST",
+  "name": "Landtag von Sachsen-Anhalt",
+  "level": 1,
+  "level_name": "implemented",
+  "blocking": [
+    "samples.speaker_wid"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "08105": {
+      "speeches": 133,
+      "text_speeches": 133,
+      "audio_seconds": 36898,
+      "text": "36df03fd6fbea5a5"
+    },
+    "08106": {
+      "speeches": 108,
+      "text_speeches": 108,
+      "audio_seconds": 40019,
+      "text": "6255fb4ec8570520"
+    },
+    "08107": {
+      "speeches": 27,
+      "text_speeches": 27,
+      "audio_seconds": 15692,
+      "text": "bb9a3dd14abd2924"
+    },
+    "09001": {
+      "speeches": 24,
+      "text_speeches": 24,
+      "audio_seconds": 10956,
+      "text": "8ea9b6b2c8a6df00"
+    },
+    "09002": {
+      "speeches": 15,
+      "text_speeches": 15,
+      "audio_seconds": 7949,
+      "text": "745c2afc1437eb89"
+    }
+  },
+  "qc_evidence": "25a62a5b559dd32f",
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 1
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 5,
+        "published": 5,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "complete": 5,
+        "sessions": 5
+      }
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 400
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 307,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "mode": "confidence-only",
+        "text_speeches": 307,
+        "leaks": 0
+      }
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "share": 0.544,
+        "with_wid": 167,
+        "speeches": 307,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 0.998,
+        "timed": 19509,
+        "sentences": 19541,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "checked": 250,
+        "implausible": 0
+      }
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 307,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "fail",
+      "metrics": {
+        "share": 0.87,
+        "transcribed": 267,
+        "expected": 307,
+        "threshold": 0.95
+      },
+      "detail": "08105: 132 of 133, 09001: 0 of 24, 09002: 0 of 15"
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "not_evaluated",
+      "metrics": {
+        "median_similarity": {
+          "08105": 0.884,
+          "08106": 0.869,
+          "08107": 0.883
+        }
+      },
+      "detail": "no QC figures for 09001, 09002"
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no QC figures for 09001, 09002"
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "ba12a7f"
+  }
+}

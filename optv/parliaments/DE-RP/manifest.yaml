@@ -20,3 +20,11 @@ proceedings:
   default:
     creator: Landtag Rheinland-Pfalz
     license: Public Domain
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "18077"
+    - "18078"
+    - "18083"

@@ -27,3 +27,11 @@ proceedings:
   default:
     creator: Congreso de los Diputados
     license: https://www.congreso.es/es/web/guest/cem/aviso-legal
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "15001"
+    - "15004"
+    - "15090"

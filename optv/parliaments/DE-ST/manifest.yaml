@@ -49,3 +49,13 @@ entity_bootstrap:
     - party: bsw
       label: "BSW"
       aliases: ["Bündnis Sahra Wagenknecht", "Bündnis Sahra Wagenknecht – Vernunft und Gerechtigkeit"]
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "08105"
+    - "08106"
+    - "08107"
+    - "09001"
+    - "09002"

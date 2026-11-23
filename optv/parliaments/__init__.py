@@ -28,6 +28,8 @@ def load_manifest(parliament_id: str) -> dict[str, Any]:
     by ``optv.shared.ner`` / ``optv.shared.align``).
 
     ``ner`` is an optional sub-mapping; ``ner.corrections: true`` turns on ``optv.shared.ner_corrections`` for the NER stage.
+
+    ``readiness`` declares what ``optv.scripts.readiness`` cannot compute: ``sample_sessions`` (the sessions processed end to end and evaluated), ``attestations``, per-parliament ``thresholds`` and the ``whisper`` language. The pipeline does not read it; ``optv.scripts.readiness.config`` documents and validates its shape.
     """
     import yaml
 

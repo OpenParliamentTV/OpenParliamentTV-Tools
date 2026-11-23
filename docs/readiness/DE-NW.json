@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "parliament": "DE-NW",
+  "name": "Landtag Nordrhein-Westfalen",
+  "level": 1,
+  "level_name": "implemented",
+  "blocking": [
+    "samples.speaker_wid"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "18115": {
+      "speeches": 110,
+      "text_speeches": 110,
+      "audio_seconds": 33868,
+      "text": "e437edb10196d704"
+    },
+    "18116": {
+      "speeches": 79,
+      "text_speeches": 79,
+      "audio_seconds": 24889,
+      "text": "558a25764834b7ab"
+    },
+    "18117": {
+      "speeches": 48,
+      "text_speeches": 48,
+      "audio_seconds": 14862,
+      "text": "1cdfd7665779db64"
+    }
+  },
+  "qc_evidence": "9434aa0bb995755d",
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 1
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 3,
+        "published": 3,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "complete": 3,
+        "sessions": 3
+      }
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 58
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 237,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "mode": "confidence-only",
+        "text_speeches": 237,
+        "leaks": 0
+      }
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "share": 0.755,
+        "with_wid": 179,
+        "speeches": 237,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 1.0,
+        "timed": 12257,
+        "sentences": 12257,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "checked": 234,
+        "implausible": 0
+      }
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 237,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "fail",
+      "metrics": {
+        "share": 0.532,
+        "transcribed": 126,
+        "expected": 237,
+        "threshold": 0.95
+      },
+      "detail": "18115: 0 of 110, 18117: 47 of 48"
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "not_evaluated",
+      "metrics": {
+        "median_similarity": {
+          "18116": 0.88,
+          "18117": 0.883
+        }
+      },
+      "detail": "no QC figures for 18115"
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no QC figures for 18115"
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "ba12a7f"
+  }
+}

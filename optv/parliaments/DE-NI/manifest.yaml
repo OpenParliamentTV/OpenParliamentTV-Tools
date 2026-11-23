@@ -55,3 +55,12 @@ entity_bootstrap:
     - party: fdp
       label: "FDP"
       aliases: ["Freie Demokratische Partei"]
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "19078"
+    - "19079"
+    - "19080"
+    - {id: "18009", expect_text: false, note: "WP 18: video and speakers without subtitles"}

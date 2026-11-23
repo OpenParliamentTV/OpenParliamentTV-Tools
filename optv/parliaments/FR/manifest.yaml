@@ -25,3 +25,11 @@ proceedings:
   default:
     creator: Assemblée nationale
     license: https://data.assemblee-nationale.fr/licence-ouverte-open-licence   # Licence Ouverte (Etalab)
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "2026O1N251"
+    - "2026O1N252"
+    - "2026O1N255"

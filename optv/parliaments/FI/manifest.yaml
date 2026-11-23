@@ -26,3 +26,11 @@ proceedings:
   default:
     creator: Eduskunta
     license: "CC-BY-4.0"   # Open data: https://www.eduskunta.fi/fi/avoin-data/mita-on-avoin-data
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "2026-054"
+    - "2026-056"
+    - "2026-058"

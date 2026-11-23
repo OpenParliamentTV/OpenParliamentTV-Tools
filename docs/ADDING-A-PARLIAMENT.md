@@ -82,6 +82,25 @@ proceedings:
 
 `locale.*` are required when `align` or `ner` is in `supported_stages`. The model name is given in full (no `lang + suffix` composition) because spaCy's naming isn't uniform across languages. Locale is injected onto `args` by `run_main` (via `optv.shared.workflow.inject_locale` → `optv.parliaments.get_locale()`) before invoking shared stages.
 
+`readiness` names the parliament's sample sessions and holds the statements only a person can make. The pipeline does not read it; the readiness tooling does (see [section 12](#12-definition-of-done)):
+
+```yaml
+readiness:
+  sample_sessions:                # session keys as Config.sessions() returns them, quoted
+    - "21070"
+    - "21071"
+    - {id: "21072", expect_text: false, note: "why this one has no text"}
+  attestations:                   # each one a statement by a person; absent = not stated
+    qc_reviewed: {evidence: "<qc_evidence of the scorecard>"}
+    licence_cleared: {note: "…"}
+    platform_ready: {note: "…"}
+    backfilled: {periods: [21]}
+    live: {url: "https://…"}
+  thresholds:                     # override of a default, with the reason
+    speaker_wid_share: {value: 0.90, reason: "…"}
+  whisper: {language: "no"}       # only when Whisper names the language differently
+```
+
 ## 5. Implement Stage 1 (parliament-specific)
 
 These three packages are where most of the parliament-specific work lives:
@@ -191,7 +210,7 @@ Notes for filling in the hooks:
 
 ## 9. Verify end-to-end
 
-1. Run the full workflow on one or two sessions with `--limit-session <regex>`.
+1. Pick three sample sessions and run the full workflow on them, scoped with `--limit-session <regex>` or the parliament's own session flag. A parliament that is not live is processed for its sample sessions only: alignment and NER of a whole period take days and wait until the samples are cleared.
 2. Inspect the published file in `<data_dir>/processed/`.
 3. Run the validator over the whole processed directory:
 
@@ -200,6 +219,11 @@ Notes for filling in the hooks:
    ```
 
 4. Spot-check sentence timings, Wikidata IDs on a known speaker, and entity extraction quality.
+5. Declare the sample sessions in the manifest (`readiness.sample_sessions`) and score them:
+
+   ```bash
+   python -m optv.scripts.readiness check <CODE>
+   ```
 
 Add tests for the parliament's parsers and merger under `tests/` (see the existing `tests/test_<code>*.py` files). `tests/test_conductor_contract.py` picks a new parliament up automatically and checks the surface the Conductor depends on.
 
@@ -253,3 +277,25 @@ Do not duplicate content that already lives elsewhere: pipeline concepts go in [
 ## 11. Onboard with Conductor
 
 Once the parliament works standalone, add it to the Conductor's `config/parliaments.yaml` so it appears in the web UI. See the [Conductor README](https://github.com/OpenParliamentTV/OpenParliamentTV-Conductor) for the deployment configuration format.
+
+## 12. Definition of done
+
+A parliament is done in steps, and [READINESS.md](READINESS.md) shows for every parliament which step it has reached and what keeps it from the next. The page is generated from one scorecard per parliament (`docs/readiness/<CODE>.json`); its criteria table says what each criterion checks.
+
+| Level | Name | What it takes |
+|---|---|---|
+| 1 | implemented | the directory from section 3 exists |
+| 2 | samples pass | the sample sessions went through every supported stage and satisfy the level 2 criteria: valid Stage 2, complete import fields, speaker IDs and sentence timing above their thresholds, plausible text, rights on every entry, and the implementation has tests |
+| 3 | QC cleared | Whisper transcripts of the sample sessions confirm that the published text is what was said, a person reviewed the reports, and licence and platform fit are attested |
+| 4 | backfilled | the periods to be published are processed in full, declared in the manifest |
+| 5 | live | a platform instance serves the data, declared in the manifest |
+
+Level 3 is the bar for production: from there a backfill and going live are a matter of running them. Until then the parliament stays `in development`.
+
+```bash
+python -m optv.scripts.readiness check <CODE>      # score, rewrite the scorecard and READINESS.md
+python -m optv.scripts.readiness qc <CODE>         # compare text and transcript where a transcript exists
+python -m optv.scripts.readiness estimate <CODE>   # plan the outstanding transcription, with its duration
+```
+
+`check` reads local files only and takes seconds. Whisper evidence costs about 0.8 hours of computing per hour of audio, so it is produced by a detached job: `estimate` prints the plan and a start command that carries the plan's token, `start` runs it in the background, `jobs` reports on it. A job transcribes the audio clips the align stage cached for the sample sessions and downloads nothing; it needs `pip install -r requirements-qc.txt` and the Whisper model in the local Hugging Face cache.

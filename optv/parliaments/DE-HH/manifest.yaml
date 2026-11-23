@@ -60,3 +60,12 @@ entity_bootstrap:
     - party: afd
       label: "AfD"
       aliases: ["Alternative für Deutschland"]
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "23016"
+    - "23017"
+    - "23018"
+    - "23032"

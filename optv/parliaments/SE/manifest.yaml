@@ -20,3 +20,11 @@ proceedings:
   default:
     creator: Sveriges Riksdag
     license: https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anvandarstod/anvandningsvillkor/
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "2025-030"
+    - "2025-091"
+    - "2025-122"

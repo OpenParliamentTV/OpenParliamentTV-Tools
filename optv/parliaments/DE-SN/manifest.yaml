@@ -57,3 +57,12 @@ entity_bootstrap:
     - party: linke
       label: "Die Linke"
       aliases: ["DIE LINKE", "Die Linke.", "PDS"]
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "08001"
+    - "08023"
+    - "08024"
+    - "08025"

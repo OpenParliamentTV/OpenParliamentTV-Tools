@@ -1,0 +1,185 @@
+{
+  "schema": 1,
+  "parliament": "PT",
+  "name": "Assembleia da República",
+  "level": 1,
+  "level_name": "implemented",
+  "blocking": [
+    "samples.speaker_wid",
+    "samples.text_plausible"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "17-1-057": {
+      "speeches": 67,
+      "text_speeches": 67,
+      "audio_seconds": 8871,
+      "text": "0754d3a8ba687578"
+    },
+    "17-1-058": {
+      "speeches": 100,
+      "text_speeches": 99,
+      "audio_seconds": 15400,
+      "text": "12e8f7a3aab13400"
+    },
+    "17-1-059": {
+      "speeches": 61,
+      "text_speeches": 61,
+      "audio_seconds": 10706,
+      "text": "55e225130810b600"
+    },
+    "17-2-001": {
+      "speeches": 87,
+      "text_speeches": 87,
+      "audio_seconds": 14469,
+      "text": "a40ab900c91146ee"
+    }
+  },
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 4
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 4,
+        "published": 4,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "complete": 4,
+        "sessions": 4
+      }
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 135
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 315,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "not_applicable",
+      "metrics": {
+        "mode": "ungated",
+        "text_speeches": 314
+      },
+      "detail": "the speeches carry no debug.confidence; the platform imports every text"
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "share": 0.714,
+        "with_wid": 225,
+        "speeches": 315,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 1.0,
+        "timed": 6226,
+        "sentences": 6226,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "checked": 199,
+        "implausible": 1
+      },
+      "detail": "17-1-059#20: 3708 chars in 9 s"
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 315,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "ba12a7f"
+  }
+}

@@ -29,3 +29,12 @@ proceedings:
   default:
     creator: Assembleia da República
     license: https://www.parlamento.pt/
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "17-1-057"
+    - "17-1-058"
+    - "17-1-059"
+    - "17-2-001"

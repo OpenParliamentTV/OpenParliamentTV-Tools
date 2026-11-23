@@ -1,0 +1,200 @@
+{
+  "schema": 1,
+  "parliament": "DE-SN",
+  "name": "Sächsischer Landtag",
+  "level": 1,
+  "level_name": "implemented",
+  "blocking": [
+    "samples.stages",
+    "samples.import_gate",
+    "samples.speaker_wid"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "08001": {
+      "speeches": 35,
+      "text_speeches": 25,
+      "audio_seconds": 14168,
+      "text": "a2833adeb0d08f54"
+    },
+    "08023": {
+      "speeches": 177,
+      "text_speeches": 165,
+      "audio_seconds": 30426,
+      "text": "20f9c7c0940e251a"
+    },
+    "08024": {
+      "speeches": 165,
+      "text_speeches": 147,
+      "audio_seconds": 42116,
+      "text": "cc5b5dbd5b975044"
+    },
+    "08025": {
+      "speeches": 188,
+      "text_speeches": 181,
+      "audio_seconds": 39166,
+      "text": "572c557d3a071397"
+    }
+  },
+  "qc_evidence": "21cbc9dcebe8fece",
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 1
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 4,
+        "published": 4,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "complete": 0,
+        "sessions": 4
+      },
+      "detail": "08001: no ner; 08023: no ner; 08024: no ner; 08025: no ner"
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 152
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 565,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "mode": "confidence-only",
+        "text_speeches": 518,
+        "leaks": 82
+      },
+      "detail": "speeches below confidence 1 would import with text (08023: 47, 08024: 1, 08025: 34); the platform ignores debug.confidence without debug.linkedMediaIndexes"
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "share": 0.935,
+        "with_wid": 528,
+        "speeches": 565,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 1.0,
+        "timed": 16265,
+        "sentences": 16265,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "checked": 331,
+        "implausible": 0
+      }
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 565,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "share": 0.952,
+        "transcribed": 493,
+        "expected": 518,
+        "threshold": 0.95
+      }
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "not_evaluated",
+      "metrics": {
+        "median_similarity": {
+          "08023": 0.779,
+          "08024": 0.884,
+          "08025": 0.844
+        }
+      },
+      "detail": "no QC figures for 08001"
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no QC figures for 08001"
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "ba12a7f"
+  }
+}

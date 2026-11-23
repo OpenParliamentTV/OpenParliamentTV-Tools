@@ -1,0 +1,198 @@
+{
+  "schema": 1,
+  "parliament": "NO",
+  "name": "Stortinget",
+  "level": 1,
+  "level_name": "implemented",
+  "blocking": [
+    "samples.speaker_wid"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "22_11517": {
+      "speeches": 430,
+      "text_speeches": 430,
+      "audio_seconds": 43066,
+      "text": "99c027f9cf6dc6dc"
+    },
+    "22_11518": {
+      "speeches": 177,
+      "text_speeches": 177,
+      "audio_seconds": 26784,
+      "text": "cf24ef1c3a94fe9d"
+    },
+    "22_11519": {
+      "speeches": 35,
+      "text_speeches": 35,
+      "audio_seconds": 5815,
+      "text": "08ec1cc7c0bc2fb6"
+    }
+  },
+  "qc_evidence": "2bf80f88180ef159",
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 1
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 3,
+        "published": 3,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "complete": 3,
+        "sessions": 3
+      }
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 152
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 642,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "not_applicable",
+      "metrics": {
+        "mode": "ungated",
+        "text_speeches": 642
+      },
+      "detail": "the speeches carry no debug.confidence; the platform imports every text"
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "share": 0.866,
+        "with_wid": 556,
+        "speeches": 642,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 1.0,
+        "timed": 9521,
+        "sentences": 9521,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "checked": 441,
+        "implausible": 0
+      }
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 642,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "share": 0.995,
+        "transcribed": 639,
+        "expected": 642,
+        "threshold": 0.95
+      }
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "median_similarity": 0.842,
+        "sessions": {
+          "22_11517": 0.822,
+          "22_11518": 0.919,
+          "22_11519": 0.858
+        },
+        "speeches": 557,
+        "threshold": 0.8,
+        "session_threshold": 0.7
+      }
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "share": 0.016,
+        "mismatched": 9,
+        "speeches": 557,
+        "threshold": 0.05
+      }
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "ba12a7f"
+  }
+}

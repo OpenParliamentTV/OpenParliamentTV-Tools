@@ -1,0 +1,194 @@
+{
+  "schema": 1,
+  "parliament": "DE-RP",
+  "name": "Landtag Rheinland-Pfalz",
+  "level": 1,
+  "level_name": "implemented",
+  "blocking": [
+    "samples.import_fields",
+    "samples.speaker_wid",
+    "samples.text_plausible"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "18077": {
+      "speeches": 71,
+      "text_speeches": 71,
+      "audio_seconds": 32550,
+      "text": "2ff65d2682919990"
+    },
+    "18078": {
+      "speeches": 77,
+      "text_speeches": 77,
+      "audio_seconds": 26480,
+      "text": "bc94d8d1e2926245",
+      "audio_seconds_guessed": true
+    },
+    "18083": {
+      "speeches": 111,
+      "text_speeches": 111,
+      "audio_seconds": 22259,
+      "text": "61a2189a04dd9e9b"
+    }
+  },
+  "qc_evidence": "3051c17e165be08d",
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 1
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 3,
+        "published": 3,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "complete": 3,
+        "sessions": 3
+      }
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 124
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "speeches": 259,
+        "rejected": 1
+      },
+      "detail": "18083#1: agendaItem.title"
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "mode": "gated",
+        "text_speeches": 259,
+        "importable_share": 0.981
+      }
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "share": 0.695,
+        "with_wid": 180,
+        "speeches": 259,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 0.997,
+        "timed": 12898,
+        "sentences": 12938,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "checked": 228,
+        "implausible": 2
+      },
+      "detail": "18078#77: 47521 chars in 19 s, 18083#98: 7505 chars in 52 s"
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 259,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "fail",
+      "metrics": {
+        "share": 0.251,
+        "transcribed": 65,
+        "expected": 259,
+        "threshold": 0.95
+      },
+      "detail": "18077: 65 of 71, 18078: 0 of 77 (67 transcripts outdated by a re-merge), 18083: 0 of 111 (87 transcripts outdated by a re-merge)"
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "not_evaluated",
+      "metrics": {
+        "median_similarity": {
+          "18077": 0.889
+        }
+      },
+      "detail": "no QC figures for 18078, 18083"
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no QC figures for 18078, 18083"
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "ba12a7f"
+  }
+}

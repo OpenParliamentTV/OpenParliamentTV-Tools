@@ -1,0 +1,182 @@
+{
+  "schema": 1,
+  "parliament": "FI",
+  "name": "Eduskunta",
+  "level": 2,
+  "level_name": "samples pass",
+  "blocking": [
+    "qc.whisper_coverage",
+    "qc.fidelity",
+    "qc.mismatch",
+    "qc.reviewed",
+    "release.licence",
+    "release.platform"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "2026-054": {
+      "speeches": 10,
+      "text_speeches": 10,
+      "audio_seconds": 1203,
+      "text": "62117fa076c433b3"
+    },
+    "2026-056": {
+      "speeches": 54,
+      "text_speeches": 54,
+      "audio_seconds": 11739,
+      "text": "dedf4970673cbc15"
+    },
+    "2026-058": {
+      "speeches": 11,
+      "text_speeches": 11,
+      "audio_seconds": 1270,
+      "text": "7bd93ab1442e5d7a"
+    }
+  },
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 2
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 3,
+        "published": 3,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "complete": 3,
+        "sessions": 3
+      }
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 0
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 75,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "not_applicable",
+      "metrics": {
+        "mode": "ungated",
+        "text_speeches": 75
+      },
+      "detail": "the speeches carry no debug.confidence; the platform imports every text"
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 1.0,
+        "with_wid": 75,
+        "speeches": 75,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 1.0,
+        "timed": 1408,
+        "sentences": 1408,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "checked": 67,
+        "implausible": 0
+      }
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 75,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "ba12a7f"
+  }
+}

@@ -33,3 +33,11 @@ transcript:
   default:
     creator: ly.govapi.tw (OpenFun Ltd.)
     license: https://creativecommons.org/licenses/by/4.0/
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "1105010"
+    - "1105011"
+    - "1105012"

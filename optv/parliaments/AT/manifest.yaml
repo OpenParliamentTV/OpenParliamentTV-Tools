@@ -22,3 +22,11 @@ proceedings:
   default:
     creator: "Parlamentsdirektion / Parlament Österreich"
     license: "CC-BY-4.0"   # Open Data: https://www.parlament.gv.at/recherchieren/open-data/daten-und-lizenz/index.html
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "27144"
+    - "27200"
+    - "27257"

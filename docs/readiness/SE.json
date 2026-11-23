@@ -1,0 +1,202 @@
+{
+  "schema": 1,
+  "parliament": "SE",
+  "name": "Sveriges Riksdag",
+  "level": 1,
+  "level_name": "implemented",
+  "blocking": [
+    "impl.tests",
+    "samples.speaker_wid"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "2025-030": {
+      "speeches": 39,
+      "text_speeches": 39,
+      "audio_seconds": 6628,
+      "text": "63676355548db959"
+    },
+    "2025-091": {
+      "speeches": 97,
+      "text_speeches": 97,
+      "audio_seconds": 19889,
+      "text": "54242f05336a228f",
+      "audio_seconds_guessed": true
+    },
+    "2025-122": {
+      "speeches": 145,
+      "text_speeches": 145,
+      "audio_seconds": 18527,
+      "text": "ad5a08f97e37f421",
+      "audio_seconds_guessed": true
+    }
+  },
+  "qc_evidence": "008943da5d0a242e",
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "modules": 0
+      },
+      "detail": "no tests/test_se*.py"
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 3,
+        "published": 3,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "complete": 3,
+        "sessions": 3
+      }
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 15
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 281,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "not_applicable",
+      "metrics": {
+        "mode": "ungated",
+        "text_speeches": 281
+      },
+      "detail": "the speeches carry no debug.confidence; the platform imports every text"
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "share": 0.947,
+        "with_wid": 266,
+        "speeches": 281,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 0.998,
+        "timed": 6329,
+        "sentences": 6341,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "checked": 140,
+        "implausible": 0
+      }
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 281,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "share": 0.989,
+        "transcribed": 278,
+        "expected": 281,
+        "threshold": 0.95
+      }
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "median_similarity": 0.88,
+        "sessions": {
+          "2025-030": 0.907,
+          "2025-091": 0.855,
+          "2025-122": 0.886
+        },
+        "speeches": 277,
+        "threshold": 0.8,
+        "session_threshold": 0.7
+      }
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "pass",
+      "metrics": {
+        "share": 0.0,
+        "mismatched": 0,
+        "speeches": 277,
+        "threshold": 0.05
+      }
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "ba12a7f"
+  }
+}
