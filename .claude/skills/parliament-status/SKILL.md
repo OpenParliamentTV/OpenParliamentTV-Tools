@@ -2,7 +2,7 @@
 name: parliament-status
 description: Report how production-ready the parliament implementations and their data are, from the readiness scorecards. Use this whenever the user asks which parliaments are ready, what level or status a parliament has, what blocks a parliament from the next level or from going live, wants docs/READINESS.md or docs/readiness/*.json refreshed, or has changed a parliament's code, manifest or sample data and wants to see the effect. Also use it before answering any question about a parliament's quality from memory.
 argument-hint: "[CODE ...]"
-allowed-tools: Bash(.venv/bin/python -m optv.scripts.readiness check), Bash(.venv/bin/python -m optv.scripts.readiness check *), Bash(.venv/bin/python -m optv.scripts.readiness overview *), Bash(.venv/bin/python -m optv.scripts.readiness catalogue), Bash(.venv/bin/python -m optv.scripts.readiness qc *), Bash(.venv/bin/python -m optv.scripts.readiness jobs), Bash(.venv/bin/python -m optv.scripts.readiness jobs list*), Bash(.venv/bin/python -m optv.scripts.readiness jobs show *), Bash(git status *), Bash(git diff *)
+allowed-tools: Bash(.venv/bin/python -m optv.scripts.readiness check), Bash(.venv/bin/python -m optv.scripts.readiness check *), Bash(.venv/bin/python -m optv.scripts.readiness overview *), Bash(.venv/bin/python -m optv.scripts.readiness catalogue), Bash(.venv/bin/python -m optv.scripts.readiness qc *), Bash(.venv/bin/python -m optv.scripts.readiness sync), Bash(.venv/bin/python -m optv.scripts.readiness jobs), Bash(.venv/bin/python -m optv.scripts.readiness jobs list*), Bash(.venv/bin/python -m optv.scripts.readiness jobs show *), Bash(git status *), Bash(git diff *)
 ---
 
 # Parliament status
@@ -28,7 +28,8 @@ Run everything from the repository root. `$ARGUMENTS` holds the parliament codes
    - For an overview, give the table the command printed: code, level, status, and what blocks the next level. Say how many parliaments sit at each level.
    - For specific parliaments, read `docs/readiness/<CODE>.json` and explain each criterion that is not satisfied in plain words, with its figures (for example "76 % of speeches have a speaker ID, the threshold is 95 %"). `docs/READINESS.md` has the rule behind each criterion.
 3. Mention running or unfinished jobs: `.venv/bin/python -m optv.scripts.readiness jobs list`. A finished job whose results are not in the scorecard yet is worth pointing out; `/evaluation-jobs` handles it.
-4. Say which files the evaluation changed (`git status --short docs/`). They are left uncommitted for the user to review.
+4. For an overview, also run `.venv/bin/python -m optv.scripts.readiness sync`. It reports where the hand-kept status entries (the README table, the data repository READMEs, the Research profiles) differ from the scorecards. Report what it finds; `sync --apply` writes into other repositories and is the user's call.
+5. Say which files the evaluation changed (`git status --short docs/`). They are left uncommitted for the user to review.
 
 ## Reading the results
 
