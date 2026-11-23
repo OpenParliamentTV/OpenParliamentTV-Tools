@@ -94,7 +94,7 @@ def walk(data_dir: Path, source: str, glob: str) -> Iterator[tuple[str, str, dic
             except (OSError, json.JSONDecodeError) as e:
                 logger.warning("skipping %s: %s", f, e)
                 continue
-            session_id = f.name.split("-")[0]
+            session_id = f.name.rsplit("-", 1)[0]
             yield session_id, label, doc
 
 

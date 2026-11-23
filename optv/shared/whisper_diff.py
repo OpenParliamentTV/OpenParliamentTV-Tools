@@ -7,9 +7,11 @@ Three subcommands:
               speech_id textBody chunks). Gated to sessions with cached audio.
   transcribe  Run faster-whisper (and optionally Resemblyzer change-point
               detection) on each speech of a session. Writes
-              <data_dir>/cache/whisper/<session>-whisper.json. Idempotent.
+              <data_dir>/cache/whisper/<session>-whisper.json. Idempotent: a
+              transcribed speech is skipped, a failed one is tried once more.
   diff        Compute per-speech metrics and emit a Markdown report alongside
-              a terminal summary.
+              a terminal summary, plus the metrics as
+              <data_dir>/cache/whisper/<session>-qc.json.
 
 Standalone — does not modify the production workflow.
 """
@@ -21,6 +23,7 @@ import difflib
 import json
 import logging
 import math
+import os
 import re
 import sys
 import time
@@ -55,18 +58,45 @@ def report_path(data_dir: Path, session: str) -> Path:
     return data_dir / "cache" / "whisper" / f"{session}-report.md"
 
 
+def qc_path(data_dir: Path, session: str) -> Path:
+    return data_dir / "cache" / "whisper" / f"{session}-qc.json"
+
+
 def load_session(data_dir: Path, session: str) -> dict:
     with open(data_dir / "processed" / f"{session}-session.json") as f:
         return json.load(f)
+
+
+def _write_json(path: Path, doc: dict) -> None:
+    """Replace ``path`` in one step, so an interrupted run never leaves half a file."""
+    partial = path.with_name(path.name + ".partial")
+    with open(partial, "w") as f:
+        json.dump(doc, f, indent=2, ensure_ascii=False)
+    os.replace(partial, path)
 
 
 # ---------------------------------------------------------------------------
 # Per-speech text/duration extraction
 # ---------------------------------------------------------------------------
 
+def spoken_text_contents(speech: dict) -> list:
+    """The text entries to hold against the audio.
+
+    A speech that carries its text in several languages (the original and a
+    rendering) is compared in the language spoken, ``originalLanguage``.
+    """
+    contents = speech.get("textContents") or []
+    spoken = speech.get("originalLanguage")
+    if spoken and len({c.get("language") for c in contents}) > 1:
+        own = [c for c in contents if c.get("language") == spoken]
+        if own:
+            return own
+    return contents
+
+
 def speech_chars(speech: dict) -> int:
     total = 0
-    for c in speech.get("textContents", []):
+    for c in spoken_text_contents(speech):
         for tb in c.get("textBody", []):
             for s in tb.get("sentences", []):
                 total += len(s.get("text", ""))
@@ -75,7 +105,7 @@ def speech_chars(speech: dict) -> int:
 
 def speech_duration_from_alignment(speech: dict) -> float:
     times = []
-    for c in speech.get("textContents", []):
+    for c in spoken_text_contents(speech):
         for tb in c.get("textBody", []):
             for s in tb.get("sentences", []):
                 ts, te = s.get("timeStart"), s.get("timeEnd")
@@ -91,7 +121,7 @@ def speech_duration_from_alignment(speech: dict) -> float:
 
 def speech_id_count(speech: dict) -> int:
     ids = set()
-    for c in speech.get("textContents", []):
+    for c in spoken_text_contents(speech):
         for tb in c.get("textBody", []):
             sid = tb.get("speech_id")
             if sid:
@@ -101,7 +131,7 @@ def speech_id_count(speech: dict) -> int:
 
 def comment_count(speech: dict) -> int:
     n = 0
-    for c in speech.get("textContents", []):
+    for c in spoken_text_contents(speech):
         for tb in c.get("textBody", []):
             if tb.get("type") == "comment":
                 n += 1
@@ -110,13 +140,143 @@ def comment_count(speech: dict) -> int:
 
 def speech_text(speech: dict) -> str:
     parts = []
-    for c in speech.get("textContents", []):
+    for c in spoken_text_contents(speech):
         for tb in c.get("textBody", []):
             for s in tb.get("sentences", []):
                 t = s.get("text")
                 if t:
                     parts.append(t)
     return " ".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Which transcripts still belong to their speech
+# ---------------------------------------------------------------------------
+
+# A transcript's audio may differ from the length its speech has now by this much.
+LENGTH_TOLERANCE_SECONDS = 10
+LENGTH_TOLERANCE_SHARE = 0.05
+# A session whose transcripts differ this often was re-merged since: all of them are outdated.
+OUTDATED_SHARE = 0.10
+OUTDATED_MIN = 3
+
+
+def declared_duration(speech: dict) -> tuple[float, str]:
+    """Seconds of audio the speech itself states, and where: ``media.duration``, the
+    ``#t=start,end`` fragment of its video URI, or the stream offsets a session-stream
+    parliament keeps in ``media.additionalInformation``. ``(0.0, "")`` when it states none."""
+    media = speech.get("media") or {}
+    try:
+        duration = float(media.get("duration") or 0)
+    except (TypeError, ValueError):
+        duration = 0.0
+    if duration > 0:
+        return duration, "media.duration"
+
+    from optv.shared.audio_prep import fragment_speech_audio
+    fragment = fragment_speech_audio(speech, require_text=False)
+    if fragment is not None and fragment.duration:
+        return float(fragment.duration), "fragment"
+
+    info = media.get("additionalInformation")
+    if isinstance(info, dict):
+        try:
+            stop = float(info.get("stopInStreamSecs") or 0)
+            start = float(info.get("clipStartInStreamSecs", info.get("startInStreamSecs")) or 0)
+        except (TypeError, ValueError):
+            stop = start = 0.0
+        if stop > start >= 0 and stop > 0:
+            return stop - start, "stream-offsets"
+    return 0.0, ""
+
+
+def last_sentence_end(speech: dict) -> float:
+    """End time of the last aligned sentence, which lies at the end of the speech's audio."""
+    latest = 0.0
+    for c in speech.get("textContents") or []:
+        for tb in c.get("textBody") or []:
+            if not isinstance(tb, dict):
+                continue
+            for s in tb.get("sentences") or []:
+                try:
+                    latest = max(latest, float(s.get("timeEnd") or 0))
+                except (TypeError, ValueError, AttributeError):
+                    pass
+    return latest
+
+
+def expected_seconds(speech: dict) -> float:
+    """Length the speech's audio should have: what the speech states, else the end of
+    its last aligned sentence. ``0.0`` when neither is known."""
+    return declared_duration(speech)[0] or last_sentence_end(speech)
+
+
+def length_differs(actual: float, expected: float) -> bool:
+    return abs(actual - expected) > max(LENGTH_TOLERANCE_SECONDS, LENGTH_TOLERANCE_SHARE * expected)
+
+
+def too_many_differ(differing: int, checked: int) -> bool:
+    return differing >= OUTDATED_MIN and differing / checked >= OUTDATED_SHARE
+
+
+def clip_seconds(audio: Path) -> float:
+    """Length of a cached clip; ``0.0`` when it cannot be measured."""
+    try:
+        from optv.shared.audio_prep import _duration_seconds
+        return _duration_seconds(audio)
+    except Exception as e:
+        logger.debug(f"no duration for {audio.name}: {e}")
+        return 0.0
+
+
+def outdated_clips(data_dir: Path, speeches: list) -> tuple[int, int]:
+    """How many cached clips differ in length from their speech, and how many could be
+    compared. Clips cut before a re-merge hold another stretch of audio than the speech
+    at their index now covers; transcribing them proves nothing."""
+    differing = checked = 0
+    for speech in speeches:
+        expected = expected_seconds(speech)
+        if not expected:
+            continue
+        actual = clip_seconds(audio_path_for(data_dir, speech["electoralPeriod"]["number"],
+                                             speech["session"]["number"], speech["speechIndex"]))
+        if not actual:
+            continue
+        checked += 1
+        differing += length_differs(actual, expected)
+    return differing, checked
+
+
+def current_transcripts(speeches: list, whisper_doc: dict) -> tuple[dict, int]:
+    """The transcripts that still belong to their speech, by ``speechIndex``, and how
+    many were set aside as outdated.
+
+    A transcript is filed under the index its speech had when it was made. After a
+    re-merge that adds, drops or re-cuts speeches, index N names another stretch of
+    audio. That shows in the lengths: when a tenth of a session's transcripts were made
+    from audio of another length than their speech has now, none of them can be trusted
+    to sit at the right index. A stray difference is a quirk of one clip and is kept.
+    A session whose speeches state no length and carry no sentence times cannot be
+    checked and is taken as current.
+    """
+    by_index = {s.get("speechIndex"): s for s in speeches}
+    transcripts = {}
+    outdated = checked = differing = 0
+    for entry in whisper_doc.get("speeches") or []:
+        if not entry.get("ok"):
+            continue
+        speech = by_index.get(entry.get("speechIndex"))
+        if speech is None:
+            outdated += 1
+            continue
+        transcripts[entry["speechIndex"]] = entry
+        expected = expected_seconds(speech)
+        if expected and entry.get("duration"):
+            checked += 1
+            differing += length_differs(float(entry["duration"]), expected)
+    if too_many_differ(differing, checked):
+        return {}, outdated + len(transcripts)
+    return transcripts, outdated
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +339,7 @@ def cmd_rank(args) -> int:
     pattern = args.session_glob or "*-session.json"
     rows = []
     for f in sorted(processed.glob(pattern)):
-        session = f.name.split("-")[0]
+        session = f.name.removesuffix("-session.json")
         try:
             doc = json.load(open(f))
         except json.JSONDecodeError as e:
@@ -204,6 +364,33 @@ def cmd_rank(args) -> int:
 # Transcribe
 # ---------------------------------------------------------------------------
 
+# Stage 2 language codes Whisper names differently.
+WHISPER_LANGUAGES = {"nb": "no"}
+# A speech that failed this often is left alone until --force.
+MAX_ATTEMPTS = 2
+# Shortest per-speech time limit, and how many times a clip's length it may take.
+MIN_TIMEOUT = 600
+TIMEOUT_FACTOR = 3
+# Exit code of `transcribe` when the cached clips no longer belong to the speeches.
+EXIT_OUTDATED_CLIPS = 3
+
+
+def whisper_language(speech: dict, override: str | None = None) -> str | None:
+    """The language to transcribe a speech in: ``override``, else the speech's
+    ``originalLanguage``. ``None`` lets Whisper detect it."""
+    language = override or speech.get("originalLanguage")
+    return WHISPER_LANGUAGES.get(language, language) or None
+
+
+def speech_timeout(audio: Path) -> int:
+    """Time limit for one clip: three times its length, within ten minutes and
+    the flat default. A deadlocked transcription then costs minutes, not hours."""
+    duration = clip_seconds(audio)
+    if not duration:
+        return whisper_qc.DEFAULT_TIMEOUT
+    return int(max(MIN_TIMEOUT, min(TIMEOUT_FACTOR * duration, whisper_qc.DEFAULT_TIMEOUT)))
+
+
 def cmd_transcribe(args) -> int:
     data_dir = Path(args.data_dir).resolve()
     out_path = whisper_path(data_dir, args.session)
@@ -211,11 +398,6 @@ def cmd_transcribe(args) -> int:
 
     doc = load_session(data_dir, args.session)
     speeches = doc.get("data", [])
-    if args.speech is not None:
-        speeches = [s for s in speeches if s.get("speechIndex") == args.speech]
-        if not speeches:
-            logger.error(f"speechIndex {args.speech} not found in {args.session}")
-            return 2
 
     existing = {}
     if out_path.exists() and not args.force:
@@ -223,9 +405,40 @@ def cmd_transcribe(args) -> int:
             existing_doc = json.load(open(out_path))
             existing = {s["speechIndex"]: s for s in existing_doc.get("speeches", [])}
         except Exception:
-            existing = {}
+            existing_doc, existing = {}, {}
+        # Transcripts made before a re-merge no longer sit at their speech's index.
+        current, outdated = current_transcripts(speeches, existing_doc)
+        if outdated:
+            logger.warning(f"{outdated} transcripts no longer match their speech; transcribing those again")
+            existing = {idx: s for idx, s in existing.items() if not s.get("ok") or idx in current}
+
+    if args.speech is not None:
+        speeches = [s for s in speeches if s.get("speechIndex") == args.speech]
+        if not speeches:
+            logger.error(f"speechIndex {args.speech} not found in {args.session}")
+            return 2
+
+    if not args.force:
+        differing, checked = outdated_clips(data_dir, speeches)
+        if too_many_differ(differing, checked):
+            logger.error(f"{differing} of {checked} cached clips differ in length from their speech: "
+                         "they were cut before the session was merged anew. Stage the audio again "
+                         "(or pass --force to transcribe them as they are).")
+            return EXIT_OUTDATED_CLIPS
+
+    def save() -> None:
+        # Persist after each speech so a crash doesn't lose work.
+        _write_json(out_path, {
+            "session": args.session,
+            "model": args.model,
+            "language": args.language or "per speech",
+            "with_speaker_check": args.with_speaker_check,
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "speeches": [results[k] for k in sorted(results)],
+        })
 
     results = dict(existing)
+    transcribed = failed = 0
     for s in speeches:
         idx = s["speechIndex"]
         period = s["electoralPeriod"]["number"]
@@ -234,23 +447,32 @@ def cmd_transcribe(args) -> int:
         if not ap.exists():
             logger.warning(f"no audio for speechIndex={idx}: {ap.name}")
             continue
-        if idx in results and not args.force:
-            logger.info(f"speech {idx}: cached, skipping (use --force to redo)")
-            continue
+        previous = results.get(idx) if not args.force else None
+        attempts = 0
+        if previous is not None:
+            if previous.get("ok"):
+                logger.info(f"speech {idx}: cached, skipping (use --force to redo)")
+                continue
+            attempts = previous.get("attempts", 1)
+            if attempts >= MAX_ATTEMPTS:
+                logger.info(f"speech {idx}: failed {attempts} times, skipping (use --force to redo)")
+                continue
         logger.info(f"speech {idx}: transcribing {ap.name}...")
-        t0 = time.time()
-        tr = whisper_qc.transcribe_speech(ap, language=args.language,
+        t0 = time.monotonic()
+        tr = whisper_qc.transcribe_speech(ap, language=whisper_language(s, args.language),
                                           model_size=args.model,
-                                          timeout=args.timeout)
+                                          timeout=args.timeout or speech_timeout(ap))
         if tr is None:
-            results[idx] = {"speechIndex": idx, "ok": False,
-                            "audio_file": ap.name}
+            results[idx] = {"speechIndex": idx, "ok": False, "audio_file": ap.name,
+                            "attempts": attempts + 1}
+            failed += 1
+            save()
             continue
         entry = {
             "speechIndex": idx,
             "ok": True,
             "audio_file": ap.name,
-            "transcribe_seconds": round(time.time() - t0, 1),
+            "transcribe_seconds": round(time.monotonic() - t0, 1),
             **tr,
         }
         if args.with_speaker_check:
@@ -259,20 +481,10 @@ def cmd_transcribe(args) -> int:
             if sp is not None:
                 entry["speaker_check"] = sp
         results[idx] = entry
+        transcribed += 1
+        save()
 
-        # Persist after each speech so a crash doesn't lose work.
-        out_doc = {
-            "session": args.session,
-            "model": args.model,
-            "language": args.language,
-            "with_speaker_check": args.with_speaker_check,
-            "generated_at": datetime.now().isoformat(timespec="seconds"),
-            "speeches": [results[k] for k in sorted(results)],
-        }
-        with open(out_path, "w") as f:
-            json.dump(out_doc, f, indent=2, ensure_ascii=False)
-
-    logger.info(f"wrote {out_path}")
+    logger.info(f"wrote {out_path}: {transcribed} transcribed, {failed} failed")
     return 0
 
 
@@ -316,7 +528,7 @@ def compute_metrics(speech: dict, whisper_entry: dict | None) -> dict:
         first_w = whisper_entry["segments"][0]["start"]
         last_w = whisper_entry["segments"][-1]["end"]
         ts, te = None, None
-        for c in speech.get("textContents", []):
+        for c in spoken_text_contents(speech):
             for tb in c.get("textBody", []):
                 for s in tb.get("sentences", []):
                     a, b = s.get("timeStart"), s.get("timeEnd")
@@ -540,22 +752,59 @@ def render_markdown(session_doc: dict, whisper_doc: dict, rows: list[dict],
     return "\n".join(out)
 
 
-def cmd_diff(args) -> int:
-    data_dir = Path(args.data_dir).resolve()
-    session_doc = load_session(data_dir, args.session)
+def write_session_qc(data_dir: Path, session: str) -> list[dict] | None:
+    """Compare a session's text with its transcript and write both outputs: the
+    Markdown report and ``<session>-qc.json``, the per-speech metrics with the
+    signature of the text and the timestamp of the transcript they describe.
 
-    wp = whisper_path(data_dir, args.session)
+    Returns the metrics, or ``None`` when the session has no transcript.
+    """
+    from optv.shared.publish import text_signature
+
+    session_doc = load_session(data_dir, session)
+    wp = whisper_path(data_dir, session)
     if not wp.exists():
-        logger.error(f"no whisper file: {wp}. Run `transcribe` first.")
-        return 2
+        return None
     whisper_doc = json.load(open(wp))
-    whisper_by_idx = {s["speechIndex"]: s for s in whisper_doc.get("speeches", [])
-                      if s.get("ok")}
-
+    transcripts = whisper_doc.get("speeches", [])
     speeches = session_doc.get("data", [])
+    whisper_by_idx, outdated = current_transcripts(speeches, whisper_doc)
+    if outdated:
+        logger.warning(f"{session}: {outdated} transcripts no longer match their speech and are left out")
+
     speeches_by_idx = {s["speechIndex"]: s for s in speeches}
 
     rows = [compute_metrics(s, whisper_by_idx.get(s["speechIndex"])) for s in speeches]
+
+    md = render_markdown(session_doc, whisper_doc, rows, speeches_by_idx, whisper_by_idx)
+    rp = report_path(data_dir, session)
+    rp.parent.mkdir(parents=True, exist_ok=True)
+    with open(rp, "w") as f:
+        f.write(md)
+    logger.info(f"wrote {rp}")
+
+    _write_json(qc_path(data_dir, session), {
+        "session": session,
+        "text_signature": text_signature(speeches),
+        "whisper_generated_at": whisper_doc.get("generated_at"),
+        "model": whisper_doc.get("model"),
+        "transcribed": len(whisper_by_idx),
+        "outdated": outdated,
+        "failed": sum(1 for s in transcripts if not s.get("ok")),
+        "rows": rows,
+    })
+    logger.info(f"wrote {qc_path(data_dir, session)}")
+    return rows
+
+
+def cmd_diff(args) -> int:
+    data_dir = Path(args.data_dir).resolve()
+    rows = write_session_qc(data_dir, args.session)
+    if rows is None:
+        logger.error(f"no whisper file: {whisper_path(data_dir, args.session)}. Run `transcribe` first.")
+        return 2
+    if args.quiet:
+        return 0
 
     print(render_terminal(rows))
     print()
@@ -564,13 +813,6 @@ def cmd_diff(args) -> int:
     print()
     suspects = sorted(rows, key=lambda r: r["suspect_score"], reverse=True)[:5]
     print(f"Top suspects: {[r['speechIndex'] for r in suspects]}")
-
-    md = render_markdown(session_doc, whisper_doc, rows, speeches_by_idx, whisper_by_idx)
-    rp = report_path(data_dir, args.session)
-    rp.parent.mkdir(parents=True, exist_ok=True)
-    with open(rp, "w") as f:
-        f.write(md)
-    logger.info(f"wrote {rp}")
     return 0
 
 
@@ -597,10 +839,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_tr.add_argument("--session", required=True)
     p_tr.add_argument("--speech", type=int, default=None,
                       help="single speechIndex; default: all")
-    p_tr.add_argument("--language", default="de")
+    p_tr.add_argument("--language", default=None,
+                      help="Whisper language for every speech; default: each speech's originalLanguage")
     p_tr.add_argument("--model", default=whisper_qc.DEFAULT_MODEL)
-    p_tr.add_argument("--timeout", type=int, default=whisper_qc.DEFAULT_TIMEOUT,
-                      help="per-speech wall-clock timeout in seconds")
+    p_tr.add_argument("--timeout", type=int, default=None,
+                      help="per-speech wall-clock timeout in seconds; default: three times the "
+                           f"clip length, at least {MIN_TIMEOUT} and at most {whisper_qc.DEFAULT_TIMEOUT}")
     p_tr.add_argument("--with-speaker-check", action="store_true",
                       help="also run Resemblyzer speaker change detection")
     p_tr.add_argument("--force", action="store_true",
@@ -610,6 +854,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_diff = sub.add_parser("diff", help="render diff report from cached whisper output")
     p_diff.add_argument("--data-dir", required=True)
     p_diff.add_argument("--session", required=True)
+    p_diff.add_argument("--quiet", action="store_true",
+                        help="write the report and the metrics file without the terminal summary")
     p_diff.set_defaults(func=cmd_diff)
 
     return ap
