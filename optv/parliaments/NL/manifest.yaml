@@ -1,0 +1,37 @@
+name: "Tweede Kamer"
+language: nld                    # ISO 639-3 (locale stack)
+language_code: "nl"        # ISO 639-1 lowercase, the Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: nl_core_news_md
+  aeneas_language: nld
+  entityfishing_language: nl            # informational: ner is not among the stages
+periods: [2025]                 # the year the House was elected; see common.py
+# No ner: the entity-fishing service in use (0.0.6) does not support Dutch.
+supported_stages: [download, parse, merge, nel, align]
+entity_dump_url: ""             # built locally via scraper/build_entity_dump.py
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# Rights metadata emitted into Stage 2 (resolved by optv.parliaments.get_rights).
+media:
+  default:
+    creator: "Tweede Kamer"
+    license: "https://www.tweedekamer.nl/contact-en-bezoek/persinformatie/audiovisuele-vergaderbeelden-afnemen"   # page of the licence terms for the House's recordings
+proceedings:
+  default:
+    creator: "Tweede Kamer"
+    license: "CC0-1.0"           # open data: https://opendata.tweedekamer.nl/disclaimer
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "2025-094"      # a Tuesday: question hour, votes, order of business
+    - "2025-096"
+    - "2026-005"
+    - {id: "2026-023", note: "published from the uncorrected interim report, as every sitting first is"}
+  sample_run:
+    - sessions: ["2025-094", "2025-096", "2026-005", "2026-023"]
+      args: ["--period=2025",
+             "--session", "2025-094", "--session", "2025-096", "--session", "2026-005", "--session", "2026-023",
+             "--limit-session", "^(2025-094|2025-096|2026-005|2026-023)$"]

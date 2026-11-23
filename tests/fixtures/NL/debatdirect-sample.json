@@ -1,0 +1,170 @@
+{
+  "session": "2025-050",
+  "reportId": "70000000-0000-0000-0000-000000000001",
+  "days": {
+    "2026-03-03": [
+      {
+        "id": "a0000000-0000-0000-0000-000000000002",
+        "name": "Voorbeeldwet",
+        "slug": "voorbeeldwet-12345-10-15",
+        "debateType": "Plenair debat",
+        "startsAt": "2026-03-03T10:15:10+0100",
+        "endsAt": "2026-03-03T11:40:05+0100",
+        "startedAt": "2026-03-03T10:15:10+0100",
+        "endedAt": "2026-03-03T11:40:05+0100",
+        "locationName": "Plenaire zaal",
+        "locationId": "plenaire-zaal",
+        "debateDate": "2026-03-03",
+        "categoryIds": [
+          "voorbeeld"
+        ]
+      },
+      {
+        "id": "a0000000-0000-0000-0000-000000000003",
+        "name": "Regeling van werkzaamheden",
+        "slug": "regeling-van-werkzaamheden-11-40",
+        "debateType": "Regeling van werkzaamheden",
+        "startsAt": "2026-03-03T11:40:10+0100",
+        "endsAt": "2026-03-03T11:42:00+0100",
+        "startedAt": "2026-03-03T11:40:10+0100",
+        "endedAt": "2026-03-03T11:42:00+0100",
+        "locationName": "Plenaire zaal",
+        "locationId": "plenaire-zaal",
+        "debateDate": "2026-03-03",
+        "categoryIds": []
+      },
+      {
+        "id": "a0000000-0000-0000-0000-000000000004",
+        "name": "Stemmingen",
+        "slug": "stemmingen-11-45",
+        "debateType": "Stemmingen",
+        "startsAt": "2026-03-03T11:44:50+0100",
+        "endsAt": "2026-03-03T11:45:40+0100",
+        "startedAt": "2026-03-03T11:44:50+0100",
+        "endedAt": "2026-03-03T11:45:40+0100",
+        "locationName": "Plenaire zaal",
+        "locationId": "plenaire-zaal",
+        "debateDate": "2026-03-03",
+        "categoryIds": [
+          "stemmingen"
+        ]
+      }
+    ]
+  },
+  "debates": {
+    "a0000000-0000-0000-0000-000000000002": {
+      "id": "a0000000-0000-0000-0000-000000000002",
+      "name": "Voorbeeldwet",
+      "slug": "voorbeeldwet-12345-10-15",
+      "debateType": "Plenair debat",
+      "startsAt": "2026-03-03T10:15:10+0100",
+      "endsAt": "2026-03-03T11:40:05+0100",
+      "startedAt": "2026-03-03T10:15:10+0100",
+      "endedAt": "2026-03-03T11:40:05+0100",
+      "meetingId": "90000000-0000-0000-0000-000000000001",
+      "locationName": "Plenaire zaal",
+      "locationId": "plenaire-zaal",
+      "debateDate": "2026-03-03",
+      "categoryIds": [
+        "voorbeeld"
+      ],
+      "events": [
+        {
+          "eventStart": "2026-03-03T11:15:05+0100",
+          "eventType": "speaker",
+          "objectId": "c0000000-0000-0000-0000-000000000004"
+        },
+        {
+          "eventStart": "2026-03-03T10:55:05+0100",
+          "eventType": "speaker",
+          "objectId": "c0000000-0000-0000-0000-000000000004"
+        },
+        {
+          "eventStart": "2026-03-03T10:30:05+0100",
+          "eventType": "speaker",
+          "objectId": "c0000000-0000-0000-0000-000000000004"
+        },
+        {
+          "eventStart": "2026-03-03T10:30:00+0100",
+          "eventType": "chairman",
+          "objectId": "c0000000-0000-0000-0000-000000000001"
+        },
+        {
+          "eventStart": "2026-03-03T10:16:00+0100",
+          "eventType": "interrupter",
+          "objectId": "c0000000-0000-0000-0000-000000000003"
+        },
+        {
+          "eventStart": "2026-03-03T10:15:20+0100",
+          "eventType": "speaker",
+          "objectId": "c0000000-0000-0000-0000-000000000002"
+        },
+        {
+          "eventStart": "2026-03-03T10:15:12+0100",
+          "eventType": "chairman",
+          "objectId": "c0000000-0000-0000-0000-000000000001"
+        },
+        {
+          "eventStart": "2026-03-03T10:15:10+0100",
+          "eventType": "debate_start",
+          "objectId": "a0000000-0000-0000-0000-000000000002"
+        }
+      ],
+      "video": {
+        "vodUrl": "https://stream.example.org/2026-03-03/plenairezaal/index.m3u8?hd=1&subtitles=vod&keyframes=1"
+      }
+    },
+    "a0000000-0000-0000-0000-000000000003": {
+      "id": "a0000000-0000-0000-0000-000000000003",
+      "name": "Regeling van werkzaamheden",
+      "slug": "regeling-van-werkzaamheden-11-40",
+      "debateType": "Regeling van werkzaamheden",
+      "startsAt": "2026-03-03T11:40:10+0100",
+      "endsAt": "2026-03-03T11:42:00+0100",
+      "startedAt": "2026-03-03T11:40:10+0100",
+      "endedAt": "2026-03-03T11:42:00+0100",
+      "meetingId": "90000000-0000-0000-0000-000000000001",
+      "locationName": "Plenaire zaal",
+      "locationId": "plenaire-zaal",
+      "debateDate": "2026-03-03",
+      "categoryIds": [],
+      "events": [
+        {
+          "eventStart": "2026-03-03T11:40:10+0100",
+          "eventType": "speaker",
+          "objectId": "c0000000-0000-0000-0000-000000000002"
+        }
+      ],
+      "video": {
+        "vodUrl": "https://stream.example.org/2026-03-03/plenairezaal/index.m3u8?hd=1&subtitles=vod&keyframes=1"
+      }
+    },
+    "a0000000-0000-0000-0000-000000000004": {
+      "id": "a0000000-0000-0000-0000-000000000004",
+      "name": "Stemmingen",
+      "slug": "stemmingen-11-45",
+      "debateType": "Stemmingen",
+      "startsAt": "2026-03-03T11:44:50+0100",
+      "endsAt": "2026-03-03T11:45:40+0100",
+      "startedAt": "2026-03-03T11:44:50+0100",
+      "endedAt": "2026-03-03T11:45:40+0100",
+      "meetingId": "90000000-0000-0000-0000-000000000001",
+      "locationName": "Plenaire zaal",
+      "locationId": "plenaire-zaal",
+      "debateDate": "2026-03-03",
+      "categoryIds": [
+        "stemmingen"
+      ],
+      "events": [
+        {
+          "eventStart": "2026-03-03T11:44:50+0100",
+          "eventType": "debate_start",
+          "objectId": "a0000000-0000-0000-0000-000000000004"
+        }
+      ],
+      "video": {
+        "vodUrl": "https://stream.example.org/2026-03-03/plenairezaal/index.m3u8?hd=1&subtitles=vod&keyframes=1"
+      }
+    }
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "schema": 1,
+  "parliament": "NL",
+  "name": "Tweede Kamer",
+  "level": 1,
+  "level_name": "implemented",
+  "blocking": [
+    "samples.stages",
+    "samples.timing"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "2025-094": {
+      "speeches": 149,
+      "text_speeches": 149,
+      "audio_seconds": 24333,
+      "text": "59617eb2ef51689e"
+    },
+    "2025-096": {
+      "speeches": 65,
+      "text_speeches": 65,
+      "audio_seconds": 22727,
+      "text": "83007227cf1732d7"
+    },
+    "2026-005": {
+      "speeches": 72,
+      "text_speeches": 72,
+      "audio_seconds": 22386,
+      "text": "c4a342e5c9ba1c72"
+    },
+    "2026-023": {
+      "speeches": 56,
+      "text_speeches": 56,
+      "audio_seconds": 21104,
+      "text": "23810a633805aa5a"
+    }
+  },
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 3
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 4,
+        "published": 4,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "complete": 0,
+        "sessions": 4
+      },
+      "detail": "2025-094: no align; 2025-096: no align; 2026-005: no align; 2026-023: no align"
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 65
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 342,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "not_applicable",
+      "metrics": {
+        "mode": "ungated",
+        "text_speeches": 342
+      },
+      "detail": "the speeches carry no debug.confidence; the platform imports every text"
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 0.982,
+        "with_wid": 336,
+        "speeches": 342,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "share": 0.0,
+        "timed": 0,
+        "sentences": 18509,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "checked": 201,
+        "implausible": 0
+      }
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 342,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-23",
+    "tools": "2860fab"
+  }
+}

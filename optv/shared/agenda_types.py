@@ -905,6 +905,40 @@ def classify_tw(speech_kind: Optional[str]) -> tuple[Optional[str], str]:
 
 
 # ---------------------------------------------------------------------------
+# NL — Tweede Kamer (the report's activity kind, ``activiteit/@soort``)
+# ---------------------------------------------------------------------------
+
+# The report names the kind of every agenda item. Kinds not listed here are
+# debates and fall through to CORE_REGULAR.
+_NL_SOORT_MAP: dict[str, str] = {
+    "plenair debat": CORE_REGULAR,
+    "vragenuur": CORE_QA,                       # weekly oral question hour
+    "stemmingen": CORE_VOTING,
+    "hamerstukken": CORE_VOTING,                # adopted without debate or vote
+    "regeling van werkzaamheden": CORE_PROCEDURAL,   # order of business
+    "mededelingen": CORE_PROCEDURAL,
+    "opening": CORE_OPENING,
+    "sluiting": CORE_CLOSING,
+    "herdenking": CORE_CONDOLENCE,
+    "beëdiging": CORE_OATH,
+    "regeringsverklaring": CORE_GOVERNMENT_DECLARATION,
+}
+
+# A debate on a budget chapter or on the budget as a whole.
+_NL_BUDGET_RE = re.compile(r"^begroting\b|\bbegrotingsstaten\b|algemene (politieke|financiële) beschouwingen", re.I)
+
+
+def classify_nl(soort: Optional[str], title: Optional[str] = None) -> tuple[Optional[str], str]:
+    """Classify a Tweede Kamer agenda item by its kind, a debate also by its title."""
+    if not soort:
+        return None, CORE_REGULAR
+    core = _NL_SOORT_MAP.get(soort.strip().lower(), CORE_REGULAR)
+    if core == CORE_REGULAR and title and _NL_BUDGET_RE.search(title.strip()):
+        core = CORE_BUDGET
+    return soort, core
+
+
+# ---------------------------------------------------------------------------
 # Convenience: write classification onto an agendaItem dict
 # ---------------------------------------------------------------------------
 

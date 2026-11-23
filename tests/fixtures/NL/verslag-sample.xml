@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<vlosCoreDocument MessageID="00000000-0000-0000-0000-000000000000" Source="VLOS2.0" MessageType="vlos2document" Timestamp="2026-03-20T12:00:00.0000000+01:00" soort="Eindpublicatie" status="Gecorrigeerd" versie="1.3" xmlns="http://www.tweedekamer.nl/ggm/vergaderverslag/v1.0">
+<vergadering soort="Plenair" objectid="90000000-0000-0000-0000-000000000001" kamer="Tweede Kamer"><titel>50e vergadering, dinsdag 3 maart 2026</titel><zaal>Plenaire zaal</zaal><vergaderjaar>2025-2026</vergaderjaar><vergaderingnummer>50</vergaderingnummer><datum>2026-03-03T00:00:00</datum><aanvangstijd>2026-03-03T10:15:00</aanvangstijd><sluiting>2026-03-03T11:46:00</sluiting>
+<activiteit soort="Opening" objectid="a0000000-0000-0000-0000-000000000001"><titel>Opening</titel><onderwerp>Opening</onderwerp><parlisid /><aanvangstijd>2026-03-03T10:15:00</aanvangstijd><eindtijd>2026-03-03T10:15:10</eindtijd><voortzetting>false</voortzetting>
+<activiteithoofd soort="Algemeen" objectid="b0000000-0000-0000-0000-000000000001"><titel>Opening</titel><onderwerp>Opening</onderwerp><markeertijdbegin>2026-03-03T10:15:00</markeertijdbegin><markeertijdeind>2026-03-03T10:15:10</markeertijdeind>
+<tekst><alinea><alineaitem><nadruk type="Vet">Voorzitter: Jansen</nadruk></alineaitem></alinea><alinea><alineaitem>Aanwezig zijn 3 leden der Kamer.</alineaitem></alinea>
+</tekst>
+<draadboekfragment soort="Voorzitter selectie" objectid="f0000000-0000-0000-0000-000000000000"><markeertijdbegin>2026-03-03T10:15:00</markeertijdbegin><markeertijdeind>2026-03-03T10:15:00</markeertijdeind><isdraad>true</isdraad>
+</draadboekfragment>
+<activiteitdeel soort="Spreekbeurt" objectid="d0000000-0000-0000-0000-000000000010"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><titel>Spreekbeurt - De voorzitter</titel><markeertijdbegin>2026-03-03T10:15:00</markeertijdbegin><markeertijdeind>2026-03-03T10:15:10</markeertijdeind>
+<activiteititem soort="Woordvoerder" objectid="d0000000-0000-0000-0000-000000000019"><titel>Woordvoerder - De voorzitter</titel><markeertijdbegin>2026-03-03T10:15:00</markeertijdbegin><markeertijdeind>2026-03-03T10:15:10</markeertijdeind>
+<woordvoerder objectid="d0000000-0000-0000-0000-000000000018"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T10:15:00</markeertijdbegin><markeertijdeind>2026-03-03T10:15:10</markeertijdeind><isvoorzitter>true</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>De <nadruk type="Vet">voorzitter</nadruk>:</alineaitem><alineaitem>Ik open de vergadering.</alineaitem></alinea>
+</tekst>
+</woordvoerder>
+</activiteititem>
+</activiteitdeel>
+</activiteithoofd>
+</activiteit>
+<activiteit soort="Plenair debat" objectid="a0000000-0000-0000-0000-000000000002"><titel>Voorbeeldwet</titel><onderwerp>Wijziging van de Voorbeeldwet (12345)</onderwerp><parlisid /><aanvangstijd>2026-03-03T10:15:10</aanvangstijd><eindtijd>2026-03-03T11:40:05</eindtijd><voortzetting>false</voortzetting>
+<tekst><alinea><alineaitem>Voorbeeldwet</alineaitem></alinea><alinea><alineaitem>Aan de orde is de behandeling van het wetsvoorstel.</alineaitem></alinea>
+</tekst>
+<activiteithoofd soort="Termijn" objectid="b0000000-0000-0000-0000-000000000002"><titel>Termijn inbreng</titel><onderwerp>Termijn inbreng</onderwerp><markeertijdbegin>2026-03-03T10:15:12</markeertijdbegin><markeertijdeind>2026-03-03T10:30:05</markeertijdeind>
+<activiteitdeel soort="Spreekbeurt" objectid="d0000000-0000-0000-0000-000000000020"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><titel>Spreekbeurt - De voorzitter</titel><markeertijdbegin>2026-03-03T10:15:12</markeertijdbegin><markeertijdeind>2026-03-03T10:15:20</markeertijdeind>
+<activiteititem soort="Woordvoerder" objectid="d0000000-0000-0000-0000-000000000029"><titel>Woordvoerder - De voorzitter</titel><markeertijdbegin>2026-03-03T10:15:12</markeertijdbegin><markeertijdeind>2026-03-03T10:15:20</markeertijdeind>
+<woordvoerder objectid="d0000000-0000-0000-0000-000000000028"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T10:15:12</markeertijdbegin><markeertijdeind>2026-03-03T10:15:20</markeertijdeind><isvoorzitter>true</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>De <nadruk type="Vet">voorzitter</nadruk>:</alineaitem><alineaitem>Het woord is aan de heer De Vries.</alineaitem></alinea>
+</tekst>
+</woordvoerder>
+</activiteititem>
+</activiteitdeel>
+<activiteitdeel soort="Spreekbeurt" objectid="d0000000-0000-0000-0000-000000000030"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000002"><fractie>DEF</fractie><aanhef>De heer</aanhef><verslagnaam>De Vries</verslagnaam><weergavenaam>De Vries</weergavenaam><voornaam>Bram</voornaam><achternaam>Vries de</achternaam><functie>lid Tweede Kamer</functie></spreker><titel>Spreekbeurt - De Vries</titel><markeertijdbegin>2026-03-03T10:15:20</markeertijdbegin><markeertijdeind>2026-03-03T10:17:20</markeertijdeind>
+<activiteititem soort="Woordvoerder" objectid="d0000000-0000-0000-0000-000000000039"><titel>Woordvoerder - De Vries</titel><markeertijdbegin>2026-03-03T10:15:20</markeertijdbegin><markeertijdeind>2026-03-03T10:17:20</markeertijdeind>
+<woordvoerder objectid="e0000000-0000-0000-0000-000000000031"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000002"><fractie>DEF</fractie><aanhef>De heer</aanhef><verslagnaam>De Vries</verslagnaam><weergavenaam>De Vries</weergavenaam><voornaam>Bram</voornaam><achternaam>Vries de</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T10:15:20</markeertijdbegin><markeertijdeind>2026-03-03T10:16:30</markeertijdeind><isvoorzitter>false</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>De heer <nadruk type="Vet">De Vries</nadruk> (DEF):</alineaitem><alineaitem>Dank, voorzitter. Dit is een goede wet. Ik heb één motie.</alineaitem></alinea>
+</tekst>
+<draadboekfragment soort="Motie indiening" objectid="f0000000-0000-0000-0000-000000000001"><markeertijdbegin>2026-03-03T10:15:40</markeertijdbegin><markeertijdeind>2026-03-03T10:16:00</markeertijdeind><isdraad>true</isdraad>
+<tekst><alineagroep type="Motietekst"><alinea><alineaitem>De Kamer,</alineaitem></alinea><alinea><alineaitem>verzoekt de regering iets te doen,</alineaitem></alinea><alinea><alineaitem>en gaat over tot de orde van de dag.</alineaitem></alinea></alineagroep><alineagroep type="Motieinfo"><alinea><alineaitem>De <nadruk type="Vet">voorzitter</nadruk>:</alineaitem><alineaitem>Deze motie is voorgesteld door het lid De Vries.</alineaitem></alinea><alinea><alineaitem>Zij krijgt nr. <stuknummer>7</stuknummer> (<dossiernummer>12345</dossiernummer>).</alineaitem></alinea></alineagroep>
+</tekst>
+</draadboekfragment>
+<interrumpant objectid="e0000000-0000-0000-0000-000000000032"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000003"><fractie>GHI</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Bakker</verslagnaam><weergavenaam>Bakker</weergavenaam><voornaam>Carla</voornaam><achternaam>Bakker</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T10:16:00</markeertijdbegin><markeertijdeind>2026-03-03T10:16:20</markeertijdeind><isvoorzitter>false</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>Mevrouw <nadruk type="Vet">Bakker</nadruk> (GHI):</alineaitem><alineaitem>Waarom deze motie?</alineaitem></alinea>
+</tekst>
+</interrumpant>
+<interrumpant objectid="e0000000-0000-0000-0000-000000000033"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T10:16:20</markeertijdbegin><markeertijdeind>2026-03-03T10:16:30</markeertijdeind><isvoorzitter>true</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>De <nadruk type="Vet">voorzitter</nadruk>:</alineaitem><alineaitem>De heer De Vries vervolgt.</alineaitem></alinea>
+</tekst>
+</interrumpant>
+</woordvoerder>
+<woordvoerder objectid="e0000000-0000-0000-0000-000000000034"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000002"><fractie>DEF</fractie><aanhef>De heer</aanhef><verslagnaam>De Vries</verslagnaam><weergavenaam>De Vries</weergavenaam><voornaam>Bram</voornaam><achternaam>Vries de</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T10:16:30</markeertijdbegin><markeertijdeind>2026-03-03T10:17:20</markeertijdeind><isvoorzitter>false</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>De heer <nadruk type="Vet">De Vries</nadruk> (DEF):</alineaitem><alineaitem>Omdat het nodig is. Dank u wel.</alineaitem></alinea>
+</tekst>
+<draadboekfragment soort="Beraadslaging algemeen" objectid="f0000000-0000-0000-0000-000000000002"><markeertijdbegin>2026-03-03T10:17:19</markeertijdbegin><markeertijdeind>2026-03-03T10:17:20</markeertijdeind><isdraad>true</isdraad>
+<tekst><alinea><alineaitem>De algemene beraadslaging wordt geschorst.</alineaitem></alinea>
+</tekst>
+</draadboekfragment>
+</woordvoerder>
+</activiteititem>
+</activiteitdeel>
+<draadboekfragment soort="Schorsing" objectid="f0000000-0000-0000-0000-000000000003"><markeertijdbegin>2026-03-03T10:17:20</markeertijdbegin><markeertijdeind>2026-03-03T10:30:00</markeertijdeind><isdraad>true</isdraad>
+<tekst><alinea><alineaitem>De vergadering wordt van 10.17 uur tot 10.30 uur geschorst.</alineaitem></alinea>
+</tekst>
+</draadboekfragment>
+<activiteitdeel soort="Spreekbeurt" objectid="d0000000-0000-0000-0000-000000000040"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><titel>Spreekbeurt - De voorzitter</titel><markeertijdbegin>2026-03-03T10:30:00</markeertijdbegin><markeertijdeind>2026-03-03T10:30:05</markeertijdeind>
+<activiteititem soort="Woordvoerder" objectid="d0000000-0000-0000-0000-000000000049"><titel>Woordvoerder - De voorzitter</titel><markeertijdbegin>2026-03-03T10:30:00</markeertijdbegin><markeertijdeind>2026-03-03T10:30:05</markeertijdeind>
+<woordvoerder objectid="d0000000-0000-0000-0000-000000000048"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T10:30:00</markeertijdbegin><markeertijdeind>2026-03-03T10:30:05</markeertijdeind><isvoorzitter>true</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>De <nadruk type="Vet">voorzitter</nadruk>:</alineaitem><alineaitem>Ik heropen de vergadering.</alineaitem></alinea>
+</tekst>
+</woordvoerder>
+</activiteititem>
+</activiteitdeel>
+</activiteithoofd>
+<activiteithoofd soort="Termijn" objectid="b0000000-0000-0000-0000-000000000002"><titel>Termijn antwoord</titel><onderwerp>Termijn antwoord</onderwerp><markeertijdbegin>2026-03-03T10:30:05</markeertijdbegin><markeertijdeind>2026-03-03T11:40:05</markeertijdeind>
+<activiteitdeel soort="Spreekbeurt" objectid="d0000000-0000-0000-0000-000000000050"><spreker soort="Minister" objectid="c0000000-0000-0000-0000-000000000004"><aanhef>De heer</aanhef><verslagnaam>Smit</verslagnaam><weergavenaam>Smit</weergavenaam><voornaam>Daan</voornaam><achternaam>Smit</achternaam><functie>minister van Voorbeelden</functie></spreker><titel>Spreekbeurt - Smit</titel><markeertijdbegin>2026-03-03T10:30:05</markeertijdbegin><markeertijdeind>2026-03-03T11:40:05</markeertijdeind>
+<activiteititem soort="Woordvoerder" objectid="d0000000-0000-0000-0000-000000000059"><titel>Woordvoerder - Smit</titel><markeertijdbegin>2026-03-03T10:30:05</markeertijdbegin><markeertijdeind>2026-03-03T11:40:05</markeertijdeind>
+<woordvoerder objectid="e0000000-0000-0000-0000-000000000051"><spreker soort="Minister" objectid="c0000000-0000-0000-0000-000000000004"><aanhef>De heer</aanhef><verslagnaam>Smit</verslagnaam><weergavenaam>Smit</weergavenaam><voornaam>Daan</voornaam><achternaam>Smit</achternaam><functie>minister van Voorbeelden</functie></spreker><markeertijdbegin>2026-03-03T10:30:05</markeertijdbegin><markeertijdeind>2026-03-03T10:55:05</markeertijdeind><isvoorzitter>false</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>Minister <nadruk type="Vet">Smit</nadruk>:</alineaitem><alineaitem>Eerste blok. Dank voor de vragen.</alineaitem></alinea>
+</tekst>
+<interrumpant objectid="e0000000-0000-0000-0000-000000000052"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000003"><fractie>GHI</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Bakker</verslagnaam><weergavenaam>Bakker</weergavenaam><voornaam>Carla</voornaam><achternaam>Bakker</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T10:54:00</markeertijdbegin><markeertijdeind>2026-03-03T10:55:05</markeertijdeind><isvoorzitter>false</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>Mevrouw <nadruk type="Vet">Bakker</nadruk> (GHI):</alineaitem><alineaitem>Een vraag.</alineaitem></alinea>
+</tekst>
+</interrumpant>
+</woordvoerder>
+<woordvoerder objectid="e0000000-0000-0000-0000-000000000053"><spreker soort="Minister" objectid="c0000000-0000-0000-0000-000000000004"><aanhef>De heer</aanhef><verslagnaam>Smit</verslagnaam><weergavenaam>Smit</weergavenaam><voornaam>Daan</voornaam><achternaam>Smit</achternaam><functie>minister van Voorbeelden</functie></spreker><markeertijdbegin>2026-03-03T10:55:05</markeertijdbegin><markeertijdeind>2026-03-03T11:15:05</markeertijdeind><isvoorzitter>false</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>Minister <nadruk type="Vet">Smit</nadruk>:</alineaitem><alineaitem>Tweede blok.</alineaitem></alinea>
+</tekst>
+<interrumpant objectid="e0000000-0000-0000-0000-000000000054"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T11:15:00</markeertijdbegin><markeertijdeind>2026-03-03T11:15:05</markeertijdeind><isvoorzitter>true</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>De <nadruk type="Vet">voorzitter</nadruk>:</alineaitem><alineaitem>U vervolgt.</alineaitem></alinea>
+</tekst>
+</interrumpant>
+</woordvoerder>
+<woordvoerder objectid="e0000000-0000-0000-0000-000000000055"><spreker soort="Minister" objectid="c0000000-0000-0000-0000-000000000004"><aanhef>De heer</aanhef><verslagnaam>Smit</verslagnaam><weergavenaam>Smit</weergavenaam><voornaam>Daan</voornaam><achternaam>Smit</achternaam><functie>minister van Voorbeelden</functie></spreker><markeertijdbegin>2026-03-03T11:15:05</markeertijdbegin><markeertijdeind>2026-03-03T11:40:05</markeertijdeind><isvoorzitter>false</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>Minister <nadruk type="Vet">Smit</nadruk>:</alineaitem><alineaitem>Derde blok. Tot zover.</alineaitem></alinea>
+</tekst>
+</woordvoerder>
+</activiteititem>
+</activiteitdeel>
+</activiteithoofd>
+</activiteit>
+<activiteit soort="Regeling van werkzaamheden" objectid="a0000000-0000-0000-0000-000000000003"><titel>Regeling van werkzaamheden</titel><onderwerp>Regeling van werkzaamheden</onderwerp><parlisid /><aanvangstijd>2026-03-03T11:40:10</aanvangstijd><eindtijd>2026-03-03T11:42:00</eindtijd><voortzetting>false</voortzetting>
+<activiteithoofd soort="Algemeen" objectid="b0000000-0000-0000-0000-000000000003"><titel>Regeling van werkzaamheden</titel><onderwerp>Regeling van werkzaamheden</onderwerp><markeertijdbegin>2026-03-03T11:40:10</markeertijdbegin><markeertijdeind>2026-03-03T11:42:00</markeertijdeind>
+<activiteitdeel soort="Spreekbeurt" objectid="d0000000-0000-0000-0000-000000000060"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000002"><fractie>DEF</fractie><aanhef>De heer</aanhef><verslagnaam>De Vries</verslagnaam><weergavenaam>De Vries</weergavenaam><voornaam>Bram</voornaam><achternaam>Vries de</achternaam><functie>lid Tweede Kamer</functie></spreker><titel>Spreekbeurt - De Vries</titel><markeertijdbegin>2026-03-03T11:40:10</markeertijdbegin><markeertijdeind>2026-03-03T11:40:40</markeertijdeind>
+<activiteititem soort="Woordvoerder" objectid="d0000000-0000-0000-0000-000000000069"><titel>Woordvoerder - De Vries</titel><markeertijdbegin>2026-03-03T11:40:10</markeertijdbegin><markeertijdeind>2026-03-03T11:40:40</markeertijdeind>
+<woordvoerder objectid="e0000000-0000-0000-0000-000000000061"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000002"><fractie>DEF</fractie><aanhef>De heer</aanhef><verslagnaam>De Vries</verslagnaam><weergavenaam>De Vries</weergavenaam><voornaam>Bram</voornaam><achternaam>Vries de</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T11:40:10</markeertijdbegin><markeertijdeind>2026-03-03T11:40:40</markeertijdeind><isvoorzitter>false</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>De heer <nadruk type="Vet">De Vries</nadruk> (DEF):</alineaitem><alineaitem>Ik vraag een debat aan over voorbeelden.</alineaitem></alinea>
+</tekst>
+</woordvoerder>
+</activiteititem>
+</activiteitdeel>
+<activiteitdeel soort="Spreekbeurt" objectid="d0000000-0000-0000-0000-000000000070"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><titel>Spreekbeurt - De voorzitter</titel><markeertijdbegin>2026-03-03T11:40:40</markeertijdbegin><markeertijdeind>2026-03-03T11:40:42</markeertijdeind>
+<activiteititem soort="Woordvoerder" objectid="d0000000-0000-0000-0000-000000000079"><titel>Woordvoerder - De voorzitter</titel><markeertijdbegin>2026-03-03T11:40:40</markeertijdbegin><markeertijdeind>2026-03-03T11:40:42</markeertijdeind>
+<woordvoerder objectid="d0000000-0000-0000-0000-000000000078"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T11:40:40</markeertijdbegin><markeertijdeind>2026-03-03T11:40:42</markeertijdeind><isvoorzitter>true</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>De <nadruk type="Vet">voorzitter</nadruk>:</alineaitem><alineaitem>Is daar steun voor?</alineaitem></alinea>
+</tekst>
+</woordvoerder>
+</activiteititem>
+</activiteitdeel>
+<activiteitdeel soort="Spreekbeurt" objectid="d0000000-0000-0000-0000-000000000080"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000003"><fractie>GHI</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Bakker</verslagnaam><weergavenaam>Bakker</weergavenaam><voornaam>Carla</voornaam><achternaam>Bakker</achternaam><functie>lid Tweede Kamer</functie></spreker><titel>Spreekbeurt - Bakker</titel><markeertijdbegin>2026-03-03T11:40:42</markeertijdbegin><markeertijdeind>2026-03-03T11:40:45</markeertijdeind>
+<activiteititem soort="Woordvoerder" objectid="d0000000-0000-0000-0000-000000000089"><titel>Woordvoerder - Bakker</titel><markeertijdbegin>2026-03-03T11:40:42</markeertijdbegin><markeertijdeind>2026-03-03T11:40:45</markeertijdeind>
+<woordvoerder objectid="e0000000-0000-0000-0000-000000000081"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000003"><fractie>GHI</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Bakker</verslagnaam><weergavenaam>Bakker</weergavenaam><voornaam>Carla</voornaam><achternaam>Bakker</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T11:40:42</markeertijdbegin><markeertijdeind>2026-03-03T11:40:45</markeertijdeind><isvoorzitter>false</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>Mevrouw <nadruk type="Vet">Bakker</nadruk> (GHI):</alineaitem><alineaitem>Steun.</alineaitem></alinea>
+</tekst>
+</woordvoerder>
+</activiteititem>
+</activiteitdeel>
+<activiteitdeel soort="Spreekbeurt" objectid="d0000000-0000-0000-0000-000000000090"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><titel>Spreekbeurt - De voorzitter</titel><markeertijdbegin>2026-03-03T11:40:45</markeertijdbegin><markeertijdeind>2026-03-03T11:40:55</markeertijdeind>
+<activiteititem soort="Woordvoerder" objectid="d0000000-0000-0000-0000-000000000099"><titel>Woordvoerder - De voorzitter</titel><markeertijdbegin>2026-03-03T11:40:45</markeertijdbegin><markeertijdeind>2026-03-03T11:40:55</markeertijdeind>
+<woordvoerder objectid="d0000000-0000-0000-0000-000000000098"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000001"><fractie>ABC</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Jansen</verslagnaam><weergavenaam>Jansen</weergavenaam><voornaam>Anna</voornaam><achternaam>Jansen</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T11:40:45</markeertijdbegin><markeertijdeind>2026-03-03T11:40:55</markeertijdeind><isvoorzitter>true</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>De <nadruk type="Vet">voorzitter</nadruk>:</alineaitem><alineaitem>Er is een meerderheid.</alineaitem></alinea>
+</tekst>
+</woordvoerder>
+</activiteititem>
+</activiteitdeel>
+<activiteitdeel soort="Spreekbeurt" objectid="d0000000-0000-0000-0000-0000000000a0"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000003"><fractie>GHI</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Bakker</verslagnaam><weergavenaam>Bakker</weergavenaam><voornaam>Carla</voornaam><achternaam>Bakker</achternaam><functie>lid Tweede Kamer</functie></spreker><titel>Spreekbeurt - Bakker</titel><markeertijdbegin>2026-03-03T11:41:55</markeertijdbegin><markeertijdeind>2026-03-03T11:42:00</markeertijdeind>
+<activiteititem soort="Woordvoerder" objectid="d0000000-0000-0000-0000-0000000000a9"><titel>Woordvoerder - Bakker</titel><markeertijdbegin>2026-03-03T11:41:55</markeertijdbegin><markeertijdeind>2026-03-03T11:42:00</markeertijdeind>
+<woordvoerder objectid="e0000000-0000-0000-0000-0000000000a1"><spreker soort="Tweede Kamerlid" objectid="c0000000-0000-0000-0000-000000000003"><fractie>GHI</fractie><aanhef>Mevrouw</aanhef><verslagnaam>Bakker</verslagnaam><weergavenaam>Bakker</weergavenaam><voornaam>Carla</voornaam><achternaam>Bakker</achternaam><functie>lid Tweede Kamer</functie></spreker><markeertijdbegin>2026-03-03T11:41:55</markeertijdbegin><markeertijdeind>2026-03-03T11:42:00</markeertijdeind><isvoorzitter>false</isvoorzitter><isdraad>false</isdraad>
+<tekst><alinea><alineaitem>Mevrouw <nadruk type="Vet">Bakker</nadruk> (GHI):</alineaitem><alineaitem>Een punt van orde.</alineaitem></alinea>
+</tekst>
+</woordvoerder>
+</activiteititem>
+</activiteitdeel>
+</activiteithoofd>
+</activiteit>
+<activiteit soort="Stemmingen" objectid="a0000000-0000-0000-0000-000000000004"><titel>Stemmingen</titel><onderwerp>Stemmingen</onderwerp><parlisid /><aanvangstijd>2026-03-03T11:44:50</aanvangstijd><eindtijd>2026-03-03T11:45:40</eindtijd><voortzetting>false</voortzetting>
+<tekst><alinea><alineaitem>Stemmingen</alineaitem></alinea>
+</tekst>
+<activiteithoofd soort="Stemming" objectid="b0000000-0000-0000-0000-000000000004"><titel>Stemmingen moties Voorbeeldwet</titel><onderwerp>Voorbeeldwet</onderwerp><markeertijdbegin>2026-03-03T11:44:50</markeertijdbegin><markeertijdeind>2026-03-03T11:45:40</markeertijdeind>
+<tekst><alinea><alineaitem>Stemmingen moties Voorbeeldwet</alineaitem></alinea><alinea><alineaitem>Aan de orde zijn de stemmingen over moties, ingediend bij het debat over de Voorbeeldwet.</alineaitem></alinea>
+</tekst>
+<draadboekfragment soort="Zie vergadering van" objectid="f0000000-0000-0000-0000-000000000004"><markeertijdbegin>2026-03-03T11:44:55</markeertijdbegin><markeertijdeind>2026-03-03T11:44:56</markeertijdeind><isdraad>true</isdraad>
+<tekst><alinea><alineaitem>(Zie vergadering van heden.)</alineaitem></alinea>
+</tekst>
+</draadboekfragment>
+<activiteitdeel soort="Stemming item" objectid="d0000000-0000-0000-0000-0000000000b0"><titel>de motie-De Vries (12345, nr. 7)</titel><markeertijdbegin>2026-03-03T11:45:00</markeertijdbegin><markeertijdeind>2026-03-03T11:45:20</markeertijdeind>
+<tekst><alinea><alineaitem>In stemming komt de motie-De Vries (<dossiernummer>12345</dossiernummer>, nr. <stuknummer>7</stuknummer>).</alineaitem></alinea>
+</tekst>
+<activiteititem soort="Besluit" objectid="d0000000-0000-0000-0000-0000000000b9"><titel>Besluit</titel><markeertijdbegin>2026-03-03T11:45:00</markeertijdbegin><markeertijdeind>2026-03-03T11:45:20</markeertijdeind>
+<tekst><alinea><alineaitem>De <nadruk type="Vet">voorzitter</nadruk>:</alineaitem><alineaitem>Ik constateer dat deze motie is aangenomen.</alineaitem></alinea>
+</tekst><besluitvorm>Fractie</besluitvorm><uitslag>Aangenomen</uitslag>
+</activiteititem>
+</activiteitdeel>
+<activiteitdeel soort="Stemming item" objectid="d0000000-0000-0000-0000-0000000000c0"><titel>de motie-De Vries (12345, nr. 8)</titel><markeertijdbegin>2026-03-03T11:45:20</markeertijdbegin><markeertijdeind>2026-03-03T11:45:40</markeertijdeind>
+<tekst><alinea><alineaitem>In stemming komt de motie-De Vries (<dossiernummer>12345</dossiernummer>, nr. <stuknummer>8</stuknummer>).</alineaitem></alinea>
+</tekst>
+<activiteititem soort="Besluit" objectid="d0000000-0000-0000-0000-0000000000c9"><titel>Besluit</titel><markeertijdbegin>2026-03-03T11:45:20</markeertijdbegin><markeertijdeind>2026-03-03T11:45:40</markeertijdeind>
+<tekst><alinea><alineaitem>De <nadruk type="Vet">voorzitter</nadruk>:</alineaitem><alineaitem>Ik constateer dat deze motie is verworpen.</alineaitem></alinea>
+</tekst><besluitvorm>Fractie</besluitvorm><uitslag>Verworpen</uitslag>
+</activiteititem>
+</activiteitdeel>
+</activiteithoofd>
+</activiteit>
+<activiteit soort="Sluiting" objectid="a0000000-0000-0000-0000-000000000005"><titel>Sluiting</titel><onderwerp>Sluiting</onderwerp><parlisid /><aanvangstijd>2026-03-03T11:45:40</aanvangstijd><eindtijd>2026-03-03T11:46:00</eindtijd><voortzetting>false</voortzetting>
+<draadboekfragment soort="Tekst" objectid="f0000000-0000-0000-0000-000000000005"><markeertijdbegin>2026-03-03T11:46:00</markeertijdbegin><markeertijdeind>2026-03-03T11:46:00</markeertijdeind><isdraad>true</isdraad>
+<tekst><alinea><alineaitem>Sluiting 11.46 uur.</alineaitem></alinea>
+</tekst>
+</draadboekfragment>
+</activiteit>
+</vergadering>
+</vlosCoreDocument>
