@@ -25,21 +25,32 @@ Validation target for the eventual output: [optv/shared/schema/stage2-full.schem
 
 ## 3. Set up the directory
 
-Copy `optv/parliaments/DE/` as a template:
+Lay the directory out with the scaffold. It also lists the parliament in the table of implemented parliaments in the [README](../README.md) (parliaments in production first, then the others by code), and creates a local data repository beside this one, with the layout from section 6 and the status line `in development`:
+
+```bash
+python -m optv.scripts.readiness scaffold <CODE> --name "<Parliament Name>" \
+    --type <national|regional|supranational> --language <iso 639-3> \
+    --language-code <iso 639-1> --spacy-model <model> --period <N> \
+    --media-license "<terms of use of the video recordings>" [--dry-run]
+```
+
+A parliament set up by hand needs the same three things done by hand: the directory, the README row and the data repository. `python -m optv.scripts.readiness sync` reports a parliament that is missing from the table.
+
+The skeleton imports, parses the Conductor's arguments and passes the contract tests; its scraper, parsers and merger raise `NotImplementedError` until they are written. For what goes into them, read the implementation whose source is shaped like yours: `optv/parliaments/DE/` joins two feeds of the same speeches (a proceedings spine), a German state parliament such as `optv/parliaments/DE-BW/` hangs text onto a list of video clips (a media spine).
 
 ```
 optv/parliaments/<CODE>/
 ├── __init__.py
 ├── manifest.yaml
 ├── workflow.py          # thin entry point — defines hooks, calls optv.shared.workflow
-├── common.py            # Config class, paths, file naming (re-exports shared SessionStatus + publish helpers)
+├── common.py            # Config class: how raw files are named and how a session's text shows; imports SessionStatus for the Conductor
 ├── scraper/             # fetch raw proceedings + media
 ├── parsers/             # parliament's native format → intermediate JSON
 ├── merger/              # join proceedings + media → Stage 2
 └── align_prep.py        # optional — per-speech audio staging for align (adapter over optv.shared.audio_prep); only when the source needs slicing
 ```
 
-The package layout matters: `workflow.py` imports from `optv.shared.*`, and the path bootstrap at the top supports both `python -m` and direct execution. Keep that bootstrap. Scraper, parser and merger modules need none: give each an `argparse` command line under `if __name__ == "__main__":` and run it as `python -m optv.parliaments.<CODE>.<package>.<module>` to exercise one part of the workflow; `tests/test_stage_cli.py` checks that every such command line starts.
+The package layout matters: `workflow.py` imports from `optv.shared.*`, and the path bootstrap at the top supports both `python -m` and direct execution. Keep that bootstrap. Scraper, parser and merger modules need none: give each an `argparse` command line under `if __name__ == "__main__":` and run it as `python -m optv.parliaments.<CODE>.<package>.<module>` to exercise one part of the workflow; `tests/test_stage_cli.py` checks that every such command line starts. `optv.shared.cli` has the plumbing: `session_cli` is the whole command line of a module that works on one session, `load_config` and `setup_logging` serve the others.
 
 ## 4. Write `manifest.yaml`
 
@@ -105,9 +116,24 @@ readiness:
 
 These three packages are where most of the parliament-specific work lives:
 
-- **`scraper/`** — Download proceedings and media into `<data_dir>/original/{proceedings,media}/`. Handle pagination, rate limits, and transient failures (the DE implementation uses `--retry-count` because the Bundestag media server returns frequent 503s). Idempotent: only fetch what's missing.
+- **`scraper/`** — Download proceedings and media into `<data_dir>/original/{proceedings,media}/`. Send requests through `optv.shared.http.PoliteHTTP`, which spaces them and retries with backoff (`--retry-count` and `--retry-delay-max` come from the manifest). Idempotent: only fetch what's missing. Confine a run to the sessions it was asked for before the first request, by `--limit-session` or a session flag of the parliament's own: a parliament that is not live is processed for its sample sessions, and a run for three sessions must not walk a whole period at the source.
 - **`parsers/`** — Convert the parliament's native format into intermediate per-session JSON. Two streams (proceedings and media) are kept separate at this point because they often need different cleanup logic.
 - **`merger/`** — Join the two streams into Stage 2 JSON, one record per speech. The DE merger uses Needleman-Wunsch alignment to match transcript speech entries against media items; new parliaments can use whatever join logic the source data permits. Follow the id model: put the media id in `media.originMediaID`, the text id in `textContents[].originTextID`, and set a speech-level `originID` only for a genuine joint id — call `optv.shared.speech_id.normalize_speech_originid(speech)` at finalization to enforce this (and never put `originMediaID` at the speech top level). Build the envelope's `meta` block with `optv.shared.meta.build_meta(...)` rather than hand-assembling it: it emits the canonical, uniform meta (`schemaVersion`, `session`, dates, `processing`, `lastProcessing`/`lastUpdate`) and deliberately omits `parliament` and `electoralPeriod`, which live on every speech — not in `meta`. Set `originalLanguage` on every speech with `optv.shared.meta.fill_original_language(speeches, parliament_id)`. Emit `debug.*` keys in **camelCase** (e.g. `alignDuration`, never `align-duration`). Generic formatting helpers live in `optv.shared.merge_format`; language-specific ones (honorifics, chair→context) in `optv.shared.lang.<code>`.
+
+Shared building blocks the parsers and the merger draw on, instead of each parliament writing its own:
+
+| Module | For |
+|---|---|
+| `optv.shared.spine_merger` | the frame of a media-spine merger: `load_spine` reads the parsed media file, `save_merged` writes the merged file with its `meta` |
+| `optv.shared.sequence_align` | `align_equal_keys`, the Needleman-Wunsch alignment of two key sequences (speakers, titles) |
+| `optv.shared.pdf2tei` | proceedings that exist only as PDF: parsed into ParlaMint-style TEI and joined onto a media spine with `spine_join.join_text_to_spine` |
+| `optv.shared.vtt` | subtitles as the text source: parse cues, merge HLS subtitle segments, turn cues into timed sentences |
+| `optv.shared.sentence_split` | `split_long_sentences`, for sentences too long to align or display |
+| `optv.shared.agenda_types` | `agendaItem.type` and `nativeType`: add a `classify_<code>` for the parliament's agenda titles and apply it with `annotate_agenda_item` |
+| `optv.shared.confidence` | `compute_confidence`, which marks a speech whose text cannot belong to its clip (`debug.confidence` below 1) |
+| `optv.shared.publish` | `save_if_changed`, which leaves a file untouched when its content did not change, so that later stages do not re-run |
+
+A merger that can mis-join text marks the doubtful speeches rather than publishing them as sound. The readiness scorecard checks that such marks take effect where the data is imported (`samples.import_gate`) and that no unmarked speech carries more text than its clip could hold (`samples.text_plausible`).
 
 The merger's output must validate against [stage2-full.schema.json](../optv/shared/schema/stage2-full.schema.json). Run the validator early and often:
 
@@ -137,7 +163,7 @@ Define the hook functions, pass them as a `WorkflowHooks` instance, and call `ru
 
 ```python
 from optv.shared.align import align_audiofile
-from optv.shared.workflow import WorkflowHooks, run_main
+from optv.shared.workflow import WorkflowHooks, adapt_merge, run_main
 from .common import Config
 # parliament-specific imports
 from .scraper.fetch_proceedings import download_proceedings
@@ -150,12 +176,11 @@ PARLIAMENT_ID = Path(__file__).parent.name
 
 def _download(config, args): ...      # body of --download-original
 def _parse(config, args): ...         # called after download (always)
-def _merge(config, session, args):    # return path to merged cache file
-    return merge_session(session, config, args)
+_merge = adapt_merge(merge_session)   # merge_session(session, config, args) -> path of the merged cache file
 def _align(config, session, args):    # return path to aligned cache file
     merged_file = config.file(session, 'merged')
     aligned_file = config.file(session, 'aligned', create=True)
-    align_audiofile(merged_file, aligned_file, args.aeneas_language, args.cache_dir,
+    align_audiofile(merged_file, aligned_file, args.lang, args.cache_dir,
                     timeout=args.align_timeout,
                     max_audio_seconds=args.align_max_audio_seconds)
     return aligned_file
@@ -203,7 +228,7 @@ Notes for filling in the hooks:
 
 ## 8. External assets
 
-- **Wikidata entity dump** — JSON file mapping known speaker names + electoral periods to Wikidata QIDs. URL goes in `manifest.yaml` as `entity_dump_url`. The NEL stage reads from this.
+- **Wikidata entity dump** — `metadata/entities.json`, mapping known speaker names + electoral periods to Wikidata QIDs; the NEL stage links against it. A parliament with a platform instance fetches it from the URL in `manifest.yaml` (`entity_dump_url`). One without builds it from Wikidata: `python -m optv.shared.entity_dump_bootstrap <CODE> <data_dir>`, configured by an `entity_bootstrap` block in the manifest (the Wikidata item of "member of this parliament" and the parties as the source writes them; see the module's docstring and a German state parliament's manifest).
 - **Entity-fishing API endpoint** — required by the NER stage. Pass via `--ner-api-endpoint`. Public instances exist; for production, run your own.
 - **`ffmpeg` and `espeak`** — required by the alignment stage (aeneas dependency).
 - **A spaCy model for the parliament's language** — declared in `manifest.locale.spacy_model` (single source of truth). Install via `python -m spacy download <model>`.
@@ -276,7 +301,7 @@ Do not duplicate content that already lives elsewhere: pipeline concepts go in [
 
 ## 11. Onboard with Conductor
 
-Once the parliament works standalone, add it to the Conductor's `config/parliaments.yaml` so it appears in the web UI. See the [Conductor README](https://github.com/OpenParliamentTV/OpenParliamentTV-Conductor) for the deployment configuration format.
+Once the parliament works standalone, add it to the Conductor's `config/parliaments.yaml` so it appears in the web UI; the scaffold prints the block to add. The Conductor reads that file when it starts, so restart it afterwards, and a deployment that mounts each data repository separately needs the new one mounted too. See the [Conductor README](https://github.com/OpenParliamentTV/OpenParliamentTV-Conductor) for the deployment configuration format.
 
 ## 12. Definition of done
 
@@ -299,3 +324,20 @@ python -m optv.scripts.readiness estimate <CODE>   # plan the outstanding transc
 ```
 
 `check` reads local files only and takes seconds. Whisper evidence costs about 0.8 hours of computing per hour of audio, so it is produced by a detached job: `estimate` prints the plan and a start command that carries the plan's token, `start` runs it in the background, `jobs` reports on it. A job transcribes the audio clips the align stage cached for the sample sessions and downloads nothing; it needs `pip install -r requirements-qc.txt` and the Whisper model in the local Hugging Face cache.
+
+Processing the sample sessions themselves, with the downloads alignment needs, runs as a job too once the manifest declares how:
+
+```yaml
+readiness:
+  sample_run:
+    - sessions: ["21070", "21071", "21072"]
+      args: ["--period=21", "--limit-session", "^2107[012]$"]
+```
+
+Each entry is one workflow invocation: the sample sessions it covers and the arguments that confine it to them, downloads included. Declare it after reading the parliament's download hook and confirming the arguments hold there; the stages are added by the tooling, and an entry names none. `python -m optv.scripts.readiness estimate <CODE> --sample-run` then plans the run. Its duration is estimated from earlier sample runs on record, and the plan says so when there are none.
+
+```bash
+python -m optv.scripts.readiness sync [--apply]    # README table, data repository READMEs, Research profiles
+```
+
+`sync` compares the status entries kept by hand with the scorecards and, with `--apply`, rewrites the values that differ. A parliament without a row in the README table is reported for a person to add.

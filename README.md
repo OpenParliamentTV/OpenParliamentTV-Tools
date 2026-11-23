@@ -116,7 +116,7 @@ An opt-in QC toolset cross-checks output without touching pipeline data. It has 
 - [`optv/shared/whisper_diff.py`](optv/shared/whisper_diff.py) (`rank` / `transcribe` / `diff`) — transcribes a session's audio with faster-whisper (+ optional Resemblyzer speaker-change detection, via [`whisper_qc.py`](optv/shared/whisper_qc.py)) and reports where it diverges from the proceedings text.
 - [`optv/scripts/merge_audit.py`](optv/scripts/merge_audit.py) — read-only sweep over merger output that flags text-accumulation anomalies (histograms + suspect lists).
 - [`optv/scripts/equivalence.py`](optv/scripts/equivalence.py) (`snapshot` / `compare` / `status-dump`) — proves a code change leaves pipeline output untouched: runs each parliament's workflow (parse, merge, publish) offline on a scratch copy of its data repo and diffs the output digests of two Tools checkouts.
-- [`optv/scripts/readiness/`](optv/scripts/readiness/) (`check` / `qc` / `estimate` / `start` / `jobs`) — scores every parliament's implementation and sample sessions against the readiness criteria and writes [docs/READINESS.md](docs/READINESS.md); plans the Whisper transcription that evidence needs, estimates its duration and runs it as a detached job.
+- [`optv/scripts/readiness/`](optv/scripts/readiness/) (`check` / `qc` / `estimate` / `start` / `jobs` / `sync` / `scaffold`) — scores every parliament's implementation and sample sessions against the readiness criteria and writes [docs/READINESS.md](docs/READINESS.md); plans the Whisper transcription and the sample runs that evidence needs, estimates their duration and runs them as detached jobs; lays out a new parliament and keeps the status entries in line with the scorecards.
 
 ## Implemented parliaments
 
@@ -125,6 +125,7 @@ An opt-in QC toolset cross-checks output without touching pipeline data. It has 
 | Parliament | Name | Type | Data Repository | Status |
 |------------|------|------|------|--------|
 | [`DE`](optv/parliaments/DE/) | Deutscher Bundestag | national | [Data-DE](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE) | **production** |
+| [`AT`](optv/parliaments/AT/) | Österreichischer Nationalrat | national | [Data-AT](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-AT) | in development |
 | [`DE-BW`](optv/parliaments/DE-BW/) | Landtag von Baden-Württemberg | regional | [Data-DE-BW](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-BW) | in development |
 | [`DE-BY`](optv/parliaments/DE-BY/) | Bayerischer Landtag | regional | [Data-DE-BY](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-BY) | in development |
 | [`DE-HH`](optv/parliaments/DE-HH/) | Hamburgische Bürgerschaft | regional | [Data-DE-HH](https://github.com/OpenParliamentTV/OpenParliamentTV-Data-DE-HH) | in development |
