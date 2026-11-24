@@ -43,15 +43,17 @@ The WebTV archive service, the sitting page and the record XML are not documente
 
 ## Known limitations
 
-- Not ready for platform integration: no Whisper comparison has confirmed that the published text is what is said in each clip.
+- Not ready for platform integration. In the Whisper comparison of the sample sittings, more speeches have a text that differs from what is heard than the readiness criteria allow, and no person has reviewed the comparison. The figures are in the [scorecard](../../../docs/readiness/IT.json).
 - The Chamber's legal notice licenses texts and recordings as CC BY-NC-ND 4.0 and asks for its written permission for derivative works. Whether publishing them here is covered is an open question for a person to settle.
 - Aligning a whole legislature means transferring every recording in full: about 750 sittings of 4 to 10 GB each for the XIX legislature. That is not something to start without the Chamber's agreement or another source of audio.
 - No entity extraction (`ner`): the entity-fishing service in use has no Italian knowledge base loaded.
 - The reading of the minutes is a clip whose own words the record does not give; it only mentions that the minutes were read. The speech keeps the chair's closing sentence and is marked `debug.confidence` 0.5 (`confidenceReason: no-own-text`), so that its text is not imported.
 - What the chair says between two speakers is in the clip of the speaker before, as the page's time ranges have it. The text is then in the right clip, under a speech of another main speaker.
+- A vote is an intervention of the chair on the page, and its time range begins where the vote is called or already open. The record intervention it carries begins earlier, with what the chair says before calling the vote. Those sentences stand in the vote's speech and are spoken in the clip before.
+- The record is an edited text. Where the chair reads out the title of an interpellation, the record refers to the annex; an announcement is completed with details that are not read out. The text of such a speech is shorter or longer than what is heard.
 - A speech whose text does not fit its time range is marked `debug.confidence` 0.5 (`text-too-long`, `text-too-short`). The limits are set from three sittings.
 - The last speech of a sitting has no end on the page; it runs to the end the archive states for the sitting. That end can lie up to half a minute after the end of the recording; the speech's audio then ends where the recording does.
-- The record prints the agenda of the next sitting in the chair's closing intervention. It is part of the last speech's text, whether or not the chair reads all of it out.
+- The record prints the agenda of the next sitting in the chair's closing intervention, with bill numbers, joined bills and rapporteurs, and the chair reads a short form of it. All of it is part of the last speech's text, so with an agenda of several items that speech has several times the text that is heard.
 - A suspension of the sitting is listed by the page as an intervention of the chair. It is left out when it carries no text.
 - Recordings in several parts are handled as the page describes them (each intervention names its part); the sittings processed so far have one part each.
 - Sittings before the XIX legislature have not been looked at; the page and the record may be structured differently there.
