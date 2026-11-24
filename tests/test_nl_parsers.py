@@ -480,3 +480,30 @@ def test_a_sitting_without_a_report_is_skipped(tmp_path):
     source = _FakeSource()
     assert not fetch.fetch_sitting(Config(tmp_path), SESSION, _sitting(), source, source)
     assert source.requests == 0
+
+
+def test_the_staged_clips_length_replaces_the_speechs_own(tmp_path, monkeypatch):
+    # The server cuts to whole segments: 32 of them for a speech of 116 seconds.
+    monkeypatch.setattr(align_prep, "clip_seconds", lambda path: 122.88 if path.name == "staged.mp3" else 0.0)
+    speech = {"media": {"duration": 116.0}}
+    align_prep._write_clip_length(speech, tmp_path / "staged.mp3")
+    assert speech["media"]["duration"] == 122.88
+    # A clip that could not be staged leaves the merged value.
+    align_prep._write_clip_length(speech, tmp_path / "missing.mp3")
+    assert speech["media"]["duration"] == 122.88
+
+
+def test_staging_writes_the_clip_length_for_fetched_and_cached_clips(tmp_path, monkeypatch):
+    from optv.shared import audio_prep
+
+    def speech(index):
+        return {"electoralPeriod": {"number": 2025}, "session": {"number": 50}, "speechIndex": index,
+                "media": {"videoFileURI": "https://s/index.m3u8?start=a&end=b", "duration": 116.0},
+                "textContents": [{"textBody": [{"type": "speech", "sentences": [{"text": "x"}]}]}]}
+
+    fetched, cached = speech(1), speech(2)
+    audio_prep.cachedfile(cached, "mp3", tmp_path).write_text("cached")
+    monkeypatch.setattr(align_prep, "_download", lambda url, target, **kw: target.write_text("fetched"))
+    monkeypatch.setattr(align_prep, "clip_seconds", lambda path: 122.88)
+    assert align_prep.prepare_per_speech_audio([fetched, cached], tmp_path) == (1, 1, 0)
+    assert fetched["media"]["duration"] == cached["media"]["duration"] == 122.88

@@ -39,7 +39,7 @@ def _clock(moment: datetime.datetime) -> str:
 
 
 def clip_url(stream: str, start: datetime.datetime, end: datetime.datetime) -> str:
-    """The recording cut to ``start``–``end``. The server answers with the whole segments that cover the range, so a clip can begin and end a few seconds outside it."""
+    """The recording cut to ``start``–``end``. The server answers with whole segments, so a clip begins up to one segment before ``start`` and ends one to two segments after ``end``."""
     return f"{stream}?start={_clock(start)}&end={_clock(end)}"
 
 
@@ -97,6 +97,8 @@ def speech_record(speech: dict, debates: dict[str, dict], *, session: str, perio
     media = {
         "videoFileURI": clip_url(stream, start, end),
         "sourcePage": source_page(debate, speech, report_page, start, end),
+        # The speech's own length. The clip is one to three segments longer; the
+        # align stage writes the clip's measured length here (align_prep.py).
         "duration": (end - start).total_seconds(),
         "aligned": False,
         "creator": media_rights.get("creator", ""),

@@ -3,6 +3,8 @@
 A speech's ``media.videoFileURI`` is the day's recording cut to the speech by the stream server. Its audio is fetched as that same cut, so the sentence times aeneas finds are times in the clip a player shows. The master playlist lists five video renditions and one audio rendition; only the audio rendition's playlist is given to ffmpeg, which then fetches nothing but audio segments.
 
 Each speech is its own source (``session_key=None``): no shared download, no slicing. The fetch is paced to ``READRATE`` times playback speed: ffmpeg would otherwise pull a sitting's several thousand segments within minutes.
+
+The server answers a range with whole segments, from the one the speech begins in to the one after the one it ends in, so a clip is one to three segments longer than the speech. The staged clip's measured length is therefore written to ``media.duration``: sentence times are positions in the clip, and both the aligner's bounds check and the platform read them against that length.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from optv.shared.audio_prep import (
     SpeechAudio, download_ffmpeg, prepare_per_speech_audio as _prepare,
 )
 from optv.shared.http import PoliteHTTP
+from optv.shared.whisper_diff import clip_seconds
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +66,16 @@ def _download(url: str, target: Path, *, required_duration: float = 0.0) -> None
         logger.warning("Audio for %s could not be staged: %s: %s", target.name, type(e).__name__, e)
 
 
+def _write_clip_length(speech: dict, target: Path) -> None:
+    """Set ``media.duration`` to the length of the staged clip; a clip that could not be staged leaves it as merged."""
+    seconds = clip_seconds(target)
+    if seconds > 0:
+        speech.setdefault("media", {})["duration"] = round(seconds, 2)
+
+
 def prepare_per_speech_audio(merged_data: list[dict], cachedir: Path,
                              *, force: bool = False) -> tuple[int, int, int]:
-    """Ensure each speech with text has its audio ready for ``align_audio``."""
+    """Ensure each speech with text has its audio ready for ``align_audio``, and its ``media.duration`` set to the clip's length."""
     return _prepare(merged_data, cachedir, force=force,
-                    extract=_extract, download_session=_download)
+                    extract=_extract, download_session=_download,
+                    on_prepared=_write_clip_length, on_existing=_write_clip_length)
