@@ -5,8 +5,6 @@
   "level": 2,
   "level_name": "samples pass",
   "blocking": [
-    "qc.whisper_coverage",
-    "qc.fidelity",
     "qc.mismatch",
     "qc.reviewed",
     "release.licence",
@@ -35,6 +33,7 @@
       "text": "6c07fdbce1d88dfc"
     }
   },
+  "qc_evidence": "4d761489a283384c",
   "criteria": {
     "impl.files": {
       "level": 2,
@@ -136,18 +135,38 @@
     },
     "qc.whisper_coverage": {
       "level": 3,
-      "status": "not_evaluated",
-      "detail": "no Whisper transcripts on this machine"
+      "status": "pass",
+      "metrics": {
+        "share": 1.0,
+        "transcribed": 92,
+        "expected": 92,
+        "threshold": 0.95
+      }
     },
     "qc.fidelity": {
       "level": 3,
-      "status": "not_evaluated",
-      "detail": "no Whisper transcripts on this machine"
+      "status": "pass",
+      "metrics": {
+        "median_similarity": 0.921,
+        "sessions": {
+          "190731": 0.915,
+          "190744": 0.923,
+          "190745": 0.91
+        },
+        "speeches": 69,
+        "threshold": 0.8,
+        "session_threshold": 0.7
+      }
     },
     "qc.mismatch": {
       "level": 3,
-      "status": "not_evaluated",
-      "detail": "no Whisper transcripts on this machine"
+      "status": "fail",
+      "metrics": {
+        "share": 0.058,
+        "mismatched": 4,
+        "speeches": 69,
+        "threshold": 0.05
+      }
     },
     "qc.reviewed": {
       "level": 3,
@@ -177,6 +196,6 @@
   },
   "evaluated": {
     "date": "2026-11-24",
-    "tools": "4eb5adc"
+    "tools": "a066902"
   }
 }
