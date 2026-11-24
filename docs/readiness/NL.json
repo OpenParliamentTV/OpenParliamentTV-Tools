@@ -2,11 +2,15 @@
   "schema": 1,
   "parliament": "NL",
   "name": "Tweede Kamer",
-  "level": 1,
-  "level_name": "implemented",
+  "level": 2,
+  "level_name": "samples pass",
   "blocking": [
-    "samples.stages",
-    "samples.timing"
+    "qc.whisper_coverage",
+    "qc.fidelity",
+    "qc.mismatch",
+    "qc.reviewed",
+    "release.licence",
+    "release.platform"
   ],
   "regressions": [],
   "unverified": [],
@@ -15,25 +19,25 @@
     "2025-094": {
       "speeches": 149,
       "text_speeches": 149,
-      "audio_seconds": 24333,
+      "audio_seconds": 25486,
       "text": "59617eb2ef51689e"
     },
     "2025-096": {
       "speeches": 65,
       "text_speeches": 65,
-      "audio_seconds": 22727,
+      "audio_seconds": 23225,
       "text": "83007227cf1732d7"
     },
     "2026-005": {
       "speeches": 72,
       "text_speeches": 72,
-      "audio_seconds": 22386,
+      "audio_seconds": 22940,
       "text": "c4a342e5c9ba1c72"
     },
     "2026-023": {
       "speeches": 56,
       "text_speeches": 56,
-      "audio_seconds": 21104,
+      "audio_seconds": 21523,
       "text": "23810a633805aa5a"
     }
   },
@@ -68,12 +72,11 @@
     },
     "samples.stages": {
       "level": 2,
-      "status": "fail",
+      "status": "pass",
       "metrics": {
-        "complete": 0,
+        "complete": 4,
         "sessions": 4
-      },
-      "detail": "2025-094: no align; 2025-096: no align; 2026-005: no align; 2026-023: no align"
+      }
     },
     "samples.valid": {
       "level": 2,
@@ -113,10 +116,10 @@
     },
     "samples.timing": {
       "level": 2,
-      "status": "fail",
+      "status": "pass",
       "metrics": {
-        "share": 0.0,
-        "timed": 0,
+        "share": 1.0,
+        "timed": 18509,
         "sentences": 18509,
         "threshold": 0.95
       }
@@ -179,7 +182,7 @@
     }
   },
   "evaluated": {
-    "date": "2026-11-23",
-    "tools": "2860fab"
+    "date": "2026-11-24",
+    "tools": "4eb5adc"
   }
 }

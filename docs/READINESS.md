@@ -24,7 +24,7 @@ Every parliament implemented in this repository, the level its implementation an
 | [`FI`](../optv/parliaments/FI/) | Eduskunta | 2 samples pass | in development | `qc.whisper_coverage`, `qc.fidelity`, `qc.mismatch`, `qc.reviewed`, `release.licence`, `release.platform` | – |
 | [`FR`](../optv/parliaments/FR/) | Assemblée nationale | 1 implemented | in development | `samples.speaker_wid`, `samples.text_plausible` | – |
 | [`IT`](../optv/parliaments/IT/) | Camera dei deputati | 2 samples pass | in development | `qc.whisper_coverage`, `qc.fidelity`, `qc.mismatch`, `qc.reviewed`, `release.licence`, `release.platform` | – |
-| [`NL`](../optv/parliaments/NL/) | Tweede Kamer | 1 implemented | in development | `samples.stages`, `samples.timing` | – |
+| [`NL`](../optv/parliaments/NL/) | Tweede Kamer | 2 samples pass | in development | `qc.whisper_coverage`, `qc.fidelity`, `qc.mismatch`, `qc.reviewed`, `release.licence`, `release.platform` | – |
 | [`NO`](../optv/parliaments/NO/) | Stortinget | 1 implemented | in development | `samples.speaker_wid` | – |
 | [`PT`](../optv/parliaments/PT/) | Assembleia da República | 1 implemented | in development | `samples.speaker_wid`, `samples.text_plausible` | – |
 | [`SE`](../optv/parliaments/SE/) | Sveriges Riksdag | 1 implemented | in development | `impl.tests`, `samples.speaker_wid` | – |
@@ -357,14 +357,12 @@ Sample sessions: `190731`, `190744`, `190745` (92 speeches, 5.9 h of audio).
 
 ### NL: Tweede Kamer
 
-Level 1 (implemented), in development. 11 of 21 criteria satisfied. Evaluated 2026-11-23 at `2860fab`.
+Level 2 (samples pass), in development. 13 of 21 criteria satisfied. Evaluated 2026-11-24 at `4eb5adc`.
 
-Sample sessions: `2025-094`, `2025-096`, `2026-005`, `2026-023` (342 speeches, 25.2 h of audio).
+Sample sessions: `2025-094`, `2025-096`, `2026-005`, `2026-023` (342 speeches, 25.9 h of audio).
 
 | Criterion | Gates level | Result | Detail |
 |---|---|---|---|
-| `samples.stages` | 2 | fail | 2025-094: no align; 2025-096: no align; 2026-005: no align; 2026-023: no align |
-| `samples.timing` | 2 | fail | share 0.0 against 0.95 |
 | `qc.whisper_coverage` | 3 | not_evaluated | no Whisper transcripts on this machine |
 | `qc.fidelity` | 3 | not_evaluated | no Whisper transcripts on this machine |
 | `qc.mismatch` | 3 | not_evaluated | no Whisper transcripts on this machine |
