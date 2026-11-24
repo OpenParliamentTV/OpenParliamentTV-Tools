@@ -2,6 +2,7 @@
 
 import datetime
 import fcntl
+import importlib.util
 import json
 import signal
 import sys
@@ -209,10 +210,24 @@ def test_start_refuses_while_another_job_runs(data_dir, docs, tmp_path):
     assert jobs.running_job() is None
 
 
-def test_a_transcription_job_needs_whisper_on_this_machine(data_dir, docs, monkeypatch, tmp_path):
+@pytest.fixture
+def faster_whisper(monkeypatch):
+    """Whether faster-whisper is installed is what a test says, not what the machine has."""
+    find_spec = importlib.util.find_spec
+    installed = {"value": True}
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name, *args: (
+        (object() if installed["value"] else None) if name == "faster_whisper" else find_spec(name, *args)))
+    return installed
+
+
+def test_a_transcription_job_needs_whisper_on_this_machine(data_dir, docs, monkeypatch, tmp_path,
+                                                           faster_whisper):
     plan = _planned()
     monkeypatch.setenv("HF_HUB_CACHE", str(tmp_path / "empty-hub"))
     with pytest.raises(jobs.JobError, match="Whisper model is not in"):
+        jobs.preflight(plan)
+    faster_whisper["value"] = False
+    with pytest.raises(jobs.JobError, match="faster-whisper is not installed"):
         jobs.preflight(plan)
 
 
