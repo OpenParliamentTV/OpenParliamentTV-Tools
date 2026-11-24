@@ -1,0 +1,142 @@
+<!--An invented sitting in the structure of the Chamber's stenographic record XML. Not a real document.-->
+<seduta legislatura="19" numero="900" anno="2027" mese="3" giorno="2" ramo="camera" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <metadati>
+    <dataEstesa>martedì 2 marzo 2027</dataEstesa>
+    <argomenti>
+      <argomento idDibattito="tit00020">
+        <atti>
+          <atto tipologiaAtto="pdl" codiceArgomento="100" />
+        </atti>
+      </argomento>
+    </argomenti>
+    <gruppi />
+  </metadati>
+  <resoconto tipo="stenografico">
+    <pagina numero="1" />
+    <presidenza id="avv00010">PRESIDENZA DELLA VICEPRESIDENTE MARIA ROSSI</presidenza>
+    <avviso id="avv00020">
+      <titolo>La seduta comincia alle 10.</titolo>
+    </avviso>
+    <intervento id="tit00000.int00010">
+      <testoXHTML>
+        <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. La seduta è aperta.</testoXHTML>
+      <interventoVirtuale id="iv.1">Invito il deputato Segretario a dare lettura del processo verbale della seduta precedente.</interventoVirtuale>
+    </intervento>
+    <intervento id="tit00000.int00020">
+      <testoXHTML>
+        <nominativo id="300002" cognomeNome="BIANCHI Luca">LUCA BIANCHI</nominativo>, <emphasis type="italic">Segretario</emphasis>, legge il processo verbale della seduta di ieri.</testoXHTML>
+    </intervento>
+    <intervento id="tit00000.int00030">
+      <testoXHTML>
+        <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. Se non vi sono osservazioni, il processo verbale si intende approvato.</testoXHTML>
+      <interventoVirtuale id="iv.2">
+        <emphasis type="italic">(È approvato)</emphasis>.</interventoVirtuale>
+    </intervento>
+    <dibattito id="tit00010">
+      <titolo>Missioni (ore 10,03).  (ore 10,03) (ore 10,03)</titolo>
+      <intervento id="tit00010.int00010">
+        <testoXHTML>
+          <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. Comunico che i deputati in missione a decorrere dalla seduta odierna sono complessivamente dodici.</testoXHTML>
+        <interventoVirtuale id="iv.3">Sospendo pertanto la seduta, che riprenderà fra quindici minuti.</interventoVirtuale>
+      </intervento>
+    </dibattito>
+    <avviso id="avv00030">
+      <titolo>La seduta, sospesa alle 10,04, è ripresa alle 10,19.</titolo>
+    </avviso>
+    <dibattito id="tit00020">
+      <titolo>Seguito della discussione del disegno di legge: Disposizioni in materia di esempi (A.C. 100) (ore 10,19). (ore 10,19)</titolo>
+      <intervento id="tit00020.int00010">
+        <testoXHTML>
+          <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. La seduta è ripresa. L'ordine del giorno reca il seguito della discussione del disegno di legge in materia di esempi <emphasis type="italic">(Vedi l'allegato A)</emphasis>.</testoXHTML>
+        <interventoVirtuale id="iv.4">Ricordo che nella seduta di ieri si è conclusa la discussione generale.</interventoVirtuale>
+      </intervento>
+      <pagina numero="2" />
+      <fase id="tit00020.sub00010">
+        <titolo>(Dichiarazioni di voto finale - A.C. 100)</titolo>
+        <intervento id="tit00020.sub00010.int00010">
+          <testoXHTML>
+            <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. Passiamo alle dichiarazioni di voto finale. Ha chiesto di parlare la deputata Anna De Luca. Ne ha facoltà.</testoXHTML>
+        </intervento>
+        <intervento id="tit00020.sub00010.int00020">
+          <testoXHTML>
+            <nominativo id="300003" cognomeNome="DE LUCA Anna">ANNA DE LUCA</nominativo> (P1). Grazie, Presidente. Questo disegno di legge mette finalmente ordine in una materia che da troppi anni attendeva una risposta chiara <emphasis type="italic">(Applausi dei deputati del gruppo Partito Uno)</emphasis>. Quando una norma è scritta bene, i cittadini la capiscono e la rispettano.</testoXHTML>
+          <interventoVirtuale id="iv.5">Abbiamo lavorato in Commissione con spirito costruttivo, accogliendo anche molte proposte delle opposizioni, perché il <emphasis type="italic">vulnus</emphasis> che c'era andava sanato insieme.</interventoVirtuale>
+        </intervento>
+        <intervento id="tit00020.sub00010.int00030">
+          <testoXHTML>
+            <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. Concluda.</testoXHTML>
+        </intervento>
+        <intervento id="tit00020.sub00010.int00040">
+          <testoXHTML>
+            <nominativo id="300003" cognomeNome="DE LUCA Anna">ANNA DE LUCA</nominativo> (P1). …e per queste ragioni il nostro gruppo voterà a favore.</testoXHTML>
+        </intervento>
+        <intervento id="tit00020.sub00010.int00050">
+          <testoXHTML>
+            <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. Ha chiesto di parlare il deputato Paolo Emilio Verdi. Ne ha facoltà.</testoXHTML>
+        </intervento>
+        <intervento id="tit00020.sub00010.int00060">
+          <testoXHTML>
+            <nominativo id="300004" cognomeNome="VERDI Paolo Emilio">PAOLO EMILIO VERDI</nominativo> (NM(N-C-U-I)M-CP). Signor Presidente, colleghi, noi non condividiamo questo entusiasmo <emphasis type="italic">(Commenti dei deputati del gruppo Partito Uno </emphasis>- <emphasis type="italic">Una voce: “</emphasis>Basta<emphasis type="italic">”)</emphasis>, perché il testo arriva in Aula senza le coperture necessarie.</testoXHTML>
+          <interventoVirtuale id="iv.6">Lo abbiamo detto in Commissione e lo ripetiamo oggi: senza risorse certe questa resta una legge manifesto, buona per un comunicato e inutile per chi aspetta risposte.</interventoVirtuale>
+        </intervento>
+        <intervento id="tit00020.sub00010.int00070">
+          <testoXHTML>
+            <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. Colleghi, per favore.</testoXHTML>
+        </intervento>
+        <intervento id="tit00020.sub00010.int00080">
+          <testoXHTML>
+            <nominativo id="300004" cognomeNome="VERDI Paolo Emilio">PAOLO EMILIO VERDI</nominativo> (NM(N-C-U-I)M-CP). Concludo, Presidente: per tutte queste ragioni il mio gruppo voterà contro il provvedimento.</testoXHTML>
+        </intervento>
+      </fase>
+      <fase id="tit00020.sub00020">
+        <titolo>(Votazione finale ed approvazione - A.C. 100)</titolo>
+        <intervento id="tit00020.sub00020.int00010">
+          <testoXHTML>
+            <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. Passiamo alla votazione finale.</testoXHTML>
+          <interventoVirtuale id="iv.7">Indìco la votazione nominale finale, mediante procedimento elettronico, sul disegno di legge in materia di esempi.</interventoVirtuale>
+          <interventoVirtuale id="iv.8">Dichiaro aperta la votazione.</interventoVirtuale>
+          <interventoVirtuale id="iv.9">
+            <emphasis type="italic">(Segue la votazione)</emphasis>.</interventoVirtuale>
+          <interventoVirtuale id="iv.10">Dichiaro chiusa la votazione.</interventoVirtuale>
+          <interventoVirtuale id="iv.11">La Camera approva <emphasis type="italic">(Vedi votazione n. 1)</emphasis>.</interventoVirtuale>
+        </intervento>
+      </fase>
+    </dibattito>
+    <dibattito id="tit00030">
+      <titolo>Svolgimento di interpellanze urgenti (ore 10,21).</titolo>
+      <intervento id="tit00030.int00010">
+        <testoXHTML>
+          <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. L'ordine del giorno reca lo svolgimento di una interpellanza urgente.</testoXHTML>
+      </intervento>
+      <fase id="tit00030.sub00010">
+        <titolo>(Iniziative in materia di esempi - n. 2-00001)</titolo>
+        <intervento id="tit00030.sub00010.int00010">
+          <testoXHTML>
+            <nominativo id="300005" cognomeNome="NERI Giulia">GIULIA NERI</nominativo>,<emphasis type="italic"> Sottosegretaria di Stato per la Giustizia</emphasis>. Grazie, Presidente. Con riferimento alle questioni sollevate dagli onorevoli interpellanti, il Governo conferma che le risorse sono state stanziate.</testoXHTML>
+          <interventoVirtuale id="iv.12">I decreti attuativi saranno adottati entro la fine del mese, come previsto dal cronoprogramma già trasmesso alle Camere.</interventoVirtuale>
+        </intervento>
+      </fase>
+    </dibattito>
+    <dibattito id="tit00040">
+      <titolo>Ordine del giorno della prossima seduta.</titolo>
+      <intervento id="tit00040.int00010">
+        <testoXHTML>
+          <nominativo id="300001" cognomeNome="ROSSI Maria">PRESIDENTE</nominativo>. Comunico l'ordine del giorno della prossima seduta.</testoXHTML>
+        <interventoVirtuale id="iv.13">Mercoledì 3 marzo 2027, alle ore nove e trenta: svolgimento di interrogazioni.</interventoVirtuale>
+      </intervento>
+    </dibattito>
+    <avviso id="avv00040">
+      <titolo>La seduta termina alle 10,21.</titolo>
+    </avviso>
+    <allegati>
+      <titolo>TESTI DEGLI INTERVENTI DI CUI È STATA AUTORIZZATA LA PUBBLICAZIONE IN CALCE AL RESOCONTO STENOGRAFICO DELLA SEDUTA ODIERNA</titolo>
+      <dibattito id="tit00050">
+        <titolo>TESTI DEGLI INTERVENTI DI CUI È STATA AUTORIZZATA LA PUBBLICAZIONE: PAOLO EMILIO VERDI (A.C. 100)</titolo>
+        <intervento id="tit00050.int00010">
+          <testoXHTML>
+            <nominativo id="300004" cognomeNome="VERDI Paolo Emilio">PAOLO EMILIO VERDI</nominativo> (NM(N-C-U-I)M-CP). Un testo consegnato per iscritto e mai pronunciato in Aula.</testoXHTML>
+        </intervento>
+      </dibattito>
+    </allegati>
+  </resoconto>
+</seduta>

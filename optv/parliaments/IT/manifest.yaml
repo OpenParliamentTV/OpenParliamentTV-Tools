@@ -1,0 +1,38 @@
+name: "Camera dei deputati"
+language: ita                    # ISO 639-3 (locale stack)
+language_code: "it"        # ISO 639-1 lowercase, the Stage-2 emission code (SHORTCODES.md §3)
+locale:
+  spacy_model: it_core_news_md
+  aeneas_language: ita
+  entityfishing_language: it            # informational: ner is not among the stages
+periods: [19]                    # the legislature
+# No ner: the entity-fishing service in use has no Italian knowledge base loaded.
+supported_stages: [download, parse, merge, nel, align]
+entity_dump_url: ""             # built locally via scraper/build_entity_dump.py
+default_retry_count: 10
+default_retry_delay_max: 10
+
+# Rights metadata emitted into Stage 2 (resolved by optv.parliaments.get_rights).
+# Both streams fall under the Chamber's legal notice: CC BY-NC-ND 4.0, derivative
+# works only with the Chamber's written permission.
+media:
+  default:
+    creator: "Camera dei deputati"
+    license: "https://comunicazione.camera.it/policy/avvisolegale"
+proceedings:
+  default:
+    creator: "Camera dei deputati"
+    license: "https://comunicazione.camera.it/policy/avvisolegale"
+
+# Readiness tracking (python -m optv.scripts.readiness, docs/READINESS.md).
+# sample_sessions are the sessions processed end to end and evaluated.
+readiness:
+  sample_sessions:
+    - "190731"      # a bill with amendments, votes and declarations of vote
+    - "190744"      # a decree converted into law
+    - "190745"      # urgent interpellations, answered by an undersecretary
+  sample_run:
+    - sessions: ["190731", "190744", "190745"]
+      args: ["--period=19",
+             "--session", "190731", "--session", "190744", "--session", "190745",
+             "--limit-session", "^(190731|190744|190745)$"]

@@ -939,6 +939,49 @@ def classify_nl(soort: Optional[str], title: Optional[str] = None) -> tuple[Opti
 
 
 # ---------------------------------------------------------------------------
+# IT — Camera dei deputati (WebTV titles: agenda item, subject, phase)
+# ---------------------------------------------------------------------------
+
+# Matched against the agenda item's title and its subject; first match wins.
+# Bills, motions and resolutions are debates and fall through to CORE_REGULAR.
+_IT_PATTERNS: list[tuple[re.Pattern, str, str]] = [
+    (re.compile(r"lettura\s+(?:del\s+)?(?:processo\s+)?verbale", re.I), "IT-lettura_verbale", CORE_OPENING),
+    (re.compile(r"ordine\s+del\s+giorno\s+della\s+(?:prossima\s+)?seduta", re.I),
+     "IT-ordine_del_giorno", CORE_CLOSING),
+    (re.compile(r"richiam[oi]\s+al\s+regolamento", re.I), "IT-richiamo_al_regolamento", CORE_RULES_OF_PROCEDURE),
+    (re.compile(r"sull['’]ordine\s+dei\s+lavori|sui\s+lavori\s+dell['’]assemblea", re.I),
+     "IT-ordine_dei_lavori", CORE_PROCEDURAL),
+    (re.compile(r"^missioni\b|preavviso\s+di\s+votazioni|\bannunzi[oa]\b|\bsospes[ao]\b|"
+                r"modifica\s+nella\s+composizione", re.I), "IT-comunicazioni", CORE_PROCEDURAL),
+    (re.compile(r"interrogazioni\s+a\s+risposta\s+immediata", re.I), "IT-question_time", CORE_QA),
+    (re.compile(r"interpellanz", re.I), "IT-interpellanze", CORE_QA),
+    (re.compile(r"interrogazion", re.I), "IT-interrogazioni", CORE_QA),
+    (re.compile(r"informativa", re.I), "IT-informativa", CORE_BRIEFING),
+    (re.compile(r"comunicazioni\s+del\s+(?:presidente\s+del\s+consiglio|governo)", re.I),
+     "IT-comunicazioni_del_governo", CORE_GOVERNMENT_DECLARATION),
+    (re.compile(r"bilancio\s+di\s+previsione|legge\s+di\s+bilancio|rendiconto\s+generale|"
+                r"assestamento\s+del\s+bilancio|documento\s+di\s+(?:economia\s+e\s+)?finanza|"
+                r"documento\s+programmatico\s+di\s+bilancio", re.I), "IT-bilancio", CORE_BUDGET),
+    (re.compile(r"commemorazione|\bcordoglio\b|in\s+ricordo\s+d", re.I), "IT-commemorazione", CORE_CONDOLENCE),
+    (re.compile(r"\bgiuramento\b", re.I), "IT-giuramento", CORE_OATH),
+    (re.compile(r"\belezione\s+(?:del|della|dei|di)\b|votazione\s+per\s+(?:l['’]elezione|schede)", re.I),
+     "IT-elezione", CORE_ELECTION),
+    (re.compile(r"interventi\s+di\s+fine\s+seduta", re.I), "IT-interventi_di_fine_seduta", CORE_REGULAR),
+]
+
+# A phase of an item in which the House votes.
+_IT_VOTING_PHASE_RE = re.compile(r"^votazion", re.I)
+
+
+def classify_it(title: Optional[str], phase: Optional[str] = None,
+                subject: Optional[str] = None) -> tuple[Optional[str], str]:
+    """Classify a Camera dei deputati agenda item by its WebTV title and subject; a voting phase of any item is ``voting``."""
+    if phase and _IT_VOTING_PHASE_RE.search(phase.strip()):
+        return "IT-votazione", CORE_VOTING
+    return _match_title(" | ".join(t.strip() for t in (title, subject) if t and t.strip()), _IT_PATTERNS)
+
+
+# ---------------------------------------------------------------------------
 # Convenience: write classification onto an agendaItem dict
 # ---------------------------------------------------------------------------
 

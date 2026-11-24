@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "parliament": "IT",
+  "name": "Camera dei deputati",
+  "level": 1,
+  "level_name": "implemented",
+  "blocking": [
+    "samples.stages",
+    "samples.timing"
+  ],
+  "regressions": [],
+  "unverified": [],
+  "status": "in development",
+  "samples": {
+    "190731": {
+      "speeches": 52,
+      "text_speeches": 52,
+      "audio_seconds": 10212,
+      "text": "a5d7b687774f6a76"
+    },
+    "190744": {
+      "speeches": 27,
+      "text_speeches": 27,
+      "audio_seconds": 7228,
+      "text": "4c5738e52fbfae7f"
+    },
+    "190745": {
+      "speeches": 13,
+      "text_speeches": 13,
+      "audio_seconds": 3758,
+      "text": "6c07fdbce1d88dfc"
+    }
+  },
+  "criteria": {
+    "impl.files": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.manifest": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.contract": {
+      "level": 2,
+      "status": "pass"
+    },
+    "impl.tests": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "modules": 4
+      }
+    },
+    "samples.declared": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "declared": 3,
+        "published": 3,
+        "minimum": 3
+      }
+    },
+    "samples.stages": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "complete": 0,
+        "sessions": 3
+      },
+      "detail": "190731: no align; 190744: no align; 190745: no align"
+    },
+    "samples.valid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "errors": 0,
+        "time_bounds": 0,
+        "warnings": 6
+      }
+    },
+    "samples.import_fields": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 92,
+        "rejected": 0
+      }
+    },
+    "samples.import_gate": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "mode": "gated",
+        "text_speeches": 92,
+        "importable_share": 0.967
+      }
+    },
+    "samples.speaker_wid": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "share": 1.0,
+        "with_wid": 92,
+        "speeches": 92,
+        "threshold": 0.95
+      }
+    },
+    "samples.timing": {
+      "level": 2,
+      "status": "fail",
+      "metrics": {
+        "share": 0.0,
+        "timed": 0,
+        "sentences": 2247,
+        "threshold": 0.95
+      }
+    },
+    "samples.text_plausible": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "checked": 31,
+        "implausible": 0
+      }
+    },
+    "samples.rights": {
+      "level": 2,
+      "status": "pass",
+      "metrics": {
+        "speeches": 92,
+        "missing": 0
+      }
+    },
+    "qc.whisper_coverage": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.fidelity": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.mismatch": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "no Whisper transcripts on this machine"
+    },
+    "qc.reviewed": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.licence": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.platform": {
+      "level": 3,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.backfilled": {
+      "level": 4,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    },
+    "release.live": {
+      "level": 5,
+      "status": "not_evaluated",
+      "detail": "not attested"
+    }
+  },
+  "evaluated": {
+    "date": "2026-11-24",
+    "tools": "919a957"
+  }
+}
