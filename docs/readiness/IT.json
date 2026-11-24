@@ -2,11 +2,15 @@
   "schema": 1,
   "parliament": "IT",
   "name": "Camera dei deputati",
-  "level": 1,
-  "level_name": "implemented",
+  "level": 2,
+  "level_name": "samples pass",
   "blocking": [
-    "samples.stages",
-    "samples.timing"
+    "qc.whisper_coverage",
+    "qc.fidelity",
+    "qc.mismatch",
+    "qc.reviewed",
+    "release.licence",
+    "release.platform"
   ],
   "regressions": [],
   "unverified": [],
@@ -62,12 +66,11 @@
     },
     "samples.stages": {
       "level": 2,
-      "status": "fail",
+      "status": "pass",
       "metrics": {
-        "complete": 0,
+        "complete": 3,
         "sessions": 3
-      },
-      "detail": "190731: no align; 190744: no align; 190745: no align"
+      }
     },
     "samples.valid": {
       "level": 2,
@@ -107,10 +110,10 @@
     },
     "samples.timing": {
       "level": 2,
-      "status": "fail",
+      "status": "pass",
       "metrics": {
-        "share": 0.0,
-        "timed": 0,
+        "share": 1.0,
+        "timed": 2247,
         "sentences": 2247,
         "threshold": 0.95
       }
@@ -174,6 +177,6 @@
   },
   "evaluated": {
     "date": "2026-11-24",
-    "tools": "919a957"
+    "tools": "4eb5adc"
   }
 }

@@ -23,7 +23,7 @@ Every parliament implemented in this repository, the level its implementation an
 | [`EU`](../optv/parliaments/EU/) | European Parliament | 2 samples pass | in development | `qc.whisper_coverage`, `qc.fidelity`, `qc.mismatch`, `qc.reviewed`, `release.licence`, `release.platform` | – |
 | [`FI`](../optv/parliaments/FI/) | Eduskunta | 2 samples pass | in development | `qc.whisper_coverage`, `qc.fidelity`, `qc.mismatch`, `qc.reviewed`, `release.licence`, `release.platform` | – |
 | [`FR`](../optv/parliaments/FR/) | Assemblée nationale | 1 implemented | in development | `samples.speaker_wid`, `samples.text_plausible` | – |
-| [`IT`](../optv/parliaments/IT/) | Camera dei deputati | 1 implemented | in development | `samples.stages`, `samples.timing` | – |
+| [`IT`](../optv/parliaments/IT/) | Camera dei deputati | 2 samples pass | in development | `qc.whisper_coverage`, `qc.fidelity`, `qc.mismatch`, `qc.reviewed`, `release.licence`, `release.platform` | – |
 | [`NL`](../optv/parliaments/NL/) | Tweede Kamer | 1 implemented | in development | `samples.stages`, `samples.timing` | – |
 | [`NO`](../optv/parliaments/NO/) | Stortinget | 1 implemented | in development | `samples.speaker_wid` | – |
 | [`PT`](../optv/parliaments/PT/) | Assembleia da República | 1 implemented | in development | `samples.speaker_wid`, `samples.text_plausible` | – |
@@ -340,14 +340,12 @@ Sample sessions: `2026O1N251`, `2026O1N252`, `2026O1N255` (1331 speeches, 10.0 h
 
 ### IT: Camera dei deputati
 
-Level 1 (implemented), in development. 11 of 21 criteria satisfied. Evaluated 2026-11-24 at `919a957`.
+Level 2 (samples pass), in development. 13 of 21 criteria satisfied. Evaluated 2026-11-24 at `4eb5adc`.
 
 Sample sessions: `190731`, `190744`, `190745` (92 speeches, 5.9 h of audio).
 
 | Criterion | Gates level | Result | Detail |
 |---|---|---|---|
-| `samples.stages` | 2 | fail | 190731: no align; 190744: no align; 190745: no align |
-| `samples.timing` | 2 | fail | share 0.0 against 0.95 |
 | `qc.whisper_coverage` | 3 | not_evaluated | no Whisper transcripts on this machine |
 | `qc.fidelity` | 3 | not_evaluated | no Whisper transcripts on this machine |
 | `qc.mismatch` | 3 | not_evaluated | no Whisper transcripts on this machine |
