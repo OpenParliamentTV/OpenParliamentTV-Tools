@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
 from urllib.error import HTTPError
 
 import pytest
@@ -61,6 +62,60 @@ def test_an_interrupted_download_is_continued(tmp_path):
     assert path.read_bytes() == content
 
 
+def _whole(monkeypatch, server):
+    """``fetch_whole`` against ``server``, with the waits recorded instead of slept."""
+    waits: list[float] = []
+    fetch = A.fetch_file
+    monkeypatch.setattr(A, "fetch_file", lambda url, path: fetch(url, path, opener=server))
+    return waits, lambda url, path: A.fetch_whole(url, path, pause=waits.append)
+
+
+def test_a_transfer_the_server_ends_early_is_continued_in_the_same_run(tmp_path, monkeypatch):
+    content = bytes(range(256)) * 8                           # 2048 bytes, 700 per request
+    server = FakeServer(content, cut_at=700)
+    waits, whole = _whole(monkeypatch, server)
+    path = tmp_path / "audio.mp3.video.part"
+    assert whole(URL, path) == len(content)
+    assert path.read_bytes() == content
+    assert [r.get("Range") for r in server.requests] == [None, "bytes=700-", "bytes=1400-"]
+    assert waits == [A._CONTINUE_PAUSE_S] * 2
+
+
+def test_continuing_stops_after_a_few_requests_and_keeps_what_arrived(tmp_path, monkeypatch):
+    server = FakeServer(b"x" * 10_000, cut_at=100)
+    waits, whole = _whole(monkeypatch, server)
+    path = tmp_path / "audio.mp3.video.part"
+    with pytest.raises(A.DownloadIncomplete, match="ended early"):
+        whole(URL, path)
+    assert len(server.requests) == A._MAX_CONTINUATIONS + 1
+    assert path.stat().st_size == 100 * (A._MAX_CONTINUATIONS + 1)
+
+
+def test_a_request_that_brings_nothing_new_is_not_repeated(tmp_path, monkeypatch):
+    server = FakeServer(b"x" * 1000, cut_at=0)
+    waits, whole = _whole(monkeypatch, server)
+    with pytest.raises(A.DownloadIncomplete):
+        whole(URL, tmp_path / "audio.mp3.video.part")
+    assert len(server.requests) == 1 and waits == []
+
+
+def test_a_connection_that_breaks_while_reading_keeps_what_arrived(tmp_path):
+    class Breaking(FakeResponse):
+        def read(self, size=-1):
+            data = super().read(size)
+            if not data:
+                raise ConnectionResetError("reset by peer")
+            return data
+
+    def opener(request, timeout=None):
+        return Breaking(b"y" * 300, length=1000)
+
+    path = tmp_path / "audio.mp3.video.part"
+    with pytest.raises(A.DownloadIncomplete, match="interrupted after 300 bytes"):
+        A.fetch_file(URL, path, opener=opener)
+    assert path.stat().st_size == 300
+
+
 def test_a_server_that_ignores_the_range_makes_the_download_start_over(tmp_path):
     content = b"abcdefghij" * 50
     path = tmp_path / "audio.mp3.video.part"
@@ -85,41 +140,96 @@ def test_a_download_larger_than_the_free_space_is_refused(tmp_path, monkeypatch)
     assert not path.exists() or path.stat().st_size == 0
 
 
-def test_nothing_is_requested_when_the_audio_is_there(tmp_path, monkeypatch):
-    target = tmp_path / "audio_session" / "abc.mp3"
-    target.parent.mkdir()
-    target.write_bytes(b"mp3")
-    monkeypatch.setattr(A, "clip_seconds", lambda path: 5000.0)
-    monkeypatch.setattr(A, "fetch_file", lambda *a, **k: pytest.fail("the recording was requested"))
-    A._download(URL, target, required_duration=5020.0)        # within the tolerance of the audio's length
+def test_a_whole_file_is_kept_when_the_server_offers_all_of_it_again(tmp_path):
+    content = b"abcdefghij" * 50
+    path = tmp_path / "audio.mp3.video.part"
+    path.write_bytes(content)
+    before = path.stat().st_mtime_ns
+    assert A.fetch_file(URL, path, opener=FakeServer(content, ranges=False)) == len(content)
+    assert path.read_bytes() == content and path.stat().st_mtime_ns == before
 
 
-def test_the_recording_is_fetched_turned_into_audio_and_deleted(tmp_path, monkeypatch):
-    target = tmp_path / "audio_session" / "abc.mp3"
-    calls = []
+def _lengths(monkeypatch, seconds: dict[str, float]):
+    """Media lengths by file suffix, in place of ffprobe; a file that is not there has none."""
+    monkeypatch.setattr(A, "clip_seconds",
+                        lambda path: seconds.get(path.suffix, 0.0) if path.exists() else 0.0)
 
+
+def _staging(monkeypatch, calls):
+    """Record the requests for the recording and the audio extraction instead of making them."""
     def fake_fetch(url, path):
         path.write_bytes(b"video")
         calls.append(("fetch", url, path.name))
 
     def fake_extract(source, out, **options):
-        calls.append(("audio", source, options["hls"], options["required_duration"]))
+        calls.append(("audio", Path(source).name, options["hls"], options["required_duration"]))
         out.write_bytes(b"mp3")
 
     monkeypatch.setattr(A, "fetch_file", fake_fetch)
     monkeypatch.setattr(A, "download_ffmpeg", fake_extract)
-    A._download(URL, target, required_duration=1234.0)
-    video = tmp_path / "audio_session" / "abc.mp3.video.part"
-    assert calls == [("fetch", URL, "abc.mp3.video.part"), ("audio", str(video), False, 1234.0)]
-    assert target.read_bytes() == b"mp3" and not video.exists()
 
 
-def test_audio_that_ends_before_the_last_slice_is_not_enough(tmp_path, monkeypatch):
-    target = tmp_path / "abc.mp3"
-    assert not A.has_audio(target, 100.0)
+def test_nothing_is_requested_when_the_audio_is_there(tmp_path, monkeypatch):
+    target = tmp_path / "audio_session" / "abc.mp3"
+    target.parent.mkdir()
     target.write_bytes(b"mp3")
-    monkeypatch.setattr(A, "clip_seconds", lambda path: 900.0)
-    assert A.has_audio(target, 929.0) and not A.has_audio(target, 931.0)
+    _lengths(monkeypatch, {".mp3": 5000.0})
+    monkeypatch.setattr(A, "fetch_file", lambda *a, **k: pytest.fail("the recording was requested"))
+    # The last time range ends after the recording does: the audio is whole all the same.
+    A._download(URL, target, required_duration=5040.0)
+
+
+def test_the_recording_is_fetched_turned_into_audio_and_deleted(tmp_path, monkeypatch):
+    target = tmp_path / "audio_session" / "abc.mp3"
+    calls = []
+    _staging(monkeypatch, calls)
+    _lengths(monkeypatch, {".video": 1200.0, ".mp3": 1200.0})
+    A._download(URL, target, required_duration=1234.0)
+    # The audio is asked to be as long as the recording, not as long as the page's last range.
+    assert calls == [("fetch", URL, "abc.mp3.video.part"), ("audio", "abc.mp3.video", False, 1200.0)]
+    assert target.read_bytes() == b"mp3"
+    assert sorted(p.name for p in target.parent.iterdir()) == ["abc.mp3"]
+
+
+def test_a_whole_recording_in_the_cache_is_not_requested_again(tmp_path, monkeypatch):
+    target = tmp_path / "audio_session" / "abc.mp3"
+    target.parent.mkdir()
+    (target.parent / "abc.mp3.video").write_bytes(b"video")
+    calls = []
+    _staging(monkeypatch, calls)
+    _lengths(monkeypatch, {".video": 1200.0, ".mp3": 1200.0})
+    A._download(URL, target, required_duration=1210.0)
+    assert calls == [("audio", "abc.mp3.video", False, 1200.0)]
+    assert sorted(p.name for p in target.parent.iterdir()) == ["abc.mp3"]
+
+
+def test_a_recording_that_is_no_media_file_is_reported_and_kept(tmp_path, monkeypatch):
+    target = tmp_path / "audio_session" / "abc.mp3"
+    calls = []
+    _staging(monkeypatch, calls)
+    _lengths(monkeypatch, {})
+    with pytest.raises(RuntimeError, match="cannot be read"):
+        A._download(URL, target, required_duration=100.0)
+    assert [c[0] for c in calls] == ["fetch"] and (target.parent / "abc.mp3.video").exists()
+
+
+def test_time_ranges_far_beyond_the_recording_are_reported(tmp_path, monkeypatch, caplog):
+    calls = []
+    _staging(monkeypatch, calls)
+    _lengths(monkeypatch, {".video": 1000.0, ".mp3": 1000.0})
+    with caplog.at_level("WARNING", logger=A.logger.name):
+        A._download(URL, tmp_path / "a" / "near.mp3", required_duration=1000.0 + A._END_SLACK_S)
+        assert not caplog.records
+        A._download(URL, tmp_path / "b" / "far.mp3", required_duration=1001.0 + A._END_SLACK_S)
+    assert "reach to" in caplog.text
+
+
+def test_audio_counts_as_there_only_when_it_has_a_length(tmp_path, monkeypatch):
+    target = tmp_path / "abc.mp3"
+    _lengths(monkeypatch, {".mp3": 900.0})
+    assert not A.has_audio(target)
+    target.write_bytes(b"mp3")
+    assert A.has_audio(target)
 
 
 def test_only_speeches_with_text_and_a_bounded_range_are_staged():
