@@ -301,6 +301,18 @@ only), data-quality gaps, missing live scraper, aspirational
 
 Do not duplicate content that already lives elsewhere: pipeline concepts go in [Architecture/PIPELINE.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/PIPELINE.md), the Stage 2 format in [Architecture/STAGE2-FORMAT.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/STAGE2-FORMAT.md), cross-parliament structural divergences in [Architecture/DATA-STRUCTURES.md](https://github.com/OpenParliamentTV/OpenParliamentTV-Architecture/blob/main/DATA-STRUCTURES.md), the generic onboarding flow in this file, and per-parliament metadata (spaCy model, language codes, `supported_stages`, `entity_dump_url`) in `manifest.yaml`. The README links to those rather than restating them.
 
+### The entry in DATA-STRUCTURES.md
+
+The README's link to DATA-STRUCTURES.md needs an entry to arrive at, so a new parliament is added to that document in the Architecture repository as part of this step:
+
+- a subsection in its section 2, in the group the parliament belongs to (supranational, national, regional), after the last entry of that group;
+- the parliament in every list and table of its sections 3 and 4 that names parliaments: the ID slot widths, the media-per-speech variants, the period encodings, what a session is, the two-level periods, the person IDs, and which streams carry the speeches;
+- the day of the change in the `Last updated` line of its header.
+
+The document's introduction says what belongs there, and the existing entries show the form. An entry states the shape of the parliament's data where it differs from the Bundestag baseline: the temporal hierarchy and how it maps to `electoralPeriod.number` and `session.number`, the ID model, how media relates to speeches, the agenda granularity, and what kind of join brings the sources together. It names the parliaments that share a trait. Scraping mechanics, operating notes, data quality and licence questions stay in the parliament's README; field definitions are in STAGE2-FORMAT.md.
+
+Write the entry once sample sessions are published, from the published files and the implementation, so that it states what the output is. Like every document here it describes the current state, without history, and the header line holds its only date. When a later change alters a parliament's data shape, its entry and that date change with it.
+
 ## 11. Onboard with Conductor
 
 Once the parliament works standalone, add it to the Conductor's `config/parliaments.yaml` so it appears in the web UI; the scaffold prints the block to add. The Conductor reads that file when it starts, so restart it afterwards, and a deployment that mounts each data repository separately needs the new one mounted too. See the [Conductor README](https://github.com/OpenParliamentTV/OpenParliamentTV-Conductor) for the deployment configuration format.
